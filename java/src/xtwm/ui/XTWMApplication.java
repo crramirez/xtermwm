@@ -36,6 +36,7 @@ import java.io.FileWriter;
 import java.io.InputStreamReader;
 import java.io.IOException;
 import java.text.MessageFormat;
+import java.util.ArrayList;
 import java.util.Properties;
 import java.util.ResourceBundle;
 
@@ -43,8 +44,11 @@ import jexer.TApplication;
 import jexer.TEditColorThemeWindow;
 import jexer.TExceptionDialog;
 import jexer.TFontChooserWindow;
+import jexer.THelpWindow;
+import jexer.TInputBox;
 import jexer.TMessageBox;
 import jexer.TStatusBar;
+import jexer.TWindow;
 import jexer.backend.Backend;
 import jexer.backend.SwingTerminal;
 import jexer.bits.CellAttributes;
@@ -53,6 +57,7 @@ import jexer.bits.ColorTheme;
 import jexer.event.TCommandEvent;
 import jexer.event.TKeypressEvent;
 import jexer.event.TMenuEvent;
+import jexer.help.Topic;
 import jexer.menu.TMenu;
 import jexer.menu.TSubMenu;
 import static jexer.TCommand.*;
@@ -93,6 +98,8 @@ public class XTWMApplication extends TApplication {
     private static final int MENU_APPLICATION_SETTINGS_COLORS           = 2031;
     private static final int MENU_APPLICATION_SETTINGS_ENVIRONMENT      = 2032;
     private static final int MENU_APPLICATION_SETTINGS_WINDOWS          = 2033;
+    private static final int MENU_APPLICATION_SETTINGS_SAVE             = 2034;
+    private static final int MENU_APPLICATION_SETTINGS_LOAD             = 2035;
     private static final int MENU_APPLICATION_RUN                       = 2091;
     private static final int MENU_APPLICATION_LOCK_SCREEN               = 2092;
     private static final int MENU_APPLICATION_EXIT                      = 2099;
@@ -115,8 +122,9 @@ public class XTWMApplication extends TApplication {
     private static final int MENU_PANEL_LOAD_LAYOUT                     = 2206;
 
     private static final int MENU_WINDOW_TO_DESKTOP                     = 2300;
-    private static final int MENU_WINDOW_NEXT_DESKTOP                   = 2301;
-    private static final int MENU_WINDOW_PREVIOUS_DESKTOP               = 2302;
+    private static final int MENU_WINDOW_ON_ALL_DESKTOPS                = 2301;
+    private static final int MENU_WINDOW_NEXT_DESKTOP                   = 2302;
+    private static final int MENU_WINDOW_PREVIOUS_DESKTOP               = 2303;
 
     // ------------------------------------------------------------------------
     // Variables --------------------------------------------------------------
@@ -131,6 +139,29 @@ public class XTWMApplication extends TApplication {
      * The filename to save options to.
      */
     private String configFilename = null;
+
+    /**
+     * The password used to unlock the lock screen.  Unfortunately the lock
+     * screen cannot use the operating system password for this, because the
+     * only means of verifying credentials requires some ridiculous insecure
+     * shenanigans I don't want to get into.
+     */
+    private String lockScreenPassword = "a";
+
+    /**
+     * The virtual desktops.
+     */
+    private ArrayList<VirtualDesktop> desktops = new ArrayList<VirtualDesktop>();
+
+    /**
+     * The current visible desktop, as an index into desktops.
+     */
+    private int desktopIndex = -1;
+
+    /**
+     * The desired number of virtual desktops.
+     */
+    private int desktopCount = 4;
 
     // ------------------------------------------------------------------------
     // Constructors -----------------------------------------------------------
@@ -188,6 +219,18 @@ public class XTWMApplication extends TApplication {
         initializeOptions();
         addAllWidgets();
         getBackend().setTitle(i18n.getString("frameTitle"));
+
+        // We have two desktops by default:
+        // 0 - The screensaver desktop.  No windows are created on it.
+        // 1 - The first normal desktop.
+        desktops.add(new VirtualDesktop(this));
+        desktops.add(new VirtualDesktop(this));
+        desktopIndex = 1;
+
+        // Now add the other desktops.
+        for (int i = 1; i < desktopCount; i++) {
+            desktops.add(new VirtualDesktop(this));
+        }
     }
 
     /**
@@ -208,7 +251,6 @@ public class XTWMApplication extends TApplication {
     // Event handlers ---------------------------------------------------------
     // ------------------------------------------------------------------------
 
-
     /**
      * Handle menu events.
      *
@@ -219,41 +261,44 @@ public class XTWMApplication extends TApplication {
     @Override
     public boolean onMenu(final TMenuEvent menu) {
 
+        TInputBox inputBox;
+        TWindow window;
+
         // Dispatch menu event
         switch (menu.getId()) {
 
         case MENU_APPLICATION_PROGRAMS_SHELL:
             // Spawn shell
-            openTerminal(0, 0);
+            currentDesktop().addWindow(openTerminal(0, 0));
             return true;
 
         case MENU_APPLICATION_PROGRAMS_EDITOR:
             // TODO
-            break;
+            return true;
 
         case MENU_APPLICATION_WIDGETS_CALCULATOR:
             // TODO
-            break;
+            return true;
 
         case MENU_APPLICATION_WIDGETS_CALENDAR:
             // TODO
-            break;
+            return true;
 
         case MENU_APPLICATION_WIDGETS_DESKTOP_PAGER:
             // TODO
-            break;
+            return true;
 
         case MENU_APPLICATION_WIDGETS_FILE_MANAGER:
             // TODO
-            break;
+            return true;
 
         case MENU_APPLICATION_WIDGETS_QUICK_NOTE:
             // TODO
-            break;
+            return true;
 
         case MENU_APPLICATION_WIDGETS_PERF_MONITOR:
             // TODO
-            break;
+            return true;
 
         case MENU_APPLICATION_SETTINGS_DISPLAY:
             new TFontChooserWindow(this);
@@ -283,15 +328,41 @@ public class XTWMApplication extends TApplication {
 
         case MENU_APPLICATION_SETTINGS_WINDOWS:
             // TODO
-            break;
+            return true;
+
+        case MENU_APPLICATION_SETTINGS_LOAD:
+            try {
+                String filename = fileOpenBox(configFilename == null ?
+                    System.getProperty("user.home") + "/.xtwm" :
+                    (new File(configFilename)).getParent());
+                 if (filename != null) {
+                     loadOptions(filename);
+                 }
+            } catch (IOException e) {
+                // Show this exception to the user.
+                new TExceptionDialog(this, e);
+            }
+            return true;
+
+        case MENU_APPLICATION_SETTINGS_SAVE:
+            saveOptions();
+            return true;
 
         case MENU_APPLICATION_RUN:
-            // TODO
-            break;
+            inputBox = inputBox(i18n.getString("runInputBoxTitle"),
+                i18n.getString("runInputBoxCaption"), "",
+                TInputBox.Type.OKCANCEL);
+            if (inputBox.isOk()) {
+                String command = inputBox.getText();
+                if (command.length() > 0) {
+                    currentDesktop().addWindow(openTerminal(0, 0, command));
+                }
+            }
+            return true;
 
         case MENU_APPLICATION_LOCK_SCREEN:
-            // TODO
-            break;
+            lockScreen();
+            return true;
 
         case MENU_APPLICATION_EXIT:
             // Post a quit command
@@ -300,82 +371,132 @@ public class XTWMApplication extends TApplication {
 
         case MENU_TERMINAL_NEW_WINDOW:
             // TODO
-            break;
+            return true;
 
         case MENU_TERMINAL_HORIZONTAL_SPLIT:
             // TODO
-            break;
+            return true;
 
         case MENU_TERMINAL_VERTICAL_SPLIT:
             // TODO
-            break;
+            return true;
 
         case MENU_TERMINAL_SEND_KEYS_TO_ALL:
             // TODO
-            break;
+            return true;
 
         case MENU_TERMINAL_SESSION_SAVE_HTML:
             // TODO
-            break;
+            return true;
 
         case MENU_TERMINAL_SESSION_SAVE_TEXT:
             // TODO
-            break;
+            return true;
 
         case MENU_TERMINAL_SESSION_SEND_SIGTERM:
             // TODO
-            break;
+            return true;
 
         case MENU_TERMINAL_SESSION_SEND_OTHER_SIGNAL:
             // TODO
-            break;
+            return true;
 
         case MENU_TERMINAL_CLOSE:
             // TODO
-            break;
+            return true;
 
         case MENU_PANEL_SWITCH_TO:
             // TODO
-            break;
+            return true;
 
         case MENU_PANEL_NEXT:
             // TODO
-            break;
+            return true;
 
         case MENU_PANEL_PREVIOUS:
             // TODO
-            break;
+            return true;
 
         case MENU_PANEL_CLOSE:
             // TODO
-            break;
+            return true;
 
         case MENU_PANEL_SAVE_LAYOUT:
             // TODO
-            break;
+            return true;
 
         case MENU_PANEL_LOAD_LAYOUT:
             // TODO
-            break;
+            return true;
 
         case MENU_WINDOW_TO_DESKTOP:
             // TODO
-            break;
+            return true;
+
+        case MENU_WINDOW_ON_ALL_DESKTOPS:
+            // Funny, making a window visible to all desktops means actually
+            // removing it from all of them.
+            window = getActiveWindow();
+            if (window != null) {
+                if (currentDesktop().hasWindow(window)) {
+                    for (int i = 0; i < desktops.size(); i++) {
+                        desktops.get(i).removeWindow(window);
+                    }
+                } else {
+                    currentDesktop().addWindow(window);
+                }
+            }
+            return true;
 
         case MENU_WINDOW_NEXT_DESKTOP:
-            // TODO
-            break;
+            nextDesktop();
+            return true;
 
         case MENU_WINDOW_PREVIOUS_DESKTOP:
-            // TODO
-            break;
+            previousDesktop();
+            return true;
+
+        case TMenu.MID_HELP_HELP:
+            currentDesktop().addWindow(new THelpWindow(this,
+                    THelpWindow.HELP_HELP));
+            return true;
+
+        case TMenu.MID_HELP_CONTENTS:
+            currentDesktop().addWindow(new THelpWindow(this,
+                    helpFile.getTableOfContents()));
+            return true;
+
+        case TMenu.MID_HELP_INDEX:
+            currentDesktop().addWindow(new THelpWindow(this,
+                    helpFile.getIndex()));
+            return true;
+
+        case TMenu.MID_HELP_SEARCH:
+            inputBox = inputBox(i18n.getString("searchHelpInputBoxTitle"),
+                i18n.getString("searchHelpInputBoxCaption"), "",
+                TInputBox.Type.OKCANCEL);
+            if (inputBox.isOk()) {
+                currentDesktop().addWindow(new THelpWindow(this,
+                        helpFile.getSearchResults(inputBox.getText())));
+            }
+            return true;
+
+        case TMenu.MID_HELP_PREVIOUS:
+            if (helpTopics.size() > 1) {
+                Topic previous = helpTopics.remove(helpTopics.size() - 2);
+                helpTopics.remove(helpTopics.size() - 1);
+                currentDesktop().addWindow(new THelpWindow(this, previous));
+            } else {
+                currentDesktop().addWindow(new THelpWindow(this,
+                        helpFile.getTableOfContents()));
+            }
+            return true;
 
         default:
             // Not handled here.
-            break;
+            return super.onMenu(menu);
         }
 
-        return super.onMenu(menu);
     }
 
     /**
@@ -483,6 +604,11 @@ public class XTWMApplication extends TApplication {
             i18n.getString("applicationSettingsEnvironment"));
         subSettings.addItem(MENU_APPLICATION_SETTINGS_WINDOWS,
             i18n.getString("applicationSettingsWindows"));
+        subSettings.addSeparator();
+        subSettings.addItem(MENU_APPLICATION_SETTINGS_SAVE,
+            i18n.getString("applicationSettingsSave"));
+        subSettings.addItem(MENU_APPLICATION_SETTINGS_LOAD,
+            i18n.getString("applicationSettingsLoad"));
 
         applicationMenu.addSeparator();
         applicationMenu.addItem(MENU_APPLICATION_RUN,
@@ -574,6 +700,8 @@ public class XTWMApplication extends TApplication {
         windowMenu.addSeparator();
         windowMenu.addItem(MENU_WINDOW_TO_DESKTOP,
             i18n.getString("windowToDesktop"));
+        windowMenu.addItem(MENU_WINDOW_ON_ALL_DESKTOPS,
+            i18n.getString("windowOnAllDesktops"));
         windowMenu.addSeparator();
         windowMenu.addItem(MENU_WINDOW_NEXT_DESKTOP,
             i18n.getString("windowNextDesktop"), kbF9);
@@ -926,5 +1054,76 @@ public class XTWMApplication extends TApplication {
     // ------------------------------------------------------------------------
     // XTWMApplication --------------------------------------------------------
     // ------------------------------------------------------------------------
+
+    /**
+     * Lock the screen.
+     */
+    private void lockScreen() {
+        setHideMenuBar(true);
+        setHideStatusBar(true);
+
+        for (;;) {
+            TInputBox inputBox = inputBox(i18n.
+                getString("lockScreenInputBoxTitle"),
+                i18n.getString("lockScreenInputBoxCaption"), "",
+                TInputBox.Type.OKCANCEL);
+            if (inputBox.isOk()) {
+                String password = inputBox.getText();
+                if (password.length() > 0) {
+                    if (password.equals(lockScreenPassword)) {
+                        break;
+                    }
+                }
+            }
+        } // for (;;)
+
+        setHideMenuBar(false);
+        setHideStatusBar(false);
+    }
+
+    /**
+     * Get the current desktop.
+     *
+     * @return the virtual desktop
+     */
+    private VirtualDesktop currentDesktop() {
+        return desktops.get(desktopIndex);
+    }
+
+    /**
+     * Switch to the next desktop.
+     */
+    private void nextDesktop() {
+        assert (desktops.size() >= 2);
+
+        if (desktops.size() == 2) {
+            return;
+        }
+
+        currentDesktop().hide();
+        desktopIndex++;
+        if (desktopIndex == desktops.size()) {
+            desktopIndex = 1;
+        }
+        currentDesktop().show();
+    }
+
+    /**
+     * Switch to the previous desktop.
+     */
+    private void previousDesktop() {
+        assert (desktops.size() >= 2);
+
+        if (desktops.size() == 2) {
+            return;
+        }
+
+        currentDesktop().hide();
+        desktopIndex--;
+        if (desktopIndex < 1) {
+            desktopIndex = desktops.size() - 1;
+        }
+        currentDesktop().show();
+    }
 
 }

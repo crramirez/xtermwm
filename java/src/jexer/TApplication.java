@@ -350,14 +350,14 @@ public class TApplication implements Runnable {
     private int screenSelectionY1;
 
     /**
-     * The help file data.  Note package private access.
+     * The help file data.
      */
-    HelpFile helpFile;
+    protected HelpFile helpFile;
 
     /**
-     * The stack of help topics.  Note package private access.
+     * The stack of help topics.
      */
-    ArrayList<Topic> helpTopics = new ArrayList<Topic>();
+    protected ArrayList<Topic> helpTopics = new ArrayList<Topic>();
 
     /**
      * WidgetEventHandler is the main event consumer loop.  There are at most
@@ -1887,6 +1887,43 @@ public class TApplication implements Runnable {
      */
     public void setFocusFollowsMouse(final boolean focusFollowsMouse) {
         this.focusFollowsMouse = focusFollowsMouse;
+    }
+
+    /**
+     * Set hideMenuBar flag.
+     *
+     * @param hideMenuBar if true, the menu bar will not be visible, and the
+     * desktop will cover the top line
+     */
+    public void setHideMenuBar(final boolean hideMenuBar) {
+        this.hideMenuBar = hideMenuBar;
+        if (desktop != null) {
+            desktopTop = (hideMenuBar ? 0 : 1);
+            desktop.setDimensions(0, desktopTop, getScreen().getWidth(),
+                (desktopBottom - desktopTop));
+            TResizeEvent resize = new TResizeEvent(TResizeEvent.Type.WIDGET,
+                getScreen().getWidth(), desktop.getHeight());
+            desktop.onResize(resize);
+        }
+    }
+
+    /**
+     * Set hideStatusBar flag.
+     *
+     * @param hideStatusBar if true, the status bar will not be visible, and
+     * the desktop will cover the bottom line
+     */
+    public void setHideStatusBar(final boolean hideStatusBar) {
+        this.hideStatusBar = hideStatusBar;
+        if (desktop != null) {
+            desktopBottom = getScreen().getHeight() - 1 + (hideStatusBar ?
+                1 : 0);
+            desktop.setDimensions(0, desktopTop, getScreen().getWidth(),
+                (desktopBottom - desktopTop));
+            TResizeEvent resize = new TResizeEvent(TResizeEvent.Type.WIDGET,
+                getScreen().getWidth(), desktop.getHeight());
+            desktop.onResize(resize);
+        }
     }
 
     /**
