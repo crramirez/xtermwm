@@ -78,16 +78,45 @@ public class XTWMApplication extends TApplication {
     public static final String VERSION = "0.0.1";
 
     /*
-     * Available menu commands.  Note many of these are package private and
+     * Available menu commands.  Note that the package private items are
      * handled by other classes.
      */
+    private static final int MENU_APPLICATION_PROGRAMS_SHELL            = 2010;
+    private static final int MENU_APPLICATION_PROGRAMS_EDITOR           = 2011;
+    private static final int MENU_APPLICATION_WIDGETS_CALCULATOR        = 2020;
+    private static final int MENU_APPLICATION_WIDGETS_CALENDAR          = 2021;
+    private static final int MENU_APPLICATION_WIDGETS_DESKTOP_PAGER     = 2022;
+    private static final int MENU_APPLICATION_WIDGETS_FILE_MANAGER      = 2023;
+    private static final int MENU_APPLICATION_WIDGETS_QUICK_NOTE        = 2024;
+    private static final int MENU_APPLICATION_WIDGETS_PERF_MONITOR      = 2025;
+    private static final int MENU_APPLICATION_SETTINGS_DISPLAY          = 2030;
+    private static final int MENU_APPLICATION_SETTINGS_COLORS           = 2031;
+    private static final int MENU_APPLICATION_SETTINGS_ENVIRONMENT      = 2032;
+    private static final int MENU_APPLICATION_SETTINGS_WINDOWS          = 2033;
+    private static final int MENU_APPLICATION_RUN                       = 2091;
+    private static final int MENU_APPLICATION_LOCK_SCREEN               = 2092;
+    private static final int MENU_APPLICATION_EXIT                      = 2099;
 
-    private static final int MENU_FILE_SETUP_DISPLAY                    = 2031;
-    private static final int MENU_FILE_SETUP_COLORS                     = 2032;
-    private static final int MENU_FILE_SETUP_ENVIRONMENT                = 2033;
+    private static final int MENU_TERMINAL_NEW_WINDOW                   = 2100;
+    private static final int MENU_TERMINAL_HORIZONTAL_SPLIT             = 2101;
+    private static final int MENU_TERMINAL_VERTICAL_SPLIT               = 2102;
+    private static final int MENU_TERMINAL_SEND_KEYS_TO_ALL             = 2103;
+    private static final int MENU_TERMINAL_SESSION_SAVE_HTML            = 2104;
+    private static final int MENU_TERMINAL_SESSION_SAVE_TEXT            = 2105;
+    private static final int MENU_TERMINAL_SESSION_SEND_SIGTERM         = 2106;
+    private static final int MENU_TERMINAL_SESSION_SEND_OTHER_SIGNAL    = 2107;
+    private static final int MENU_TERMINAL_CLOSE                        = 2108;
 
-    private static final int MENU_FILE_SHELL                            = 2098;
-    private static final int MENU_FILE_EXIT                             = 2099;
+    private static final int MENU_PANEL_SWITCH_TO                       = 2201;
+    private static final int MENU_PANEL_NEXT                            = 2202;
+    private static final int MENU_PANEL_PREVIOUS                        = 2203;
+    private static final int MENU_PANEL_CLOSE                           = 2204;
+    private static final int MENU_PANEL_SAVE_LAYOUT                     = 2205;
+    private static final int MENU_PANEL_LOAD_LAYOUT                     = 2206;
+
+    private static final int MENU_WINDOW_TO_DESKTOP                     = 2300;
+    private static final int MENU_WINDOW_NEXT_DESKTOP                   = 2301;
+    private static final int MENU_WINDOW_PREVIOUS_DESKTOP               = 2302;
 
     // ------------------------------------------------------------------------
     // Variables --------------------------------------------------------------
@@ -193,21 +222,44 @@ public class XTWMApplication extends TApplication {
         // Dispatch menu event
         switch (menu.getId()) {
 
-        case MENU_FILE_SHELL:
+        case MENU_APPLICATION_PROGRAMS_SHELL:
             // Spawn shell
             openTerminal(0, 0);
             return true;
 
-        case MENU_FILE_EXIT:
-            // Post a quit command
-            postMenuEvent(new TCommandEvent(cmQuit));
-            return true;
+        case MENU_APPLICATION_PROGRAMS_EDITOR:
+            // TODO
+            break;
 
-        case MENU_FILE_SETUP_DISPLAY:
+        case MENU_APPLICATION_WIDGETS_CALCULATOR:
+            // TODO
+            break;
+
+        case MENU_APPLICATION_WIDGETS_CALENDAR:
+            // TODO
+            break;
+
+        case MENU_APPLICATION_WIDGETS_DESKTOP_PAGER:
+            // TODO
+            break;
+
+        case MENU_APPLICATION_WIDGETS_FILE_MANAGER:
+            // TODO
+            break;
+
+        case MENU_APPLICATION_WIDGETS_QUICK_NOTE:
+            // TODO
+            break;
+
+        case MENU_APPLICATION_WIDGETS_PERF_MONITOR:
+            // TODO
+            break;
+
+        case MENU_APPLICATION_SETTINGS_DISPLAY:
             new TFontChooserWindow(this);
             return true;
 
-        case MENU_FILE_SETUP_COLORS:
+        case MENU_APPLICATION_SETTINGS_COLORS:
             new TEditColorThemeWindow(this) {
                 /*
                  * We have finished editing colors, now save to the
@@ -225,10 +277,102 @@ public class XTWMApplication extends TApplication {
             };
             return true;
 
-        case MENU_FILE_SETUP_ENVIRONMENT:
+        case MENU_APPLICATION_SETTINGS_ENVIRONMENT:
             new ApplicationOptionsWindow(this);
             return true;
 
+        case MENU_APPLICATION_SETTINGS_WINDOWS:
+            // TODO
+            break;
+
+        case MENU_APPLICATION_RUN:
+            // TODO
+            break;
+
+        case MENU_APPLICATION_LOCK_SCREEN:
+            // TODO
+            break;
+
+        case MENU_APPLICATION_EXIT:
+            // Post a quit command
+            postMenuEvent(new TCommandEvent(cmQuit));
+            return true;
+
+        case MENU_TERMINAL_NEW_WINDOW:
+            // TODO
+            break;
+
+        case MENU_TERMINAL_HORIZONTAL_SPLIT:
+            // TODO
+            break;
+
+        case MENU_TERMINAL_VERTICAL_SPLIT:
+            // TODO
+            break;
+
+        case MENU_TERMINAL_SEND_KEYS_TO_ALL:
+            // TODO
+            break;
+
+        case MENU_TERMINAL_SESSION_SAVE_HTML:
+            // TODO
+            break;
+
+        case MENU_TERMINAL_SESSION_SAVE_TEXT:
+            // TODO
+            break;
+
+        case MENU_TERMINAL_SESSION_SEND_SIGTERM:
+            // TODO
+            break;
+
+        case MENU_TERMINAL_SESSION_SEND_OTHER_SIGNAL:
+            // TODO
+            break;
+
+        case MENU_TERMINAL_CLOSE:
+            // TODO
+            break;
+
+        case MENU_PANEL_SWITCH_TO:
+            // TODO
+            break;
+
+        case MENU_PANEL_NEXT:
+            // TODO
+            break;
+
+        case MENU_PANEL_PREVIOUS:
+            // TODO
+            break;
+
+        case MENU_PANEL_CLOSE:
+            // TODO
+            break;
+
+        case MENU_PANEL_SAVE_LAYOUT:
+            // TODO
+            break;
+
+        case MENU_PANEL_LOAD_LAYOUT:
+            // TODO
+            break;
+
+        case MENU_WINDOW_TO_DESKTOP:
+            // TODO
+            break;
+
+        case MENU_WINDOW_NEXT_DESKTOP:
+            // TODO
+            break;
+
+        case MENU_WINDOW_PREVIOUS_DESKTOP:
+            // TODO
+            break;
+
+        default:
+            // Not handled here.
+            break;
         }
 
         return super.onMenu(menu);
@@ -301,32 +445,145 @@ public class XTWMApplication extends TApplication {
             getString("toolMenuStatus"));
         toolStatusBar.addShortcutKeypress(kbF1, cmHelp, i18n.getString("Help"));
 
-        // File menu ----------------------------------------------------------
+        // Application menu ---------------------------------------------------
 
-        TMenu fileMenu = addMenu(i18n.getString("fileMenuTitle"));
+        TMenu applicationMenu = addMenu(i18n.getString("applicationMenuTitle"));
 
-        TSubMenu subSetup = fileMenu.addSubMenu(i18n.getString("fileSetup"));
-        subSetup.addItem(MENU_FILE_SETUP_DISPLAY,
-            i18n.getString("fileSetupDisplay"));
-        subSetup.addItem(MENU_FILE_SETUP_COLORS,
-            i18n.getString("fileSetupColors"));
-        subSetup.addItem(MENU_FILE_SETUP_ENVIRONMENT,
-            i18n.getString("fileSetupEnvironment"));
+        TSubMenu subPrograms = applicationMenu.addSubMenu(i18n.
+            getString("applicationPrograms"));
+        subPrograms.addItem(MENU_APPLICATION_PROGRAMS_SHELL,
+            i18n.getString("applicationProgramsShell"));
+        subPrograms.addItem(MENU_APPLICATION_PROGRAMS_EDITOR,
+            i18n.getString("applicationProgramsEditor"));
 
-        fileMenu.addSeparator();
-        fileMenu.addItem(MENU_FILE_SHELL, i18n.getString("fileShell"));
-        fileMenu.addItem(MENU_FILE_EXIT, i18n.getString("fileExit"), kbAltX);
-        TStatusBar fileStatusBar = fileMenu.newStatusBar(i18n.
-            getString("fileMenuStatus"));
-        fileStatusBar.addShortcutKeypress(kbF1, cmHelp, i18n.getString("Help"));
+        TSubMenu subWidgets = applicationMenu.addSubMenu(i18n.
+            getString("applicationWidgets"));
+        subWidgets.addItem(MENU_APPLICATION_WIDGETS_CALCULATOR,
+            i18n.getString("applicationWidgetsCalculator"));
+        subWidgets.addItem(MENU_APPLICATION_WIDGETS_CALENDAR,
+            i18n.getString("applicationWidgetsCalendar"));
+        subWidgets.addItem(MENU_APPLICATION_WIDGETS_DESKTOP_PAGER,
+            i18n.getString("applicationWidgetsDesktopPager"));
+        subWidgets.addItem(MENU_APPLICATION_WIDGETS_FILE_MANAGER,
+            i18n.getString("applicationWidgetsFileManager"));
+        subWidgets.addItem(MENU_APPLICATION_WIDGETS_QUICK_NOTE,
+            i18n.getString("applicationWidgetsQuickNote"));
+        subWidgets.addItem(MENU_APPLICATION_WIDGETS_PERF_MONITOR,
+            i18n.getString("applicationWidgetsPerformanceMonitor"));
+
+        applicationMenu.addSeparator();
+
+        TSubMenu subSettings = applicationMenu.addSubMenu(i18n.
+            getString("applicationSettings"));
+        subSettings.addItem(MENU_APPLICATION_SETTINGS_DISPLAY,
+            i18n.getString("applicationSettingsDisplay"));
+        subSettings.addItem(MENU_APPLICATION_SETTINGS_COLORS,
+            i18n.getString("applicationSettingsColors"));
+        subSettings.addItem(MENU_APPLICATION_SETTINGS_ENVIRONMENT,
+            i18n.getString("applicationSettingsEnvironment"));
+        subSettings.addItem(MENU_APPLICATION_SETTINGS_WINDOWS,
+            i18n.getString("applicationSettingsWindows"));
+
+        applicationMenu.addSeparator();
+        applicationMenu.addItem(MENU_APPLICATION_RUN,
+            i18n.getString("applicationRun"), kbCtrlR);
+        applicationMenu.addItem(MENU_APPLICATION_LOCK_SCREEN,
+            i18n.getString("applicationLockScreen"));
+        applicationMenu.addItem(MENU_APPLICATION_EXIT,
+            i18n.getString("applicationExit"), kbCtrlQ);
+        TStatusBar applicationStatusBar = applicationMenu.newStatusBar(i18n.
+            getString("applicationMenuStatus"));
+        applicationStatusBar.addShortcutKeypress(kbF1, cmHelp,
+            i18n.getString("Help"));
 
         // Edit menu ----------------------------------------------------------
 
         addEditMenu();
 
+        // Terminal menu ------------------------------------------------------
+
+        TMenu terminalMenu = addMenu(i18n.getString("terminalMenuTitle"));
+        terminalMenu.addItem(MENU_TERMINAL_NEW_WINDOW,
+            i18n.getString("terminalNewWindow"), kbCtrlN);
+        terminalMenu.addItem(MENU_TERMINAL_HORIZONTAL_SPLIT,
+            i18n.getString("terminalHorizontalSplit"));
+        terminalMenu.addItem(MENU_TERMINAL_VERTICAL_SPLIT,
+            i18n.getString("terminalVerticalSplit"));
+        terminalMenu.addSeparator();
+        terminalMenu.addItem(MENU_TERMINAL_SEND_KEYS_TO_ALL,
+            i18n.getString("terminalSendKeysToAll"));
+        terminalMenu.addSeparator();
+        TSubMenu subSession = terminalMenu.addSubMenu(i18n.
+            getString("terminalSession"));
+        subSession.addItem(MENU_TERMINAL_SESSION_SAVE_HTML,
+            i18n.getString("terminalSessionSaveHTML"));
+        subSession.addItem(MENU_TERMINAL_SESSION_SAVE_TEXT,
+            i18n.getString("terminalSessionSaveText"));
+        subSession.addItem(MENU_TERMINAL_SESSION_SEND_SIGTERM,
+            i18n.getString("terminalSessionSendSIGTERM"));
+        subSession.addItem(MENU_TERMINAL_SESSION_SEND_OTHER_SIGNAL,
+            i18n.getString("terminalSessionSendOtherSignal"));
+
+        terminalMenu.addSeparator();
+        terminalMenu.addItem(MENU_TERMINAL_CLOSE,
+            i18n.getString("terminalClose"));
+
+        TStatusBar terminalStatusBar = terminalMenu.newStatusBar(i18n.
+            getString("terminalMenuStatus"));
+        terminalStatusBar.addShortcutKeypress(kbF1, cmHelp,
+            i18n.getString("Help"));
+
+        // Panel menu ---------------------------------------------------------
+
+        TMenu panelMenu = addMenu(i18n.getString("panelMenu"));
+        panelMenu.addItem(MENU_PANEL_SWITCH_TO,
+            i18n.getString("panelSwitchTo"));
+        panelMenu.addSeparator();
+        panelMenu.addItem(MENU_PANEL_NEXT, i18n.getString("panelNext"), kbF7);
+        panelMenu.addItem(MENU_PANEL_PREVIOUS, i18n.getString("panelPrevious"),
+            kbShiftF7);
+        panelMenu.addItem(MENU_PANEL_CLOSE, i18n.getString("panelClose"));
+        panelMenu.addSeparator();
+        panelMenu.addItem(MENU_PANEL_SAVE_LAYOUT,
+            i18n.getString("panelSaveLayout"));
+        panelMenu.addItem(MENU_PANEL_LOAD_LAYOUT,
+            i18n.getString("panelLoadLayout"));
+        TStatusBar panelStatusBar = panelMenu.newStatusBar(i18n.
+            getString("panelMenuStatus"));
+        panelStatusBar.addShortcutKeypress(kbF1, cmHelp,
+            i18n.getString("Help"));
+
         // Window menu --------------------------------------------------------
 
-        addWindowMenu();
+        TMenu windowMenu = addMenu(i18n.getString("windowMenu"));
+        windowMenu.addItem(TMenu.MID_TILE, i18n.getString("windowTile"));
+        windowMenu.addItem(TMenu.MID_CASCADE, i18n.getString("windowCascade"));
+        windowMenu.addItem(TMenu.MID_CLOSE_ALL,
+            i18n.getString("windowCloseAll"));
+        windowMenu.addSeparator();
+        windowMenu.addItem(TMenu.MID_WINDOW_MOVE, i18n.getString("windowMove"),
+            kbShiftF5);
+        windowMenu.addItem(TMenu.MID_WINDOW_ZOOM, i18n.getString("windowZoom"),
+            kbF5);
+        windowMenu.addItem(TMenu.MID_WINDOW_NEXT, i18n.getString("windowNext"),
+            kbF6);
+        windowMenu.addItem(TMenu.MID_WINDOW_PREVIOUS,
+            i18n.getString("windowPrevious"), kbShiftF6);
+        windowMenu.addItem(TMenu.MID_WINDOW_CLOSE,
+            i18n.getString("windowClose"), kbCtrlW);
+        windowMenu.addSeparator();
+        windowMenu.addItem(MENU_WINDOW_TO_DESKTOP,
+            i18n.getString("windowToDesktop"));
+        windowMenu.addSeparator();
+        windowMenu.addItem(MENU_WINDOW_NEXT_DESKTOP,
+            i18n.getString("windowNextDesktop"), kbF9);
+        windowMenu.addItem(MENU_WINDOW_PREVIOUS_DESKTOP,
+            i18n.getString("windowPreviousDesktop"), kbShiftF9);
+
+        TStatusBar windowStatusBar = windowMenu.newStatusBar(i18n.
+            getString("windowMenuStatus"));
+        windowStatusBar.addShortcutKeypress(kbF1, cmHelp,
+            i18n.getString("Help"));
 
         // Help menu ----------------------------------------------------------
 

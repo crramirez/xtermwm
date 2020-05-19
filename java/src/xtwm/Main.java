@@ -154,6 +154,21 @@ public class Main {
                 app = new XTWMApplication(backendType, width, height, 20);
             } else {
                 app = new XTWMApplication(backendType);
+                if (backendType == TApplication.BackendType.SWING) {
+                    // Maximize the Swing window by default.
+                    app.invokeLater(new Runnable() {
+                        public void run() {
+                            jexer.backend.SwingTerminal terminal;
+                            terminal = (jexer.backend.SwingTerminal) app.getScreen();
+                            jexer.backend.SwingComponent component;
+                            component = terminal.getSwingComponent();
+                            javax.swing.JFrame frame = component.getFrame();
+                            if (frame != null) {
+                                frame.setExtendedState(java.awt.Frame.MAXIMIZED_BOTH);
+                            }
+                        }
+                    });
+                }
             }
 
             app.run();
