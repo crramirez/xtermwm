@@ -1,0 +1,76 @@
+Xterm Window Manager Installation
+=================================
+
+Xterm Window Manager (XtermWM) can be built in several ways to support
+different target platforms.  The most common build is the
+autoconf-based build described in further detail below.  Other
+makefiles are provided in the build/ subdirectory for the following
+compilers/platforms:
+
+```
+|------------------|--------------------|----------------------------------|
+| Makefile name    | Compiler           | Target Platform                  |
+|------------------|--------------------|----------------------------------|
+| Makefile.generic | cc                 | POSIX / Linux                    |
+|------------------|--------------------|----------------------------------|
+```
+
+Makefiles are run from this top-level directory.  For example, to use
+the Makefile.generic to produce a text-mode ncurses build:
+
+```
+$ make -f build/Makefile.generic clean
+$ make -f build/Makefile.generic
+```
+
+
+Autoconf
+--------
+
+XtermWM is commonly installed using the GNU autoconf system.  The
+following is the standard autoconf installation:
+
+  1. Type `./configure' to configure the package for your system.
+
+     Running `configure' takes awhile.  While running, it prints some
+     messages telling which features it is checking for.
+
+  2. Type `make' to compile the package.
+
+  3. Type `make install' to install the XtermWM program and
+     documentation.  By default, `make install' will install the
+     package's files in `/usr/local/bin', `/usr/local/man', etc.  You
+     can specify an installation prefix other than `/usr/local' by
+     giving `configure' the option `--prefix=PATH'
+
+  5. You can remove the XtermWM binaries and object files from the
+     source code directory by typing `make clean'.  To also remove the
+     files that `configure' created (so you can compile the package
+     for a different kind of computer), type `make distclean'.
+
+Note that if you build XtermWM directly from a source repository, you
+must have automake installed and use that to generate Makefile.in.
+You can choose to execute `./autogen.sh` and skip step 1 above (as it
+already runs configure); or run `aclocal && automake && autoconf'
+before step 1 above.
+
+
+
+Debian Packages
+---------------
+
+Debian build directories are provided in build/deb.  A 'xtermwm' deb
+can be built via the following commands:
+
+  $ cp -r build/deb/xtermwm debian
+  $ dpkg-buildpackage
+
+Note that the XtermWM tarball will need to be renamed to
+xtermwm_{version}.orig.tar.gz in the parent directory.
+
+
+RPM Packages
+------------
+
+An RPM spec file to create the 'xtermwm' package is provided in
+build/rpm.

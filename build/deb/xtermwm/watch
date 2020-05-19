@@ -1,0 +1,5 @@
+# watch file
+
+version=3
+
+http://sf.net/xtermwm/xtermwm-(.*)\.tar\.gz

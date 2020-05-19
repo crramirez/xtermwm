@@ -1,0 +1,61 @@
+# Editor files
+*~
+
+# Generated Javadocs
+java/docs/**
+
+# Final binaries
+bin/ptypipe
+bin/xtermwm.jar
+
+# Compiled class file
+*.class
+
+# Log file
+*.log
+
+# BlueJ files
+*.ctxt
+
+# Mobile Tools for Java (J2ME)
+.mtj.tmp/
+
+# Package Files #
+*.jar
+*.war
+*.ear
+*.zip
+*.tar.gz
+*.rar
+
+# virtual machine crash logs, see http://www.java.com/en/download/help/error_hotspot.xml
+hs_err_pid*
+
+# Java dev artifacts
+
+# C artifacts
+*.o
+lib/ptypipe/ptypipe
+
+# Autoconf build artifacts
+aclocal.m4
+autom4te.cache/
+.deps/
+stamp-h1
+config.h
+config.h.in
+config.status
+config.log
+configure.lineno
+*/compile
+*/depcomp
+*/install-sh
+*/missing
+compile
+depcomp
+install-sh
+missing
+Makefile
+build/osx/dmg
+build/osx/*.dmg
+build/osx/**/ptypipe

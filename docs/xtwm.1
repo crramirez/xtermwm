@@ -1,0 +1,95 @@
+.TH xtwm 1 "January 1, 2021"
+
+.SH NAME
+xtwm \- Xterm Window Manager
+
+.SH SYNOPSIS
+.ll +8
+.B xtwm
+.RI "[ \-t | \-w ]"
+.br
+.ll -8
+
+.TP
+.BR xtwm " \-\-version"
+
+.TP
+.BR xtwm " [ \-\-help | \-h | \-? ]"
+
+.SH DESCRIPTION
+.I Xterm Window Manager
+(XtermWM) is a desktop environment / window manager for the console.
+XtermWM's major features include:
+
+  * The ability to run in both Xterm-like environments (Unix command
+    line shells or over ssh) and as a Swing component for
+    X11/Windows/Mac, with the same behavior and look-and-feel.
+
+  * Image support, for both Swing and Xterm.  When running under
+    Xterm, images are rendered as sixel graphic sequences.
+
+  * A text terminal window / shell with good Xterm/VT100 support,
+    including mouse.  Terminal windows will also resize correctly if
+    using 'ptypipe'.
+
+  * Support for the raw Linux console.  GPM mouse support will work
+    when run inside 'lcxterm' or 'qodem'.
+
+.SH OPTIONS
+.TP
+.B \-t
+Use existing text-based terminal, such as Xterm or Linux console.
+.TP
+.B \-w
+Open in a new Swing window.
+.TP
+.BR \-\-version
+Display program version and license information.
+.TP
+.BR \-\-help ", " \-h ", " \-?
+Display usage screen.
+
+.SH TERMINAL REQUIREMENTS
+
+XTermWM requires the following characteristics of its shell/terminal:
+
+  * Unicode capability.  The raw Linux console, UXTerm, URxvt,
+    Konsole, and gnome-terminal all work well.
+
+  * A Unicode font that includes the CP437 (PC VGA) glyphs.
+
+  * The meta key must use escape prefixing rather than setting the 8th
+    bit on the character.  Many terminal emulators do this by default.
+    XtermWM sends an xterm escape sequence to enable this behavior.
+    For Xterm, this can be enabled by clicking CTRL\-Mouse1 (left
+    button) and checking "Meta Sends Escape", or by adding the
+    following lines to ~/.Xresources:
+.br
+        Xterm*metaSendsEscape:   true
+.br
+        UXterm*metaSendsEscape:  true
+
+See https://gitlab.com/klamonte/jexer/wikis/terminals for a list of
+terminals tested against XTermWM's text backend.
+
+.SH FILES
+.TP
+.B $HOME/.xtwm/xtwm.properties
+XtermWM options/configuration file.  Inline comments describe the options.
+
+.SH SEE ALSO
+.BR "ptypipe"(1), " lcxterm"(1), " qodem"(1)
+
+.SH BUGS
+.PP
+Please open bug reports at https://gitlab.com/klamonte/xtwm/issues .
+
+.SH HOMEPAGE
+.PP
+The XtermWM homepage is at <https://xtermwm.sourceforge.io>.  The code
+repository is hosted at <https://gitlab.com/klamonte/xtermwm>.
+
+.SH LICENSE
+Copyright (C) 2020   Kevin Lamonte
+.PP
+Available to all under the MIT License.
