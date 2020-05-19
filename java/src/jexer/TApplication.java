@@ -310,6 +310,11 @@ public class TApplication implements Runnable {
     private boolean hideMenuBar = false;
 
     /**
+     * Optional text to display at the top right of the menu.
+     */
+    protected String menuTrayText = "";
+
+    /**
      * The list of commands to run before the next I/O check.
      */
     private List<Runnable> invokeLaters = new LinkedList<Runnable>();
@@ -2177,6 +2182,14 @@ public class TApplication implements Runnable {
                 getScreen().resetClipping();
                 ((TWindow) menu).drawChildren();
             }
+
+            if ((menuTrayText != null) && (menuTrayText.length() > 0)) {
+                getScreen().resetClipping();
+                getScreen().putStringXY(getScreen().getWidth() -
+                    StringUtils.width(menuTrayText), 0, menuTrayText,
+                    theme.getColor("tmenu"));
+            }
+
         }
         getScreen().resetClipping();
 

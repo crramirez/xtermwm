@@ -36,10 +36,13 @@ import java.io.FileWriter;
 import java.io.InputStreamReader;
 import java.io.IOException;
 import java.text.MessageFormat;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.Properties;
 import java.util.ResourceBundle;
 
+import jexer.TAction;
 import jexer.TApplication;
 import jexer.TEditColorThemeWindow;
 import jexer.TExceptionDialog;
@@ -163,6 +166,11 @@ public class XTWMApplication extends TApplication {
      */
     private int desktopCount = 4;
 
+    /**
+     * The clock time format.
+     */
+    private SimpleDateFormat clockFormat = null;
+
     // ------------------------------------------------------------------------
     // Constructors -----------------------------------------------------------
     // ------------------------------------------------------------------------
@@ -231,6 +239,19 @@ public class XTWMApplication extends TApplication {
         for (int i = 1; i < desktopCount; i++) {
             desktops.add(new VirtualDesktop(this));
         }
+
+        // Menu system tray
+        clockFormat = new SimpleDateFormat("MM/dd/YYYY hh:mm:ss a");
+        addTimer(500, true,
+            new TAction() {
+                public void DO() {
+                    menuTrayText = String.format("%s [%d]",
+                        clockFormat.format(new Date()), desktopIndex);
+                    XTWMApplication.this.doRepaint();
+                }
+            }
+        );
+
     }
 
     /**
