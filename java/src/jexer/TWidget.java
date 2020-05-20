@@ -626,8 +626,8 @@ public abstract class TWidget implements Comparable<TWidget> {
      */
     public void onMenu(final TMenuEvent menu) {
         // Default: do nothing, pass to children instead
-        for (TWidget widget: children) {
-            widget.onMenu(menu);
+        if (activeChild != null) {
+            activeChild.onMenu(menu);
         }
     }
 
@@ -772,6 +772,9 @@ public abstract class TWidget implements Comparable<TWidget> {
         child.window = null;
         if (layout != null) {
             layout.remove(this);
+        }
+        if (children.size() == 0) {
+            activeChild = null;
         }
     }
 

@@ -4,6 +4,12 @@ Xterm Window Manager
 Xterm Window Manager (XtermWM) is a desktop environment / window
 manager for the console.  Major features include:
 
+  * Virtual desktops.
+
+  * Tiled windows with mouse-draggable resizing.
+
+  * A plugin system.
+
   * The ability to run in both Xterm-like environments (Unix command
     line shells or over ssh) and as a Swing component for
     X11/Windows/Mac, with the same behavior and look-and-feel.
@@ -40,4 +46,6 @@ TBD
 Developer Information
 ---------------------
 
-TBD
+XtermWM is currently in alpha, features are being added.  When it
+releases, it will be looking for a project maintainer.  See Issue #1
+for more details.

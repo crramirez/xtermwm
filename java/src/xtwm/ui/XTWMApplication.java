@@ -46,6 +46,7 @@ import java.util.ServiceLoader;
 
 import jexer.TAction;
 import jexer.TApplication;
+import jexer.TDesktop;
 import jexer.TEditColorThemeWindow;
 import jexer.TExceptionDialog;
 import jexer.TFontChooserWindow;
@@ -112,15 +113,16 @@ public class XTWMApplication extends TApplication {
     private static final int MENU_APPLICATION_LOCK_SCREEN               = 2092;
     private static final int MENU_APPLICATION_EXIT                      = 2099;
 
+    // Package private values are handled by TiledTerminal.
     private static final int MENU_TERMINAL_NEW_WINDOW                   = 2100;
-    private static final int MENU_TERMINAL_HORIZONTAL_SPLIT             = 2101;
-    private static final int MENU_TERMINAL_VERTICAL_SPLIT               = 2102;
+            static final int MENU_TERMINAL_HORIZONTAL_SPLIT             = 2101;
+            static final int MENU_TERMINAL_VERTICAL_SPLIT               = 2102;
     private static final int MENU_TERMINAL_SEND_KEYS_TO_ALL             = 2103;
-    private static final int MENU_TERMINAL_SESSION_SAVE_HTML            = 2104;
-    private static final int MENU_TERMINAL_SESSION_SAVE_TEXT            = 2105;
-    private static final int MENU_TERMINAL_SESSION_SEND_SIGTERM         = 2106;
-    private static final int MENU_TERMINAL_SESSION_SEND_OTHER_SIGNAL    = 2107;
-    private static final int MENU_TERMINAL_CLOSE                        = 2108;
+            static final int MENU_TERMINAL_SESSION_SAVE_HTML            = 2104;
+            static final int MENU_TERMINAL_SESSION_SAVE_TEXT            = 2105;
+            static final int MENU_TERMINAL_SESSION_SEND_SIGTERM         = 2106;
+            static final int MENU_TERMINAL_SESSION_SEND_OTHER_SIGNAL    = 2107;
+            static final int MENU_TERMINAL_CLOSE                        = 2108;
 
     private static final int MENU_PANEL_SWITCH_TO                       = 2201;
     private static final int MENU_PANEL_NEXT                            = 2202;
@@ -175,6 +177,11 @@ public class XTWMApplication extends TApplication {
      * The clock time format.
      */
     private SimpleDateFormat clockFormat = null;
+
+    /**
+     * The Application | Widgets submenu.
+     */
+    private TSubMenu widgetsMenu;
 
     // ------------------------------------------------------------------------
     // Constructors -----------------------------------------------------------
@@ -233,50 +240,22 @@ public class XTWMApplication extends TApplication {
         addAllWidgets();
         getBackend().setTitle(i18n.getString("frameTitle"));
         loadPlugins();
-
-        // We have two desktops by default:
-        // 0 - The screensaver desktop.  No windows are created on it.
-        // 1 - The first normal desktop.
-        desktops.add(new VirtualDesktop(this));
-        desktopIndex = 1;
-
-        // Set a different color for each desktop.  Eventually expose these
-        // colors.
-        for (int i = 1; i <= desktopCount; i++) {
-            VirtualDesktop desktop = new VirtualDesktop(this);
-            desktops.add(desktop);
-
-            CellAttributes desktopAttr = new CellAttributes();
-            switch ((i - 1) % 4) {
-            case 0:
-                desktopAttr.setForeColor(Color.BLUE);
-                break;
-            case 1:
-                desktopAttr.setForeColor(Color.CYAN);
-                break;
-            case 2:
-                desktopAttr.setForeColor(Color.MAGENTA);
-                break;
-            case 3:
-                desktopAttr.setForeColor(Color.RED);
-                break;
-            }
-            desktopAttr.setBackColor(Color.WHITE);
-            desktopAttr.setBold(false);
-            desktop.getDesktop().setAttributes(desktopAttr);
-        }
+        addDesktops();
 
         // Menu system tray
-        clockFormat = new SimpleDateFormat("MM/dd/YYYY hh:mm:ss a");
-        addTimer(500, true,
-            new TAction() {
-                public void DO() {
-                    menuTrayText = String.format("%s [%d]",
-                        clockFormat.format(new Date()), desktopIndex);
-                    XTWMApplication.this.doRepaint();
+        // clockFormat = new SimpleDateFormat("MM/dd/YYYY hh:mm:ss a");
+        clockFormat = new SimpleDateFormat("h:mm:ss a");
+        if (getBackend() instanceof jexer.backend.ECMA48Backend) {
+            // For the Xterm backend, force a repaint so that the clock will
+            // be updated.
+            addTimer(500, true,
+                new TAction() {
+                    public void DO() {
+                        XTWMApplication.this.doRepaint();
+                    }
                 }
-            }
-        );
+            );
+        }
 
     }
 
@@ -293,6 +272,17 @@ public class XTWMApplication extends TApplication {
     // ------------------------------------------------------------------------
     // TApplication behavior --------------------------------------------------
     // ------------------------------------------------------------------------
+
+    /**
+     * Function called immediately before the screen is drawn.  This can be
+     * used by subclasses of TApplication to update things, for example to
+     * set menuTrayText.
+     */
+    @Override
+    protected void onPreDraw() {
+        menuTrayText = String.format("%s [%d]", clockFormat.format(new Date()),
+            desktopIndex);
+    }
 
     // ------------------------------------------------------------------------
     // Event handlers ---------------------------------------------------------
@@ -417,38 +407,13 @@ public class XTWMApplication extends TApplication {
             return true;
 
         case MENU_TERMINAL_NEW_WINDOW:
-            // TODO
-            return true;
-
-        case MENU_TERMINAL_HORIZONTAL_SPLIT:
-            // TODO
-            return true;
-
-        case MENU_TERMINAL_VERTICAL_SPLIT:
-            // TODO
+            TDesktop desktop = getDesktop();
+            if (desktop.getChildren().size() == 0) {
+                new TiledTerminal(desktop);
+            }
             return true;
 
         case MENU_TERMINAL_SEND_KEYS_TO_ALL:
-            // TODO
-            return true;
-
-        case MENU_TERMINAL_SESSION_SAVE_HTML:
-            // TODO
-            return true;
-
-        case MENU_TERMINAL_SESSION_SAVE_TEXT:
-            // TODO
-            return true;
-
-        case MENU_TERMINAL_SESSION_SEND_SIGTERM:
-            // TODO
-            return true;
-
-        case MENU_TERMINAL_SESSION_SEND_OTHER_SIGNAL:
-            // TODO
-            return true;
-
-        case MENU_TERMINAL_CLOSE:
             // TODO
             return true;
 
@@ -620,10 +585,11 @@ public class XTWMApplication extends TApplication {
         TSubMenu subPrograms = applicationMenu.addSubMenu(i18n.
             getString("applicationPrograms"));
         subPrograms.addItem(MENU_APPLICATION_PROGRAMS_SHELL,
-            i18n.getString("applicationProgramsShell"));
+            i18n.getString("applicationProgramsShell"), kbCtrlS);
         subPrograms.addItem(MENU_APPLICATION_PROGRAMS_EDITOR,
             i18n.getString("applicationProgramsEditor"));
 
+        // TODO: turn this into a plugins thing instead
         TSubMenu subWidgets = applicationMenu.addSubMenu(i18n.
             getString("applicationWidgets"));
         subWidgets.addItem(MENU_APPLICATION_WIDGETS_CALCULATOR,
@@ -638,6 +604,7 @@ public class XTWMApplication extends TApplication {
             i18n.getString("applicationWidgetsQuickNote"));
         subWidgets.addItem(MENU_APPLICATION_WIDGETS_PERF_MONITOR,
             i18n.getString("applicationWidgetsPerformanceMonitor"));
+        widgetsMenu = subWidgets;
 
         applicationMenu.addSeparator();
 
@@ -677,7 +644,7 @@ public class XTWMApplication extends TApplication {
 
         TMenu terminalMenu = addMenu(i18n.getString("terminalMenuTitle"));
         terminalMenu.addItem(MENU_TERMINAL_NEW_WINDOW,
-            i18n.getString("terminalNewWindow"), kbCtrlN);
+            i18n.getString("terminalNewWindow"));
         terminalMenu.addItem(MENU_TERMINAL_HORIZONTAL_SPLIT,
             i18n.getString("terminalHorizontalSplit"));
         terminalMenu.addItem(MENU_TERMINAL_VERTICAL_SPLIT,
@@ -771,6 +738,43 @@ public class XTWMApplication extends TApplication {
      */
     private void addAllWidgets() {
         addMenus();
+    }
+
+    /**
+     * Setup the virtual desktops.
+     */
+    private void addDesktops() {
+        // We have two desktops by default:
+        // 0 - The screensaver desktop.  No windows are created on it.
+        // 1 - The first normal desktop.
+        desktops.add(new VirtualDesktop(this));
+        desktopIndex = 1;
+
+        // Set a different color for each desktop.  Eventually expose these
+        // colors.
+        for (int i = 1; i <= desktopCount; i++) {
+            VirtualDesktop desktop = new VirtualDesktop(this);
+            desktops.add(desktop);
+
+            CellAttributes desktopAttr = new CellAttributes();
+            switch ((i - 1) % 4) {
+            case 0:
+                desktopAttr.setForeColor(Color.BLUE);
+                break;
+            case 1:
+                desktopAttr.setForeColor(Color.CYAN);
+                break;
+            case 2:
+                desktopAttr.setForeColor(Color.MAGENTA);
+                break;
+            case 3:
+                desktopAttr.setForeColor(Color.RED);
+                break;
+            }
+            desktopAttr.setBackColor(Color.WHITE);
+            desktopAttr.setBold(false);
+            desktop.getDesktop().setAttributes(desktopAttr);
+        }
     }
 
     /**

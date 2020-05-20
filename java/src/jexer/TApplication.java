@@ -1223,6 +1223,9 @@ public class TApplication implements Runnable {
         // Process timers and call doIdle()'s
         doIdle();
 
+        // Give subclass TApplications a chance to update something
+        onPreDraw();
+
         // Update the screen
         synchronized (getScreen()) {
             drawAll();
@@ -1993,6 +1996,15 @@ public class TApplication implements Runnable {
     // ------------------------------------------------------------------------
     // Screen refresh loop ----------------------------------------------------
     // ------------------------------------------------------------------------
+
+    /**
+     * Function called immediately before the screen is drawn.  This can be
+     * used by subclasses of TApplication to update things, for example to
+     * set menuTrayText.
+     */
+    protected void onPreDraw() {
+        // Default does nothing
+    }
 
     /**
      * Draw the text mouse at position.

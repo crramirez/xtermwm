@@ -113,10 +113,10 @@ public class TTerminalWidget extends TScrollableWidget
     private boolean blinkState = true;
 
     /**
-     * Timer flag, used only by ECMA48 backend and when double-width chars
-     * must be drawn.
+     * Timer, used only by ECMA48 backend and when double-width chars must be
+     * drawn.
      */
-    private boolean haveTimer = false;
+    private TTimer blinkTimer = null;
 
     /**
      * The last seen visible display.
@@ -764,6 +764,9 @@ public class TTerminalWidget extends TScrollableWidget
             shell.destroy();
             shell = null;
         }
+        if (blinkTimer != null) {
+            getApplication().removeTimer(blinkTimer);
+        }
     }
 
     /**
@@ -1212,10 +1215,10 @@ public class TTerminalWidget extends TScrollableWidget
         // Special case: the ECMA48 backend needs to have a timer to drive
         // its blink state.
         if (getScreen() instanceof jexer.backend.ECMA48Terminal) {
-            if (!haveTimer) {
+            if (blinkTimer == null) {
                 // Blink every 500 millis.
                 long millis = 500;
-                getApplication().addTimer(millis, true,
+                blinkTimer = getApplication().addTimer(millis, true,
                     new TAction() {
                         public void DO() {
                             blinkState = !blinkState;
@@ -1223,7 +1226,6 @@ public class TTerminalWidget extends TScrollableWidget
                         }
                     }
                 );
-                haveTimer = true;
             }
         }
     }

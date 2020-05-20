@@ -29,6 +29,7 @@
 package xtwm.plugins;
 
 import jexer.TWidget;
+import jexer.TPanel;
 import jexer.bits.MnemonicString;
 
 /**
@@ -90,5 +91,16 @@ public abstract class PluginWidget extends TWidget {
      * @return a short name, e.g. "A simple calendar with TODO manager."
      */
     public abstract String getPluginDescription();
+
+    /**
+     * Get an interface for editing the plugin settings.
+     *
+     * @param parent parent widget
+     * @return a widget that has settings
+     */
+    public TWidget getPluginSettingsEditor(final TWidget parent) {
+        // Default implementation shows a blank panel.
+        return new TPanel(parent, 0, 0, getWidth(), getHeight());
+     }
 
 }
