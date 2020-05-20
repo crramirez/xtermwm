@@ -457,7 +457,6 @@ public class TMenu extends TWindow {
     public TMenuItem addItem(final int id, final String label,
         final boolean enabled) {
 
-        assert (id >= 1024);
         return addItemInternal(id, label, null, enabled, -1);
     }
 
@@ -472,7 +471,6 @@ public class TMenu extends TWindow {
     public TMenuItem addItem(final int id, final String label,
         final TKeypress key) {
 
-        assert (id >= 1024);
         return addItemInternal(id, label, key);
     }
 

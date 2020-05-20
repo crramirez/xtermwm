@@ -139,6 +139,11 @@ public abstract class TWidget implements Comparable<TWidget> {
     private int cursorY = 0;
 
     /**
+     * If true, this widget will echo keystrokes to all of its children.
+     */
+    private boolean echoKeystrokes = false;
+
+    /**
      * Layout manager.
      */
     private LayoutManager layout = null;
@@ -441,11 +446,20 @@ public abstract class TWidget implements Comparable<TWidget> {
             }
         }
 
-        // Dispatch the keypress to an active widget
-        for (TWidget widget: children) {
-            if (widget.active) {
+        if (echoKeystrokes) {
+            // Dispatch the keypress to every widget, even if not the active
+            // widget
+            for (TWidget widget: children) {
                 widget.onKeypress(keypress);
-                return;
+            }
+            return;
+        } else {
+            // Dispatch the keypress to an active widget
+            for (TWidget widget: children) {
+                if (widget.active) {
+                    widget.onKeypress(keypress);
+                    return;
+                }
             }
         }
     }
@@ -1107,6 +1121,25 @@ public abstract class TWidget implements Comparable<TWidget> {
      */
     public final void setCursorY(final int cursorY) {
         this.cursorY = cursorY;
+    }
+
+    /**
+     * Set echo keystrokes flag.
+     *
+     * @param echoKeystrokes if true, this widget will echo keystrokes to all
+     * of its children
+     */
+    public void setEchoKeystrokes(final boolean echoKeystrokes) {
+        this.echoKeystrokes = echoKeystrokes;
+    }
+
+    /**
+     * Get echo keystrokes flag.
+     *
+     * @return true if this widget echoes keystrokes to all of its children
+     */
+    public boolean isEchoKeystrokes() {
+        return echoKeystrokes;
     }
 
     /**

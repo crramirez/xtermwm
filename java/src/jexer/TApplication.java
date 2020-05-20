@@ -1838,6 +1838,18 @@ public class TApplication implements Runnable {
             this.desktop.onClose();
         }
         this.desktop = desktop;
+
+        if (desktop != null) {
+            desktopTop = (hideMenuBar ? 0 : 1);
+            desktopBottom = getScreen().getHeight() - 1 + (hideStatusBar ?
+                1 : 0);
+            desktop.setDimensions(0, desktopTop, getScreen().getWidth(),
+                (desktopBottom - desktopTop));
+            TResizeEvent resize = new TResizeEvent(TResizeEvent.Type.WIDGET,
+                getScreen().getWidth(), desktop.getHeight());
+            desktop.onResize(resize);
+        }
+
     }
 
     /**

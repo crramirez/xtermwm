@@ -39,8 +39,10 @@ import java.text.MessageFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.List;
 import java.util.Properties;
 import java.util.ResourceBundle;
+import java.util.ServiceLoader;
 
 import jexer.TAction;
 import jexer.TApplication;
@@ -65,6 +67,9 @@ import jexer.menu.TMenu;
 import jexer.menu.TSubMenu;
 import static jexer.TCommand.*;
 import static jexer.TKeypress.*;
+
+import xtwm.plugins.PluginLoader;
+import xtwm.plugins.PluginWidget;
 
 /**
  * The main Xterm Window Manager application.
@@ -227,17 +232,38 @@ public class XTWMApplication extends TApplication {
         initializeOptions();
         addAllWidgets();
         getBackend().setTitle(i18n.getString("frameTitle"));
+        loadPlugins();
 
         // We have two desktops by default:
         // 0 - The screensaver desktop.  No windows are created on it.
         // 1 - The first normal desktop.
         desktops.add(new VirtualDesktop(this));
-        desktops.add(new VirtualDesktop(this));
         desktopIndex = 1;
 
-        // Now add the other desktops.
-        for (int i = 1; i < desktopCount; i++) {
-            desktops.add(new VirtualDesktop(this));
+        // Set a different color for each desktop.  Eventually expose these
+        // colors.
+        for (int i = 1; i <= desktopCount; i++) {
+            VirtualDesktop desktop = new VirtualDesktop(this);
+            desktops.add(desktop);
+
+            CellAttributes desktopAttr = new CellAttributes();
+            switch ((i - 1) % 4) {
+            case 0:
+                desktopAttr.setForeColor(Color.BLUE);
+                break;
+            case 1:
+                desktopAttr.setForeColor(Color.CYAN);
+                break;
+            case 2:
+                desktopAttr.setForeColor(Color.MAGENTA);
+                break;
+            case 3:
+                desktopAttr.setForeColor(Color.RED);
+                break;
+            }
+            desktopAttr.setBackColor(Color.WHITE);
+            desktopAttr.setBold(false);
+            desktop.getDesktop().setAttributes(desktopAttr);
         }
 
         // Menu system tray
@@ -747,6 +773,24 @@ public class XTWMApplication extends TApplication {
         addMenus();
     }
 
+    /**
+     * Load all plugins (xtwm.plugins.PluginLoader) via the ServiceLoader
+     * interface.
+     */
+    private void loadPlugins() {
+        ServiceLoader<PluginLoader> services;
+        services = ServiceLoader.load(PluginLoader.class);
+
+        for (PluginLoader loader: services) {
+            List<Class<?>> plugins = loader.getPluginClasses();
+            for (Class<?> pluginClass: plugins) {
+                if (pluginClass.isAssignableFrom(PluginWidget.class)) {
+                    loadPlugin(pluginClass);
+                }
+            }
+        }
+    }
+
     // ------------------------------------------------------------------------
     // Options support --------------------------------------------------------
     // ------------------------------------------------------------------------
@@ -1127,6 +1171,7 @@ public class XTWMApplication extends TApplication {
             desktopIndex = 1;
         }
         currentDesktop().show();
+        setDesktop(currentDesktop().getDesktop());
     }
 
     /**
@@ -1145,6 +1190,21 @@ public class XTWMApplication extends TApplication {
             desktopIndex = desktops.size() - 1;
         }
         currentDesktop().show();
+        setDesktop(currentDesktop().getDesktop());
+    }
+
+    /**
+     * Load one plugin into the menu.
+     *
+     * @param plugin the plugin to load
+     */
+    public void loadPlugin(final Class<?> plugin) {
+        if (!plugin.isAssignableFrom(PluginWidget.class)) {
+            throw new IllegalArgumentException("Class " + plugin +
+                " is not an instance of xtwm.plugins.PluginWidget");
+        }
+
+        // TODO
     }
 
 }

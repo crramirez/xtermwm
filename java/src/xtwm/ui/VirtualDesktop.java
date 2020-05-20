@@ -57,6 +57,11 @@ public class VirtualDesktop {
      */
     private TApplication application;
 
+    /**
+     * The desktop on the application background.
+     */
+    private Desktop desktop;
+
     // ------------------------------------------------------------------------
     // Constructors -----------------------------------------------------------
     // ------------------------------------------------------------------------
@@ -68,6 +73,7 @@ public class VirtualDesktop {
      */
     public VirtualDesktop(final TApplication application) {
         this.application = application;
+        desktop = new Desktop(application);
     }
 
     // ------------------------------------------------------------------------
@@ -142,6 +148,15 @@ public class VirtualDesktop {
      */
     public boolean hasWindow(final TWindow window) {
         return windows.contains(window);
+    }
+
+    /**
+     * Get the Desktop instance.
+     *
+     * @return the desktop, or null if it is not set
+     */
+    public final Desktop getDesktop() {
+        return desktop;
     }
 
 }
