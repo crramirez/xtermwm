@@ -72,12 +72,20 @@ public class TiledTerminal extends TTerminalWidget {
                             true);
                         return;
                     }
+                    if (source.getParent() instanceof Desktop) {
+                        // This is the top-level terminal, clear the
+                        // shortcuts for the desktop.
+                        ((Desktop) source.getParent()).clearTerminalShortcuts();
+                    }
                     if (source.getParent() instanceof TDesktop) {
                         source.remove();
                         return;
                     }
                 }
             });
+        if (getApplication().getDesktop() instanceof Desktop) {
+            ((Desktop) (getApplication().getDesktop())).addTerminalShortcuts();
+        }
     }
 
     // ------------------------------------------------------------------------
@@ -143,6 +151,11 @@ public class TiledTerminal extends TTerminalWidget {
         if (getParent() instanceof TSplitPane) {
             ((TSplitPane) getParent()).removeSplit(this, true);
         }
+        if (getParent() instanceof Desktop) {
+            // This is the top-level terminal, clear the shortcuts for the
+            // desktop.
+            ((Desktop) getParent()).clearTerminalShortcuts();
+        }
         if (getParent() instanceof TDesktop) {
             if (!inClose) {
                 inClose = true;
@@ -152,8 +165,7 @@ public class TiledTerminal extends TTerminalWidget {
     }
 
     // ------------------------------------------------------------------------
-    // Terminal ---------------------------------------------------------------
+    // TiledTerminal ----------------------------------------------------------
     // ------------------------------------------------------------------------
-
 
 }

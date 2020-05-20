@@ -775,6 +775,7 @@ public class XTWMApplication extends TApplication {
             desktopAttr.setBold(false);
             desktop.getDesktop().setAttributes(desktopAttr);
         }
+        setDesktop(currentDesktop().getDesktop(), true);
     }
 
     /**
@@ -1175,7 +1176,7 @@ public class XTWMApplication extends TApplication {
             desktopIndex = 1;
         }
         currentDesktop().show();
-        setDesktop(currentDesktop().getDesktop());
+        setDesktop(currentDesktop().getDesktop(), false);
     }
 
     /**
@@ -1194,7 +1195,7 @@ public class XTWMApplication extends TApplication {
             desktopIndex = desktops.size() - 1;
         }
         currentDesktop().show();
-        setDesktop(currentDesktop().getDesktop());
+        setDesktop(currentDesktop().getDesktop(), false);
     }
 
     /**

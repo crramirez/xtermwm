@@ -1450,6 +1450,12 @@ public class TApplication implements Runnable {
                     // window instead.
                     windowWillShortcut = true;
                 }
+            } else if (desktop != null) {
+                if (desktop.isShortcutKeypress(keypress.getKey())) {
+                    // We do not process this key, it will be passed to the
+                    // desktop instead.
+                    windowWillShortcut = true;
+                }
             }
 
             if (!windowWillShortcut && !modalWindowActive()) {
@@ -1835,10 +1841,23 @@ public class TApplication implements Runnable {
      * set
      */
     public final void setDesktop(final TDesktop desktop) {
+        setDesktop(desktop, true);
+    }
+
+    /**
+     * Set the TDesktop instance.
+     *
+     * @param desktop a TDesktop instance, or null to remove the one that is
+     * set
+     * @param close if true, close the previous desktop
+     */
+    public final void setDesktop(final TDesktop desktop, final boolean close) {
         if (this.desktop != null) {
-            this.desktop.onPreClose();
-            this.desktop.onUnfocus();
-            this.desktop.onClose();
+            if (close) {
+                this.desktop.onPreClose();
+                this.desktop.onUnfocus();
+                this.desktop.onClose();
+            }
         }
         this.desktop = desktop;
 

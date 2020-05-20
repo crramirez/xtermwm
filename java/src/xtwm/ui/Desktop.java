@@ -32,6 +32,7 @@ import jexer.TApplication;
 import jexer.TDesktop;
 import jexer.bits.CellAttributes;
 import jexer.bits.GraphicsChars;
+import static jexer.TKeypress.*;
 
 /**
  * Desktop is the main document editor window.
@@ -50,6 +51,11 @@ public class Desktop extends TDesktop {
      * The color and attributes for this desktop background.
      */
     private CellAttributes attributes = new CellAttributes();
+
+    /**
+     * Whether or not the terminal shortcut keys are set.
+     */
+    private boolean terminalShortcuts = false;
 
     // ------------------------------------------------------------------------
     // Constructors -----------------------------------------------------------
@@ -91,6 +97,90 @@ public class Desktop extends TDesktop {
      */
     public void setAttributes(final CellAttributes attributes) {
         this.attributes = new CellAttributes(attributes);
+    }
+
+    /**
+     * Claim the keystrokes a tiled terminal will need.  Note package private
+     * access.
+     */
+    void addTerminalShortcuts() {
+        if (terminalShortcuts == false) {
+            addShortcutKeypress(kbCtrlA);
+            addShortcutKeypress(kbCtrlB);
+            addShortcutKeypress(kbCtrlC);
+            addShortcutKeypress(kbCtrlD);
+            addShortcutKeypress(kbCtrlE);
+            addShortcutKeypress(kbCtrlF);
+            addShortcutKeypress(kbCtrlG);
+            addShortcutKeypress(kbCtrlH);
+            addShortcutKeypress(kbCtrlU);
+            addShortcutKeypress(kbCtrlJ);
+            addShortcutKeypress(kbCtrlK);
+            addShortcutKeypress(kbCtrlL);
+            addShortcutKeypress(kbCtrlM);
+            addShortcutKeypress(kbCtrlN);
+            addShortcutKeypress(kbCtrlO);
+            addShortcutKeypress(kbCtrlP);
+            addShortcutKeypress(kbCtrlQ);
+            addShortcutKeypress(kbCtrlR);
+            addShortcutKeypress(kbCtrlS);
+            addShortcutKeypress(kbCtrlT);
+            addShortcutKeypress(kbCtrlU);
+            addShortcutKeypress(kbCtrlV);
+            addShortcutKeypress(kbCtrlW);
+            addShortcutKeypress(kbCtrlX);
+            addShortcutKeypress(kbCtrlY);
+            addShortcutKeypress(kbCtrlZ);
+            addShortcutKeypress(kbF1);
+            addShortcutKeypress(kbF2);
+            addShortcutKeypress(kbF3);
+            addShortcutKeypress(kbF4);
+            addShortcutKeypress(kbF5);
+            addShortcutKeypress(kbF6);
+            addShortcutKeypress(kbF7);
+            addShortcutKeypress(kbF8);
+            addShortcutKeypress(kbF9);
+            addShortcutKeypress(kbF10);
+            addShortcutKeypress(kbF11);
+            addShortcutKeypress(kbF12);
+            addShortcutKeypress(kbAltA);
+            addShortcutKeypress(kbAltB);
+            addShortcutKeypress(kbAltC);
+            addShortcutKeypress(kbAltD);
+            addShortcutKeypress(kbAltE);
+            addShortcutKeypress(kbAltF);
+            addShortcutKeypress(kbAltG);
+            addShortcutKeypress(kbAltH);
+            addShortcutKeypress(kbAltU);
+            addShortcutKeypress(kbAltJ);
+            addShortcutKeypress(kbAltK);
+            addShortcutKeypress(kbAltL);
+            addShortcutKeypress(kbAltM);
+            addShortcutKeypress(kbAltN);
+            addShortcutKeypress(kbAltO);
+            addShortcutKeypress(kbAltP);
+            addShortcutKeypress(kbAltQ);
+            addShortcutKeypress(kbAltR);
+            addShortcutKeypress(kbAltS);
+            addShortcutKeypress(kbAltT);
+            addShortcutKeypress(kbAltU);
+            addShortcutKeypress(kbAltV);
+            addShortcutKeypress(kbAltW);
+            addShortcutKeypress(kbAltX);
+            addShortcutKeypress(kbAltY);
+            addShortcutKeypress(kbAltZ);
+
+            terminalShortcuts = true;
+        }
+    }
+
+    /**
+     * Release the keystrokes a tiled terminal has claimed.  Note package
+     * private access.
+     */
+    void clearTerminalShortcuts() {
+        clearShortcutKeypresses();
+        terminalShortcuts = false;
     }
 
 }

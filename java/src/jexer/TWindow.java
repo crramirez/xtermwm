@@ -372,8 +372,12 @@ public class TWindow extends TWidget {
      */
     protected void onClose() {
         // Default: perform widget-specific cleanup.
-        for (TWidget w: getChildren()) {
+        while (getChildren().size() > 0) {
+            TWidget w = getChildren().get(0);
             w.close();
+            if (getChildren().contains(w)) {
+                getChildren().remove(w);
+            }
         }
     }
 

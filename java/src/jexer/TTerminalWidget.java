@@ -765,7 +765,10 @@ public class TTerminalWidget extends TScrollableWidget
             shell = null;
         }
         if (blinkTimer != null) {
-            getApplication().removeTimer(blinkTimer);
+            TApplication app = getApplication();
+            if (app != null) {
+                app.removeTimer(blinkTimer);
+            }
         }
     }
 
@@ -1222,7 +1225,10 @@ public class TTerminalWidget extends TScrollableWidget
                     new TAction() {
                         public void DO() {
                             blinkState = !blinkState;
-                            getApplication().doRepaint();
+                            TApplication app = getApplication();
+                            if (app != null) {
+                                app.doRepaint();
+                            }
                         }
                     }
                 );
@@ -1249,7 +1255,10 @@ public class TTerminalWidget extends TScrollableWidget
         } else {
             dirty = true;
         }
-        getApplication().postEvent(new TMenuEvent(TMenu.MID_REPAINT));
+        TApplication app = getApplication();
+        if (app != null) {
+            app.postEvent(new TMenuEvent(TMenu.MID_REPAINT));
+        }
     }
 
     /**
