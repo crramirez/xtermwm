@@ -65,6 +65,7 @@ import jexer.event.TKeypressEvent;
 import jexer.event.TMenuEvent;
 import jexer.help.Topic;
 import jexer.menu.TMenu;
+import jexer.menu.TMenuItem;
 import jexer.menu.TSubMenu;
 import static jexer.TCommand.*;
 import static jexer.TKeypress.*;
@@ -107,8 +108,9 @@ public class XTWMApplication extends TApplication {
     private static final int MENU_APPLICATION_SETTINGS_COLORS           = 2031;
     private static final int MENU_APPLICATION_SETTINGS_ENVIRONMENT      = 2032;
     private static final int MENU_APPLICATION_SETTINGS_WINDOWS          = 2033;
-    private static final int MENU_APPLICATION_SETTINGS_SAVE             = 2034;
-    private static final int MENU_APPLICATION_SETTINGS_LOAD             = 2035;
+    private static final int MENU_APPLICATION_SETTINGS_PLUGINS          = 2034;
+    private static final int MENU_APPLICATION_SETTINGS_SAVE             = 2035;
+    private static final int MENU_APPLICATION_SETTINGS_LOAD             = 2036;
     private static final int MENU_APPLICATION_RUN                       = 2091;
     private static final int MENU_APPLICATION_LOCK_SCREEN               = 2092;
     private static final int MENU_APPLICATION_EXIT                      = 2099;
@@ -367,6 +369,10 @@ public class XTWMApplication extends TApplication {
             // TODO
             return true;
 
+        case MENU_APPLICATION_SETTINGS_PLUGINS:
+            // TODO
+            return true;
+
         case MENU_APPLICATION_SETTINGS_LOAD:
             try {
                 String filename = fileOpenBox(configFilename == null ?
@@ -410,11 +416,14 @@ public class XTWMApplication extends TApplication {
             TDesktop desktop = getDesktop();
             if (desktop.getChildren().size() == 0) {
                 new TiledTerminal(desktop);
+                desktop.setEchoKeystrokes(desktop.isEchoKeystrokes(), true);
             }
             return true;
 
         case MENU_TERMINAL_SEND_KEYS_TO_ALL:
-            // TODO
+            getDesktop().setEchoKeystrokes(!getDesktop().isEchoKeystrokes(),
+                true);
+            getMenuItem(MENU_TERMINAL_SEND_KEYS_TO_ALL).setChecked(getDesktop().isEchoKeystrokes());
             return true;
 
         case MENU_PANEL_SWITCH_TO:
@@ -618,6 +627,8 @@ public class XTWMApplication extends TApplication {
             i18n.getString("applicationSettingsEnvironment"));
         subSettings.addItem(MENU_APPLICATION_SETTINGS_WINDOWS,
             i18n.getString("applicationSettingsWindows"));
+        subSettings.addItem(MENU_APPLICATION_SETTINGS_PLUGINS,
+            i18n.getString("applicationSettingsPlugins"));
         subSettings.addSeparator();
         subSettings.addItem(MENU_APPLICATION_SETTINGS_SAVE,
             i18n.getString("applicationSettingsSave"));
@@ -650,8 +661,9 @@ public class XTWMApplication extends TApplication {
         terminalMenu.addItem(MENU_TERMINAL_VERTICAL_SPLIT,
             i18n.getString("terminalVerticalSplit"));
         terminalMenu.addSeparator();
-        terminalMenu.addItem(MENU_TERMINAL_SEND_KEYS_TO_ALL,
+        TMenuItem item = terminalMenu.addItem(MENU_TERMINAL_SEND_KEYS_TO_ALL,
             i18n.getString("terminalSendKeysToAll"));
+        item.setCheckable(true);
         terminalMenu.addSeparator();
         TSubMenu subSession = terminalMenu.addSubMenu(i18n.
             getString("terminalSession"));
@@ -1177,6 +1189,7 @@ public class XTWMApplication extends TApplication {
         }
         currentDesktop().show();
         setDesktop(currentDesktop().getDesktop(), false);
+        getMenuItem(MENU_TERMINAL_SEND_KEYS_TO_ALL).setChecked(getDesktop().isEchoKeystrokes());
     }
 
     /**
@@ -1196,6 +1209,7 @@ public class XTWMApplication extends TApplication {
         }
         currentDesktop().show();
         setDesktop(currentDesktop().getDesktop(), false);
+        getMenuItem(MENU_TERMINAL_SEND_KEYS_TO_ALL).setChecked(getDesktop().isEchoKeystrokes());
     }
 
     /**

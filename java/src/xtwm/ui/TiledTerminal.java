@@ -103,10 +103,12 @@ public class TiledTerminal extends TTerminalWidget {
 
         case XTWMApplication.MENU_TERMINAL_HORIZONTAL_SPLIT:
             splitHorizontal(false, new TiledTerminal(getParent()));
+            getParent().setEchoKeystrokes(isEchoKeystrokes(), true);
             return;
 
         case XTWMApplication.MENU_TERMINAL_VERTICAL_SPLIT:
             splitVertical(false, new TiledTerminal(getParent()));
+            getParent().setEchoKeystrokes(isEchoKeystrokes(), true);
             return;
 
         case XTWMApplication.MENU_TERMINAL_SESSION_SAVE_HTML:

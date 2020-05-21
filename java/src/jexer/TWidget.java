@@ -1137,6 +1137,25 @@ public abstract class TWidget implements Comparable<TWidget> {
     }
 
     /**
+     * Set echo keystrokes flag.
+     *
+     * @param echoKeystrokes if true, this widget will echo keystrokes to all
+     * of its children
+     * @param recursive if true, set the echo keystrokes flag of all child
+     * widgets recursively
+     */
+    public void setEchoKeystrokes(final boolean echoKeystrokes,
+        final boolean recursive) {
+
+        this.echoKeystrokes = echoKeystrokes;
+        if (recursive) {
+            for (TWidget w: children) {
+                w.setEchoKeystrokes(echoKeystrokes, true);
+            }
+        }
+    }
+
+    /**
      * Get echo keystrokes flag.
      *
      * @return true if this widget echoes keystrokes to all of its children
