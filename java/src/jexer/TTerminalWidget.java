@@ -32,10 +32,12 @@ import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
+import java.io.Writer;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.text.MessageFormat;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.ResourceBundle;
@@ -446,7 +448,23 @@ public class TTerminalWidget extends TScrollableWidget
             typingHidMouse = true;
         }
 
-        // Scrollback up/down
+        // Scrollback up/down/home/end
+        if (keypress.equals(kbShiftHome)
+            || keypress.equals(kbCtrlHome)
+            || keypress.equals(kbAltHome)
+        ) {
+            toTop();
+            dirty = true;
+            return;
+        }
+        if (keypress.equals(kbShiftEnd)
+            || keypress.equals(kbCtrlEnd)
+            || keypress.equals(kbAltEnd)
+        ) {
+            toBottom();
+            dirty = true;
+            return;
+        }
         if (keypress.equals(kbShiftPgUp)
             || keypress.equals(kbCtrlPgUp)
             || keypress.equals(kbAltPgUp)
@@ -1381,6 +1399,80 @@ public class TTerminalWidget extends TScrollableWidget
      */
     public int getExitValue() {
         return exitValue;
+    }
+
+    /**
+     * Get the scrollback buffer from the emulator.
+     *
+     * @return the scrollback buffer, all the lines that have scrolled off
+     * screen
+     */
+    public final List<DisplayLine> getScrollbackBuffer() {
+        ArrayList<DisplayLine> buffer = new ArrayList<DisplayLine>();
+        for (DisplayLine line: emulator.getScrollbackBuffer()) {
+            buffer.add(new DisplayLine(line));
+        }
+        return buffer;
+    }
+
+    /**
+     * Get the display buffer from the emulator.
+     *
+     * @return the display buffer, the lines that are on the visible screen
+     */
+    public final List<DisplayLine> getDisplayBuffer() {
+        ArrayList<DisplayLine> buffer = new ArrayList<DisplayLine>();
+        for (DisplayLine line: emulator.getDisplayBuffer()) {
+            buffer.add(new DisplayLine(line));
+        }
+        return buffer;
+    }
+
+    /**
+     * Write the entire session (scrollback and display buffers) as plain
+     * text to a writer.
+     *
+     * @param writer the output writer
+     * @throws IOException of a java.io operation throws
+     */
+    public void writeSessionAsText(final Writer writer) throws IOException {
+        for (DisplayLine line: emulator.getScrollbackBuffer()) {
+            for (int i = 0; i < line.length(); i++) {
+                writer.write(new String(Character.toChars(
+                        line.charAt(i).getChar())));
+            }
+            writer.write("\n");
+        }
+        for (DisplayLine line: emulator.getDisplayBuffer()) {
+            for (int i = 0; i < line.length(); i++) {
+                writer.write(new String(Character.toChars(
+                        line.charAt(i).getChar())));
+            }
+            writer.write("\n");
+        }
+    }
+
+    /**
+     * Write the entire session (scrollback and display buffers) as colorized
+     * HTML to a writer.  This method does not write the HTML header/body
+     * tags.
+     *
+     * @param writer the output writer
+     * @throws IOException of a java.io operation throws
+     */
+    public void writeSessionAsHtml(final Writer writer) throws IOException {
+        for (DisplayLine line: emulator.getScrollbackBuffer()) {
+            for (int i = 0; i < line.length(); i++) {
+                writer.write(line.charAt(i).toHtml());
+            }
+            writer.write("\n");
+        }
+        for (DisplayLine line: emulator.getDisplayBuffer()) {
+            for (int i = 0; i < line.length(); i++) {
+                writer.write(line.charAt(i).toHtml());
+            }
+            writer.write("\n");
+        }
     }
 
     // ------------------------------------------------------------------------

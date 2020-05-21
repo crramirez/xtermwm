@@ -28,9 +28,14 @@
  */
 package xtwm.ui;
 
+import java.io.BufferedWriter;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.io.Writer;
 import java.util.ResourceBundle;
 
 import jexer.TApplication;
+import jexer.TExceptionDialog;
 import jexer.TInputBox;
 import jexer.TTerminalWindow;
 import jexer.event.TMenuEvent;
@@ -89,15 +94,52 @@ public class TerminalWindow extends TTerminalWindow {
     public void onMenu(TMenuEvent event) {
         assert (getParent() != null);
         TInputBox inputBox;
+        Writer writer = null;
 
         switch (event.getId()) {
 
         case XTWMApplication.MENU_TERMINAL_SESSION_SAVE_HTML:
-            // TODO
+            try {
+                String filename = fileSaveBox(".");
+                if (filename != null) {
+                    writer = new BufferedWriter(new FileWriter(filename));
+                    writer.write("<html><body bgcolor=\"black\">\n<pre {font-family: 'Courier New', monospace;}><code>");
+                    terminal.writeSessionAsHtml(writer);
+                    writer.write("</code></body></html>");
+                }
+            } catch (IOException e) {
+                // Show this exception to the user.
+                new TExceptionDialog(getApplication(), e);
+            } finally {
+                if (writer != null) {
+                    try {
+                        writer.close();
+                    } catch (IOException e) {
+                        // SQUASH
+                    }
+                }
+            }
             return;
 
         case XTWMApplication.MENU_TERMINAL_SESSION_SAVE_TEXT:
-            // TODO
+            try {
+                String filename = fileSaveBox(".");
+                if (filename != null) {
+                    writer = new BufferedWriter(new FileWriter(filename));
+                    terminal.writeSessionAsText(writer);
+                }
+            } catch (IOException e) {
+                // Show this exception to the user.
+                new TExceptionDialog(getApplication(), e);
+            } finally {
+                if (writer != null) {
+                    try {
+                        writer.close();
+                    } catch (IOException e) {
+                        // SQUASH
+                    }
+                }
+            }
             return;
 
         case XTWMApplication.MENU_TERMINAL_SESSION_SEND_SIGTERM:
