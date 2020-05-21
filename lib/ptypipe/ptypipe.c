@@ -3,7 +3,7 @@
  *
  * The MIT License (MIT)
  *
- * Copyright (C) 2019 Kevin Lamonte
+ * Copyright (C) 2020 Kevin Lamonte
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -30,6 +30,8 @@
 /* #define DEBUG */
 
 /* #define MAKE_RAW */
+
+/* #define PASS_SIGNALS */
 
 /* PATH_MAX */
 #include <limits.h>
@@ -62,7 +64,7 @@
 /* abort() */
 #include <stdlib.h>
 
-/* kill() */
+/* kill() and signal() */
 #include <signal.h>
 
 /* wait4() */
@@ -75,7 +77,7 @@
 /* assert() */
 #include <assert.h>
 
-/* ioctl */
+/* ioctl() */
 #include <sys/ioctl.h>
 
 #ifdef MAKE_RAW
@@ -114,6 +116,24 @@ static void set_raw_termios(const int tty_fd) {
     fprintf(stderr, "set_raw_termios() OK\n");
 #endif
     return;
+}
+
+#endif /* MAKE_RAW */
+
+#ifdef PASS_SIGNALS
+
+/* The child pid */
+static pid_t signal_child_pid = -1;
+
+/**
+ * Monitor for a signal, and send to the child process.
+ *
+ * @param signum the signal
+ */
+static void signal_handler(int signum) {
+    if (signal_child_pid > 0) {
+        kill(signal_child_pid, signum);
+    }
 }
 
 #endif
@@ -211,6 +231,34 @@ int main(int argc, char **argv) {
         perror("execvp()");
         exit(-1);
     }
+
+#ifdef PASS_SIGNALS
+
+    /* Define several common signals to be passed to the child process. */
+    signal_child_pid = child_pid;
+    signal(SIGINT, signal_handler);
+    signal(SIGILL, signal_handler);
+    signal(SIGABRT, signal_handler);
+    signal(SIGFPE, signal_handler);
+    signal(SIGTERM, signal_handler);
+    signal(SIGHUP, signal_handler);
+    signal(SIGQUIT, signal_handler);
+    signal(SIGTRAP, signal_handler);
+    signal(SIGPIPE, signal_handler);
+    signal(SIGURG, signal_handler);
+    signal(SIGTSTP, signal_handler);
+    signal(SIGCONT, signal_handler);
+    signal(SIGTTIN, signal_handler);
+    signal(SIGTTOU, signal_handler);
+    signal(SIGPOLL, signal_handler);
+    signal(SIGXCPU, signal_handler);
+    signal(SIGXFSZ, signal_handler);
+    signal(SIGVTALRM, signal_handler);
+    signal(SIGPROF, signal_handler);
+    signal(SIGUSR1, signal_handler);
+    signal(SIGUSR2, signal_handler);
+
+#endif
 
     /*
      * Main loop reads from either side and passes data to the other.

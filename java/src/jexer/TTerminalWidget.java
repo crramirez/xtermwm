@@ -33,6 +33,8 @@ import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.Field;
+import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 import java.text.MessageFormat;
 import java.util.List;
 import java.util.Map;
@@ -948,27 +950,114 @@ public class TTerminalWidget extends TScrollableWidget
      * or may not work.
      */
     private void terminateShellChildProcess() {
-        int pid = -1;
-        if (shell.getClass().getName().equals("java.lang.UNIXProcess")) {
-            /* get the PID on unix/linux systems */
-            try {
-                Field field = shell.getClass().getDeclaredField("pid");
-                field.setAccessible(true);
-                pid = field.getInt(shell);
-            } catch (Throwable e) {
-                // SQUASH, this didn't work.  Just bail out quietly.
-                return;
-            }
-        }
+        long pid = getPid();
         if (pid != -1) {
             // shell.destroy() works successfully at killing this side of
             // 'script'.  But we need to make sure the other side (child
             // process) is also killed.
             String [] cmdKillIt = {
-                "pkill", "-P", Integer.toString(pid)
+                "pkill", "-P", Long.toString(pid), "--signal", "KILL"
             };
             try {
                 Runtime.getRuntime().exec(cmdKillIt);
+            } catch (Throwable e) {
+                // SQUASH, this didn't work.  Just bail out quietly.
+                return;
+            }
+        }
+    }
+
+    /**
+     * Get the PID of the child process.
+     *
+     * @return the pid, or -1 if it cannot be determined
+     */
+    public long getPid() {
+        try {
+            // Java 9 or later, public access to Process.pid().
+            Method method = Process.class.getMethod("pid");
+            if (Modifier.isPublic(method.getModifiers())) {
+                return ((Long) method.invoke(shell)).longValue();
+            } else {
+                // This is probably related to JDK-4283544: a public
+                // interface method on a private implementation class.  Fall
+                // through to a pre-Java 9 attempt.
+            }
+        } catch (NoSuchMethodException e) {
+            // This will be before Java 9, fall through.
+        } catch (Throwable e) {
+            // SQUASH, this didn't work.  Just bail out quietly.
+            return -1;
+        }
+
+        if (shell.getClass().getName().equals("java.lang.UNIXProcess")) {
+            // Java 1.6 or earlier.  Should work smoothly.
+            try {
+                Field field = shell.getClass().getDeclaredField("pid");
+                field.setAccessible(true);
+                return field.getInt(shell);
+            } catch (Throwable e) {
+                // SQUASH, this didn't work.  Just bail out quietly.
+                return -1;
+            }
+        }
+
+        if (shell.getClass().getName().equals("java.lang.ProcessImpl")) {
+            // Java 1.7 and 1.8.  If this is actually running on a Java 9+
+            // there will be nasty errors in stderr from the setAccessible()
+            // call.
+            try {
+                Field field = shell.getClass().getDeclaredField("pid");
+                field.setAccessible(true);
+                return field.getInt(shell);
+            } catch (Throwable e) {
+                // SQUASH, this didn't work.  Just bail out quietly.
+                return -1;
+            }
+        }
+
+        // Don't know how to get the PID.
+        return -1;
+    }
+
+    /**
+     * Send a signal to the the child of the 'script' or 'ptypipe' process
+     * used on POSIX.  This may or may not work.
+     *
+     * @param signal the signal number
+     */
+    public void signalShellChildProcess(final int signal) {
+        long pid = getPid();
+
+        if (pid != -1) {
+            String [] cmdSendSignal = {
+                "kill", Long.toString(pid), "--signal",
+                Integer.toString(signal)
+            };
+            try {
+                Runtime.getRuntime().exec(cmdSendSignal);
+            } catch (Throwable e) {
+                // SQUASH, this didn't work.  Just bail out quietly.
+                return;
+            }
+        }
+    }
+
+    /**
+     * Send a signal to the the child of the 'script' or 'ptypipe' process
+     * used on POSIX.  This may or may not work.
+     *
+     * @param signal the signal name
+     */
+    public void signalShellChildProcess(final String signal) {
+        long pid = getPid();
+
+        if (pid != -1) {
+            String [] cmdSendSignal = {
+                "kill", Long.toString(pid), "--signal", signal
+            };
+            try {
+                Runtime.getRuntime().exec(cmdSendSignal);
             } catch (Throwable e) {
                 // SQUASH, this didn't work.  Just bail out quietly.
                 return;

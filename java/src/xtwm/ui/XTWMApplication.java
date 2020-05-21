@@ -308,7 +308,7 @@ public class XTWMApplication extends TApplication {
 
         case MENU_APPLICATION_PROGRAMS_SHELL:
             // Spawn shell
-            currentDesktop().addWindow(openTerminal(0, 0));
+            currentDesktop().addWindow(new TerminalWindow(this));
             return true;
 
         case MENU_APPLICATION_PROGRAMS_EDITOR:
@@ -398,7 +398,8 @@ public class XTWMApplication extends TApplication {
             if (inputBox.isOk()) {
                 String command = inputBox.getText();
                 if (command.length() > 0) {
-                    currentDesktop().addWindow(openTerminal(0, 0, command));
+                    currentDesktop().addWindow(new TerminalWindow(this,
+                            command));
                 }
             }
             return true;

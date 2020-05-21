@@ -30,24 +30,20 @@ package xtwm.ui;
 
 import java.util.ResourceBundle;
 
-import jexer.TAction;
-import jexer.TDesktop;
+import jexer.TApplication;
 import jexer.TInputBox;
-import jexer.TSplitPane;
-import jexer.TTerminalWidget;
-import jexer.TWidget;
+import jexer.TTerminalWindow;
 import jexer.event.TMenuEvent;
 
 /**
- * TiledTerminal is a terminal widget that can be split vertically or
- * horizontally into two terminals.
+ * TerminalWindow is a terminal window with a few extra menu functions.
  */
-public class TiledTerminal extends TTerminalWidget {
+public class TerminalWindow extends TTerminalWindow {
 
     /**
      * Translated strings.
      */
-    private static ResourceBundle i18n = ResourceBundle.getBundle(TiledTerminal.class.getName());
+    private static ResourceBundle i18n = ResourceBundle.getBundle(TerminalWindow.class.getName());
 
     // ------------------------------------------------------------------------
     // Constants --------------------------------------------------------------
@@ -57,43 +53,29 @@ public class TiledTerminal extends TTerminalWidget {
     // Variables --------------------------------------------------------------
     // ------------------------------------------------------------------------
 
-    /**
-     * If we are in the middle of close, do not call remove().
-     */
-    private boolean inClose = false;
-
     // ------------------------------------------------------------------------
     // Constructors -----------------------------------------------------------
     // ------------------------------------------------------------------------
 
     /**
-     * Public constructor.
+     * Public constructor spawns a shell.
      *
-     * @param parent parent application
+     * @param application TApplication that manages this window
      */
-    public TiledTerminal(final TWidget parent) {
-        super(parent, 0, 0, parent.getWidth(), parent.getHeight(),
-            new TAction() {
-                public void DO() {
-                    if (source.getParent() instanceof TSplitPane) {
-                        ((TSplitPane) source.getParent()).removeSplit(source,
-                            true);
-                        return;
-                    }
-                    if (source.getParent() instanceof Desktop) {
-                        // This is the top-level terminal, clear the
-                        // shortcuts for the desktop.
-                        ((Desktop) source.getParent()).clearTerminalShortcuts();
-                    }
-                    if (source.getParent() instanceof TDesktop) {
-                        source.remove();
-                        return;
-                    }
-                }
-            });
-        if (getApplication().getDesktop() instanceof Desktop) {
-            ((Desktop) (getApplication().getDesktop())).addTerminalShortcuts();
-        }
+    public TerminalWindow(final TApplication application) {
+        super(application, 0, 0, RESIZABLE);
+    }
+
+    /**
+     * Public constructor spawns a shell.
+     *
+     * @param application TApplication that manages this window
+     * @param commandLine the command line to execute
+     */
+    public TerminalWindow(final TApplication application,
+        final String commandLine) {
+
+        super(application, 0, 0, RESIZABLE, commandLine.split("\\s+"));
     }
 
     // ------------------------------------------------------------------------
@@ -110,16 +92,6 @@ public class TiledTerminal extends TTerminalWidget {
 
         switch (event.getId()) {
 
-        case XTWMApplication.MENU_TERMINAL_HORIZONTAL_SPLIT:
-            splitHorizontal(false, new TiledTerminal(getParent()));
-            getParent().setEchoKeystrokes(isEchoKeystrokes(), true);
-            return;
-
-        case XTWMApplication.MENU_TERMINAL_VERTICAL_SPLIT:
-            splitVertical(false, new TiledTerminal(getParent()));
-            getParent().setEchoKeystrokes(isEchoKeystrokes(), true);
-            return;
-
         case XTWMApplication.MENU_TERMINAL_SESSION_SAVE_HTML:
             // TODO
             return;
@@ -129,20 +101,24 @@ public class TiledTerminal extends TTerminalWidget {
             return;
 
         case XTWMApplication.MENU_TERMINAL_SESSION_SEND_SIGTERM:
-            signalShellChildProcess("SIGTERM");
+            if (terminal.isReading()) {
+                terminal.signalShellChildProcess("SIGTERM");
+            }
             return;
 
         case XTWMApplication.MENU_TERMINAL_SESSION_SEND_OTHER_SIGNAL:
-            inputBox = inputBox(i18n.getString("signalInputBoxTitle"),
-                i18n.getString("signalInputBoxCaption"), "",
-                TInputBox.Type.OKCANCEL);
-            if (inputBox.isOk()) {
-                try {
-                    int signal = Integer.parseInt(inputBox.getText());
-                    signalShellChildProcess(signal);
-                } catch (NumberFormatException e) {
-                    // Squash the exception, this is a signal name instead.
-                    signalShellChildProcess(inputBox.getText());
+            if (terminal.isReading()) {
+                inputBox = inputBox(i18n.getString("signalInputBoxTitle"),
+                    i18n.getString("signalInputBoxCaption"), "",
+                    TInputBox.Type.OKCANCEL);
+                if (inputBox.isOk()) {
+                    try {
+                        int signal = Integer.parseInt(inputBox.getText());
+                        terminal.signalShellChildProcess(signal);
+                    } catch (NumberFormatException e) {
+                        // Squash the exception, this is a signal name instead.
+                        terminal.signalShellChildProcess(inputBox.getText());
+                    }
                 }
             }
             return;
@@ -160,34 +136,11 @@ public class TiledTerminal extends TTerminalWidget {
     }
 
     // ------------------------------------------------------------------------
-    // TTerminalWidget --------------------------------------------------------
+    // TTerminalWindow --------------------------------------------------------
     // ------------------------------------------------------------------------
 
-    /**
-     * Handle widget close.
-     */
-    @Override
-    public void close() {
-        super.close();
-
-        if (getParent() instanceof TSplitPane) {
-            ((TSplitPane) getParent()).removeSplit(this, true);
-        }
-        if (getParent() instanceof Desktop) {
-            // This is the top-level terminal, clear the shortcuts for the
-            // desktop.
-            ((Desktop) getParent()).clearTerminalShortcuts();
-        }
-        if (getParent() instanceof TDesktop) {
-            if (!inClose) {
-                inClose = true;
-                remove();
-            }
-        }
-    }
-
     // ------------------------------------------------------------------------
-    // TiledTerminal ----------------------------------------------------------
+    // TerminalWindow ---------------------------------------------------------
     // ------------------------------------------------------------------------
 
 }
