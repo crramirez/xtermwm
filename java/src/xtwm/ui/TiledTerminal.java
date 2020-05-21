@@ -80,6 +80,10 @@ public class TiledTerminal extends TTerminalWidget {
         super(parent, 0, 0, parent.getWidth(), parent.getHeight(),
             new TAction() {
                 public void DO() {
+                    TDesktop desktop = source.getApplication().getDesktop();
+                    if (desktop instanceof Desktop) {
+                        ((Desktop) desktop).removePanel(source);
+                    }
                     if (source.getParent() instanceof TSplitPane) {
                         ((TSplitPane) source.getParent()).removeSplit(source,
                             true);
@@ -98,6 +102,7 @@ public class TiledTerminal extends TTerminalWidget {
             });
         if (getApplication().getDesktop() instanceof Desktop) {
             ((Desktop) (getApplication().getDesktop())).addTerminalShortcuts();
+            ((Desktop) (getApplication().getDesktop())).addPanel(this);
         }
     }
 
@@ -211,6 +216,11 @@ public class TiledTerminal extends TTerminalWidget {
     @Override
     public void close() {
         super.close();
+
+        TDesktop desktop = getApplication().getDesktop();
+        if (desktop instanceof Desktop) {
+            ((Desktop) desktop).removePanel(this);
+        }
 
         if (getParent() instanceof TSplitPane) {
             ((TSplitPane) getParent()).removeSplit(this, true);

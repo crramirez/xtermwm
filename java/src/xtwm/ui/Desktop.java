@@ -28,8 +28,11 @@
  */
 package xtwm.ui;
 
+import java.util.LinkedList;
+
 import jexer.TApplication;
 import jexer.TDesktop;
+import jexer.TWidget;
 import jexer.bits.CellAttributes;
 import jexer.bits.GraphicsChars;
 import static jexer.TKeypress.*;
@@ -56,6 +59,11 @@ public class Desktop extends TDesktop {
      * Whether or not the terminal shortcut keys are set.
      */
     private boolean terminalShortcuts = false;
+
+    /**
+     * The list of panels on this desktop.
+     */
+    private LinkedList<TWidget> panels = new LinkedList<TWidget>();
 
     // ------------------------------------------------------------------------
     // Constructors -----------------------------------------------------------
@@ -181,6 +189,86 @@ public class Desktop extends TDesktop {
     void clearTerminalShortcuts() {
         clearShortcutKeypresses();
         terminalShortcuts = false;
+    }
+
+    /**
+     * Activate the next panel on this desktop.
+     */
+    public void nextPanel() {
+        if (panels.size() >= 2) {
+            sortPanels();
+            panels.addLast(panels.removeFirst());
+            panels.getFirst().activateAll();
+        }
+    }
+
+    /**
+     * Activate the next panel on this desktop.
+     */
+    public void previousPanel() {
+        if (panels.size() >= 2) {
+            sortPanels();
+            panels.addFirst(panels.removeLast());
+            panels.getFirst().activateAll();
+        }
+    }
+
+    /**
+     * Add a panel to this desktop.
+     *
+     * @param widget the panel widget
+     */
+    public void addPanel(final TWidget widget) {
+        panels.add(widget);
+    }
+
+    /**
+     * Remove a panel from this desktop.
+     *
+     * @param widget the panel widget
+     */
+    public void removePanel(final TWidget widget) {
+        panels.remove(widget);
+    }
+
+    /**
+     * Sort the list based on absolute screen coordinates, and arrange so
+     * that the active panel is the first in the list.
+     */
+    private void sortPanels() {
+        boolean hasActive = false;
+        for (int i = 0; i < panels.size(); i++) {
+            for (int j = i; j < panels.size(); j++) {
+                TWidget a = panels.get(i);
+                int az = (a.getAbsoluteY() * getWidth()) + a.getAbsoluteX();
+                if (a.isAbsoluteActive()) {
+                    hasActive = true;
+                }
+
+                TWidget b = panels.get(j);
+                int bz = (b.getAbsoluteY() * getWidth()) + b.getAbsoluteX();
+                if (bz < az) {
+                    panels.set(j, a);
+                    panels.set(i, b);
+                }
+            }
+        }
+
+        if (hasActive) {
+            while (!panels.getFirst().isAbsoluteActive()) {
+                panels.addLast(panels.removeFirst());
+            }
+        }
+
+        /*
+        for (TWidget panel: panels) {
+            System.err.println(panel);
+        }
+
+        System.err.println("\n\n\n");
+        System.err.println(toPrettyString());
+        System.err.println("\n");
+         */
     }
 
 }

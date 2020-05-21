@@ -68,6 +68,8 @@ public class StandardPluginLoader implements PluginLoader {
     public List<Class<?>> getPluginClasses() {
         List<Class<?>> plugins = new LinkedList<Class<?>>();
 
+        plugins.add(Calendar.class);
+        plugins.add(SystemMonitor.class);
         return plugins;
     }
 

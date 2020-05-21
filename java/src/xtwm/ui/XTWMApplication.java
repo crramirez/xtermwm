@@ -39,7 +39,9 @@ import java.text.MessageFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Properties;
 import java.util.ResourceBundle;
 import java.util.ServiceLoader;
@@ -53,7 +55,9 @@ import jexer.TFontChooserWindow;
 import jexer.THelpWindow;
 import jexer.TInputBox;
 import jexer.TMessageBox;
+import jexer.TSplitPane;
 import jexer.TStatusBar;
+import jexer.TWidget;
 import jexer.TWindow;
 import jexer.backend.Backend;
 import jexer.backend.SwingTerminal;
@@ -92,18 +96,22 @@ public class XTWMApplication extends TApplication {
      */
     public static final String VERSION = "0.0.1";
 
+    /**
+     * The menu ID marking the beginning of application plugins.
+     */
+    private static final int APP_MENU_ID_MIN = 10000;
+
+    /**
+     * The menu ID marking the beginning of widget plugins.
+     */
+    private static final int WIDGET_MENU_ID_MIN = 20000;
+
     /*
      * Available menu commands.  Note that the package private items are
      * handled by other classes.
      */
     private static final int MENU_APPLICATION_PROGRAMS_SHELL            = 2010;
     private static final int MENU_APPLICATION_PROGRAMS_EDITOR           = 2011;
-    private static final int MENU_APPLICATION_WIDGETS_CALCULATOR        = 2020;
-    private static final int MENU_APPLICATION_WIDGETS_CALENDAR          = 2021;
-    private static final int MENU_APPLICATION_WIDGETS_DESKTOP_PAGER     = 2022;
-    private static final int MENU_APPLICATION_WIDGETS_FILE_MANAGER      = 2023;
-    private static final int MENU_APPLICATION_WIDGETS_QUICK_NOTE        = 2024;
-    private static final int MENU_APPLICATION_WIDGETS_PERF_MONITOR      = 2025;
     private static final int MENU_APPLICATION_SETTINGS_DISPLAY          = 2030;
     private static final int MENU_APPLICATION_SETTINGS_COLORS           = 2031;
     private static final int MENU_APPLICATION_SETTINGS_ENVIRONMENT      = 2032;
@@ -181,9 +189,34 @@ public class XTWMApplication extends TApplication {
     private SimpleDateFormat clockFormat = null;
 
     /**
+     * The Application | Programs submenu.
+     */
+    private TSubMenu programsMenu;
+
+    /**
      * The Application | Widgets submenu.
      */
     private TSubMenu widgetsMenu;
+
+    /**
+     * The directory that plugins have write access to.
+     */
+    private File pluginDataDir;
+
+    /**
+     * The plugin options.
+     */
+    private Map<String, Properties> pluginOptions;
+
+    /**
+     * A map of menu ID to plugin class, for the Application | Programs menu.
+     */
+    private Map<Integer, Class<? extends PluginWidget>> pluginAppMenuIds;
+
+    /**
+     * A map of menu ID to plugin class, for the Application | Widgets menu.
+     */
+    private Map<Integer, Class<? extends PluginWidget>> pluginWidgetMenuIds;
 
     // ------------------------------------------------------------------------
     // Constructors -----------------------------------------------------------
@@ -300,8 +333,9 @@ public class XTWMApplication extends TApplication {
     @Override
     public boolean onMenu(final TMenuEvent menu) {
 
-        TInputBox inputBox;
-        TWindow window;
+        TInputBox inputBox = null;
+        TWindow window = null;
+        TWidget widget = null;
 
         // Dispatch menu event
         switch (menu.getId()) {
@@ -312,30 +346,6 @@ public class XTWMApplication extends TApplication {
             return true;
 
         case MENU_APPLICATION_PROGRAMS_EDITOR:
-            // TODO
-            return true;
-
-        case MENU_APPLICATION_WIDGETS_CALCULATOR:
-            // TODO
-            return true;
-
-        case MENU_APPLICATION_WIDGETS_CALENDAR:
-            // TODO
-            return true;
-
-        case MENU_APPLICATION_WIDGETS_DESKTOP_PAGER:
-            // TODO
-            return true;
-
-        case MENU_APPLICATION_WIDGETS_FILE_MANAGER:
-            // TODO
-            return true;
-
-        case MENU_APPLICATION_WIDGETS_QUICK_NOTE:
-            // TODO
-            return true;
-
-        case MENU_APPLICATION_WIDGETS_PERF_MONITOR:
             // TODO
             return true;
 
@@ -432,15 +442,22 @@ public class XTWMApplication extends TApplication {
             return true;
 
         case MENU_PANEL_NEXT:
-            // TODO
+            if (getDesktop() instanceof Desktop) {
+                ((Desktop) getDesktop()).nextPanel();
+            }
             return true;
 
         case MENU_PANEL_PREVIOUS:
-            // TODO
+            if (getDesktop() instanceof Desktop) {
+                ((Desktop) getDesktop()).previousPanel();
+            }
             return true;
 
         case MENU_PANEL_CLOSE:
-            // TODO
+            widget = getDesktop().getActiveChild();
+            if (widget != null) {
+                widget.remove();
+            }
             return true;
 
         case MENU_PANEL_SAVE_LAYOUT:
@@ -515,10 +532,46 @@ public class XTWMApplication extends TApplication {
             return true;
 
         default:
-            // Not handled here.
-            return super.onMenu(menu);
+            break;
         }
 
+        if ((menu.getId() >= APP_MENU_ID_MIN)
+            && (menu.getId() < WIDGET_MENU_ID_MIN)
+        ) {
+            // TODO: spawn the application for the plugin
+
+            return true;
+        } else if (menu.getId() >= WIDGET_MENU_ID_MIN) {
+            // Add the widget to a new window.
+            Class<? extends PluginWidget> pluginClass = null;
+            pluginClass = pluginWidgetMenuIds.get(menu.getId());
+
+            if (pluginClass != null) {
+                window = new TWindow(this, "PLACEHOLDER",
+                    getScreen().getWidth(),
+                    getDesktopBottom() - getDesktopTop());
+
+                PluginWidget plugin = null;
+                try {
+                    plugin = pluginClass.getConstructor(TWidget.class).newInstance(window);
+                    window.setTitle(getMenuItem(
+                        menu.getId()).getMnemonic().getRawLabel());
+                    plugin.setDimensions(0, 0,
+                        plugin.getPreferredWidth(),
+                        plugin.getPreferredHeight());
+                    window.setDimensions(0, getDesktopTop(),
+                        plugin.getWidth() + 2,
+                        plugin.getHeight() + 2);
+                } catch (Exception e) {
+                    // Show this exception to the user.
+                    new TExceptionDialog(this, e);
+                }
+            }
+            return true;
+        } else {
+            // Not handled here, pass it on.
+            return super.onMenu(menu);
+        }
     }
 
     /**
@@ -598,23 +651,10 @@ public class XTWMApplication extends TApplication {
             i18n.getString("applicationProgramsShell"), kbCtrlS);
         subPrograms.addItem(MENU_APPLICATION_PROGRAMS_EDITOR,
             i18n.getString("applicationProgramsEditor"));
+        programsMenu = subPrograms;
 
-        // TODO: turn this into a plugins thing instead
-        TSubMenu subWidgets = applicationMenu.addSubMenu(i18n.
+        widgetsMenu = applicationMenu.addSubMenu(i18n.
             getString("applicationWidgets"));
-        subWidgets.addItem(MENU_APPLICATION_WIDGETS_CALCULATOR,
-            i18n.getString("applicationWidgetsCalculator"));
-        subWidgets.addItem(MENU_APPLICATION_WIDGETS_CALENDAR,
-            i18n.getString("applicationWidgetsCalendar"));
-        subWidgets.addItem(MENU_APPLICATION_WIDGETS_DESKTOP_PAGER,
-            i18n.getString("applicationWidgetsDesktopPager"));
-        subWidgets.addItem(MENU_APPLICATION_WIDGETS_FILE_MANAGER,
-            i18n.getString("applicationWidgetsFileManager"));
-        subWidgets.addItem(MENU_APPLICATION_WIDGETS_QUICK_NOTE,
-            i18n.getString("applicationWidgetsQuickNote"));
-        subWidgets.addItem(MENU_APPLICATION_WIDGETS_PERF_MONITOR,
-            i18n.getString("applicationWidgetsPerformanceMonitor"));
-        widgetsMenu = subWidgets;
 
         applicationMenu.addSeparator();
 
@@ -692,9 +732,10 @@ public class XTWMApplication extends TApplication {
         panelMenu.addItem(MENU_PANEL_SWITCH_TO,
             i18n.getString("panelSwitchTo"));
         panelMenu.addSeparator();
-        panelMenu.addItem(MENU_PANEL_NEXT, i18n.getString("panelNext"), kbF7);
+        panelMenu.addItem(MENU_PANEL_NEXT, i18n.getString("panelNext"),
+            kbShiftF3);
         panelMenu.addItem(MENU_PANEL_PREVIOUS, i18n.getString("panelPrevious"),
-            kbShiftF7);
+            kbShiftF4);
         panelMenu.addItem(MENU_PANEL_CLOSE, i18n.getString("panelClose"));
         panelMenu.addSeparator();
         panelMenu.addItem(MENU_PANEL_SAVE_LAYOUT,
@@ -715,11 +756,11 @@ public class XTWMApplication extends TApplication {
             i18n.getString("windowCloseAll"));
         windowMenu.addSeparator();
         windowMenu.addItem(TMenu.MID_WINDOW_MOVE, i18n.getString("windowMove"),
-            kbShiftF5);
+            kbShiftF7);
         windowMenu.addItem(TMenu.MID_WINDOW_ZOOM, i18n.getString("windowZoom"),
-            kbF5);
+            kbShiftF8);
         windowMenu.addItem(TMenu.MID_WINDOW_NEXT, i18n.getString("windowNext"),
-            kbF6);
+            kbShiftF5);
         windowMenu.addItem(TMenu.MID_WINDOW_PREVIOUS,
             i18n.getString("windowPrevious"), kbShiftF6);
         windowMenu.addItem(TMenu.MID_WINDOW_CLOSE,
@@ -731,9 +772,9 @@ public class XTWMApplication extends TApplication {
             i18n.getString("windowOnAllDesktops"));
         windowMenu.addSeparator();
         windowMenu.addItem(MENU_WINDOW_NEXT_DESKTOP,
-            i18n.getString("windowNextDesktop"), kbF9);
+            i18n.getString("windowNextDesktop"), kbShiftF11);
         windowMenu.addItem(MENU_WINDOW_PREVIOUS_DESKTOP,
-            i18n.getString("windowPreviousDesktop"), kbShiftF9);
+            i18n.getString("windowPreviousDesktop"), kbShiftF12);
 
         TStatusBar windowStatusBar = windowMenu.newStatusBar(i18n.
             getString("windowMenuStatus"));
@@ -791,24 +832,6 @@ public class XTWMApplication extends TApplication {
         setDesktop(currentDesktop().getDesktop(), true);
     }
 
-    /**
-     * Load all plugins (xtwm.plugins.PluginLoader) via the ServiceLoader
-     * interface.
-     */
-    private void loadPlugins() {
-        ServiceLoader<PluginLoader> services;
-        services = ServiceLoader.load(PluginLoader.class);
-
-        for (PluginLoader loader: services) {
-            List<Class<?>> plugins = loader.getPluginClasses();
-            for (Class<?> pluginClass: plugins) {
-                if (pluginClass.isAssignableFrom(PluginWidget.class)) {
-                    loadPlugin(pluginClass);
-                }
-            }
-        }
-    }
-
     // ------------------------------------------------------------------------
     // Options support --------------------------------------------------------
     // ------------------------------------------------------------------------
@@ -825,6 +848,7 @@ public class XTWMApplication extends TApplication {
         String homeDir = System.getProperty("user.home");
         String configDir = options.getProperty("xtwm.configDir");
         File rcDir = null;
+        pluginDataDir = null;
 
         if (configDir == null) {
             configFilename = homeDir + "/.xtwm/xtwm.properties";
@@ -844,6 +868,16 @@ public class XTWMApplication extends TApplication {
         } else if (!rcDir.exists()) {
             // ~/.xtwm needs to be created.
             rcDir.mkdir();
+        }
+
+        pluginDataDir = new File(rcDir, "plugindata");
+        if (pluginDataDir.isFile()) {
+            // A file exists where we expect ~/.xtwm/plugindata to be.
+            // Plugins will not be able to read/write data.
+            pluginDataDir = null;
+        } else if (!pluginDataDir.exists()) {
+            // ~/.xtwm/plugindata needs to be created.
+            pluginDataDir.mkdir();
         }
 
         if (configFilename != null) {
@@ -1164,6 +1198,8 @@ public class XTWMApplication extends TApplication {
         setHideStatusBar(false);
     }
 
+    // Desktop management -----------------------------------------------------
+
     /**
      * Get the current desktop.
      *
@@ -1213,18 +1249,161 @@ public class XTWMApplication extends TApplication {
         getMenuItem(MENU_TERMINAL_SEND_KEYS_TO_ALL).setChecked(getDesktop().isEchoKeystrokes());
     }
 
+    // Plugin management ------------------------------------------------------
+
+    /**
+     * Load all plugins (xtwm.plugins.PluginLoader) via the ServiceLoader
+     * interface.
+     */
+    private void loadPlugins() {
+        pluginOptions = new HashMap<String, Properties>();
+        pluginAppMenuIds = new HashMap<Integer, Class<? extends PluginWidget>>();
+        pluginWidgetMenuIds = new HashMap<Integer, Class<? extends PluginWidget>>();
+
+        ServiceLoader<PluginLoader> services;
+        services = ServiceLoader.load(PluginLoader.class);
+
+        for (PluginLoader loader: services) {
+            List<Class<?>> plugins = loader.getPluginClasses();
+            for (Class<?> pluginClass: plugins) {
+                if (PluginWidget.class.isAssignableFrom(pluginClass)) {
+                    loadPlugin(pluginClass);
+                }
+            }
+        }
+    }
+
     /**
      * Load one plugin into the menu.
      *
      * @param plugin the plugin to load
      */
-    public void loadPlugin(final Class<?> plugin) {
-        if (!plugin.isAssignableFrom(PluginWidget.class)) {
+    private void loadPlugin(final Class<?> plugin) {
+        if (!PluginWidget.class.isAssignableFrom(plugin)) {
             throw new IllegalArgumentException("Class " + plugin +
                 " is not an instance of xtwm.plugins.PluginWidget");
         }
 
-        // TODO
+        // Every plugin must have a zero-argument constructor.
+        try {
+            PluginWidget widget = (PluginWidget) plugin.getDeclaredConstructor().newInstance();
+            String pluginName = widget.getPluginName();
+            loadPluginProperties(pluginName);
+            widget.initialize(this);
+
+            if (widget.isApplication()) {
+                int menuId = pluginAppMenuIds.size() + APP_MENU_ID_MIN;
+                programsMenu.addItem(menuId, widget.getMenuMnemonic());
+                pluginAppMenuIds.put(menuId, widget.getClass());
+            }
+
+            if (widget.isWidget()) {
+                int menuId = pluginWidgetMenuIds.size() + WIDGET_MENU_ID_MIN;
+                widgetsMenu.addItem(menuId, widget.getMenuMnemonic());
+                pluginWidgetMenuIds.put(menuId, widget.getClass());
+            }
+
+        } catch (NoSuchMethodException e) {
+            throw new IllegalArgumentException("Plugin " + plugin.getName() +
+                " does not have a no-argument constructor");
+        } catch (InstantiationException e) {
+            throw new IllegalArgumentException("Plugin " + plugin.getName() +
+                "'s no-argument constructor failed", e);
+        } catch (IllegalAccessException e) {
+            throw new IllegalArgumentException("Plugin " + plugin.getName() +
+                "'s no-argument constructor failed", e);
+        } catch (java.lang.reflect.InvocationTargetException e) {
+            throw new IllegalArgumentException("Plugin " + plugin.getName() +
+                "'s no-argument constructor failed", e);
+        }
+
+        programsMenu.sort(APP_MENU_ID_MIN - 1);
+        widgetsMenu.sort();
+    }
+
+    /**
+     * Load the properties for a plugin.
+     *
+     * @param pluginName name of the plugin
+     */
+    public void loadPluginProperties(final String pluginName) {
+        Properties props = new Properties();
+        File propsFile = new File(pluginDataDir, pluginName + ".properties");
+        try {
+            if (!propsFile.exists()) {
+                props.store(new FileWriter(propsFile),
+                    "Properties for plugin: " + pluginName);
+            } else {
+                props.load(new FileReader(propsFile));
+            }
+        } catch (IOException e) {
+            // Show this exception to the user.
+            new TExceptionDialog(this, e);
+        }
+
+        pluginOptions.put(pluginName, props);
+    }
+
+    /**
+     * Get a plugin option value.
+     *
+     * @param pluginName name of the plugin
+     * @param key name of the option
+     * @return the option value, or null if it is undefined
+     */
+    public String getPluginOption(final String pluginName, final String key) {
+        Properties pluginProps = pluginOptions.get(pluginName);
+        if (pluginProps == null) {
+            return null;
+        }
+        return pluginProps.getProperty(key);
+    }
+
+    /**
+     * Get a plugin option value.
+     *
+     * @param pluginName name of the plugin
+     * @param key name of the option
+     * @param defaultValue the value to return if the option is not defined
+     * @return the option value, or defaultValue
+     */
+    public String getPluginOption(final String pluginName, final String key,
+        final String defaultValue) {
+
+        Properties pluginProps = pluginOptions.get(pluginName);
+        if (pluginProps == null) {
+            return null;
+        }
+        String result = pluginProps.getProperty(key);
+        if (result == null) {
+            return defaultValue;
+        }
+        return result;
+    }
+
+    /**
+     * Set a plugin option value.
+     *
+     * @param pluginName name of the plugin
+     * @param key name of the option
+     * @param value the new the option value
+     */
+    public void setPluginOption(final String pluginName, final String key,
+        final String value) {
+
+        Properties pluginProps = pluginOptions.get(pluginName);
+        if (pluginProps != null) {
+            pluginProps.setProperty(key, value);
+        }
+    }
+
+    /**
+     * Get the directory that plugins are expected to read and write from.
+     *
+     * @return the plugin data directory, or null if it is not available
+     */
+    public File getPluginDataDir() {
+        return pluginDataDir;
     }
 
 }

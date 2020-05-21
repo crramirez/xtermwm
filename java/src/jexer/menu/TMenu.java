@@ -852,4 +852,12 @@ public class TMenu extends TWindow {
         return subMenu;
     }
 
+    /**
+     * Reset the tab order of children to match their position in the list.
+     * Available so that subclasses can re-order their widgets if needed.
+     */
+    protected void resetTabOrder() {
+        super.resetTabOrder();
+    }
+
 }

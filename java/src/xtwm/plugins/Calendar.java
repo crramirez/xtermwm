@@ -28,19 +28,21 @@
  */
 package xtwm.plugins;
 
-import java.io.File;
+import java.util.ResourceBundle;
 
+import jexer.TAction;
 import jexer.TWidget;
-import jexer.TPanel;
 import jexer.bits.MnemonicString;
 
-import xtwm.ui.XTWMApplication;
-
 /**
- * PluginWidget is a plugin.  Its interface can be instantiated in a separate
- * window or as part of a tiled panel.
+ * Calendar is a simple calendar view.
  */
-public abstract class PluginWidget extends TWidget {
+public class Calendar extends PluginWidget {
+
+    /**
+     * Translated strings.
+     */
+    private static ResourceBundle i18n = ResourceBundle.getBundle(Calendar.class.getName());
 
     // ------------------------------------------------------------------------
     // Constants --------------------------------------------------------------
@@ -50,22 +52,31 @@ public abstract class PluginWidget extends TWidget {
     // Variables --------------------------------------------------------------
     // ------------------------------------------------------------------------
 
-    /**
-     * The XTWMApplication using this plugin.
-     */
-    private XTWMApplication app;
-
     // ------------------------------------------------------------------------
     // Constructors -----------------------------------------------------------
     // ------------------------------------------------------------------------
 
     /**
-     * Constructor for subclasses.
+     * Public constructor.
      *
      * @param parent parent widget
      */
-    protected PluginWidget(final TWidget parent) {
+    public Calendar(final TWidget parent) {
         super(parent);
+
+        addCalendar(0, 0, new TAction() {
+            public void DO() {
+                // Nothing yet, just display the calendar.
+            }
+        });
+    }
+
+    /**
+     * No-argument constructor that is intended only for use by
+     * XTWMApplication.loadPlugin().
+     */
+    public Calendar() {
+        super(null);
     }
 
     // ------------------------------------------------------------------------
@@ -85,21 +96,30 @@ public abstract class PluginWidget extends TWidget {
      *
      * @return a mnemonic string that will be populated in the menu
      */
-    public abstract String getMenuMnemonic();
+    @Override
+    public String getMenuMnemonic() {
+        return i18n.getString("mnemonic");
+    }
 
     /**
      * Get the translated short name for this plugin.
      *
      * @return a short name, e.g. "Calendar"
      */
-    public abstract String getPluginName();
+    @Override
+    public String getPluginName() {
+        return i18n.getString("name");
+    }
 
     /**
      * Get the translated full description for this plugin.
      *
      * @return a short name, e.g. "A simple calendar with TODO manager."
      */
-    public abstract String getPluginDescription();
+    @Override
+    public String getPluginDescription() {
+        return i18n.getString("description");
+    }
 
     /**
      * See if this is an "Application" plugin.
@@ -107,14 +127,20 @@ public abstract class PluginWidget extends TWidget {
      * @return true if this plugin should be listed the Application |
      * Programs menu
      */
-    public abstract boolean isApplication();
+    @Override
+    public boolean isApplication() {
+        return false;
+    }
 
     /**
      * Get the command line to execute if this is an "Application" plugin.
      *
      * @return a command line
      */
-    public abstract String getApplicationCommand();
+    @Override
+    public String getApplicationCommand() {
+        return null;
+    }
 
     /**
      * See if this is a "Widget" plugin.
@@ -122,19 +148,9 @@ public abstract class PluginWidget extends TWidget {
      * @return true if this plugin should be available in the Application |
      * Widgets meny and the Panel | "Switch to" dialog
      */
-    public abstract boolean isWidget();
-
-    /**
-     * Initialize the plugin.  Since plugins are required to have a
-     * no-argument constructor, this method is called to provide a hook for
-     * the plugin perform initialization.  Subclasses that override
-     * initialize should call super.initialize() to set the XTWMApplication
-     * reference.
-     *
-     * @param app the application that will be using this plugin
-     */
-    public void initialize(final XTWMApplication app) {
-        this.app = app;
+    @Override
+    public boolean isWidget() {
+        return true;
     }
 
     /**
@@ -143,9 +159,10 @@ public abstract class PluginWidget extends TWidget {
      * @param parent parent widget
      * @return a widget that has settings
      */
+    @Override
     public TWidget getPluginSettingsEditor(final TWidget parent) {
-        // Default implementation shows a blank panel.
-        return new TPanel(parent, 0, 0, getWidth(), getHeight());
+        // TODO: Expose calendar options like week starts on Monday
+        return super.getPluginSettingsEditor(parent);
     }
 
     /**
@@ -153,67 +170,23 @@ public abstract class PluginWidget extends TWidget {
      *
      * @return the width
      */
-    public abstract int getPreferredWidth();
+    @Override
+    public int getPreferredWidth() {
+        return 28;
+    }
 
     /**
      * Get the desired height when rendering this plugin.
      *
      * @return the height
      */
-    public abstract int getPreferredHeight();
-
-    /**
-     * Get an option value for this plugin.
-     *
-     * @param key name of the option
-     * @return the option value, or null if it is undefined
-     */
-    protected String getOption(final String key) {
-        if (app == null) {
-            return null;
-        }
-        return app.getPluginOption(getPluginName(), key);
+    @Override
+    public int getPreferredHeight() {
+        return 8;
     }
 
-    /**
-     * Get an option value for this plugin.
-     *
-     * @param key name of the option
-     * @param defaultValue the value to return if the option is not defined
-     * @return the option value, or defaultValue
-     */
-    protected String getOption(final String key, final String defaultValue) {
-        if (app == null) {
-            return defaultValue;
-        }
-        return app.getPluginOption(getPluginName(), key, defaultValue);
-    }
-
-    /**
-     * Set an option value for this plugin.
-     *
-     * @param key name of the option
-     * @param value the new the option value
-     */
-    protected void setOption(final String key, final String value) {
-        if (app != null) {
-            app.setPluginOption(getPluginName(), key, value);
-        }
-    }
-
-    /**
-     * Obtain a File relative to the plugin data directory.  Note that there
-     * is a single plugin data directory for all plugins.
-     *
-     * @param pathname a pathname string
-     * @return a File instance
-     */
-    protected File makeDataFile(final String pathname) {
-        if (app == null) {
-            throw new UnsupportedOperationException("Not a plugin of " +
-                "XTWMApplication");
-        }
-        return new File(app.getPluginDataDir(), pathname);
-    }
+    // ------------------------------------------------------------------------
+    // Calendar ---------------------------------------------------------------
+    // ------------------------------------------------------------------------
 
 }

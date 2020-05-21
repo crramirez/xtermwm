@@ -144,12 +144,11 @@
         version="true"
         use="true"
         classpathref="project.classpath"
-        access="public"
+        access="protected"
         windowtitle="Xterm Window Manager - API docs"
         additionalparam="--frames"
         >
 
-      <!--  access="protected" -->
       <fileset dir="${src.dir}" defaultexcludes="yes">
         <include name="xtwm/**/*.java"/>
         <include name="jexer/**/*.java"/>
