@@ -2853,59 +2853,8 @@ public class TApplication implements Runnable {
             if (activeMenu != null) {
                 return;
             }
-            int z = windows.size();
-            if (z == 0) {
-                return;
-            }
-            int a = 0;
-            int b = 0;
-            a = (int)(Math.sqrt(z));
-            int c = 0;
-            while (c < a) {
-                b = (z - c) / a;
-                if (((a * b) + c) == z) {
-                    break;
-                }
-                c++;
-            }
-            assert (a > 0);
-            assert (b > 0);
-            assert (c < a);
-            int newWidth = (getScreen().getWidth() / a);
-            int newHeight1 = ((getScreen().getHeight() - 1) / b);
-            int newHeight2 = ((getScreen().getHeight() - 1) / (b + c));
-
-            List<TWindow> sorted = new ArrayList<TWindow>(windows);
-            Collections.sort(sorted);
-            Collections.reverse(sorted);
-            for (int i = 0; i < sorted.size(); i++) {
-                int logicalX = i / b;
-                int logicalY = i % b;
-                if (i >= ((a - 1) * b)) {
-                    logicalX = a - 1;
-                    logicalY = i - ((a - 1) * b);
-                }
-
-                TWindow w = sorted.get(i);
-                int oldWidth = w.getWidth();
-                int oldHeight = w.getHeight();
-
-                w.setX(logicalX * newWidth);
-                w.setWidth(newWidth);
-                if (i >= ((a - 1) * b)) {
-                    w.setY((logicalY * newHeight2) + 1);
-                    w.setHeight(newHeight2);
-                } else {
-                    w.setY((logicalY * newHeight1) + 1);
-                    w.setHeight(newHeight1);
-                }
-                if ((w.getWidth() != oldWidth)
-                    || (w.getHeight() != oldHeight)
-                ) {
-                    w.onResize(new TResizeEvent(TResizeEvent.Type.WIDGET,
-                            w.getWidth(), w.getHeight()));
-                }
-            }
+            jexer.bits.WidgetUtils.tileWidgets(windows, getScreen().getWidth(),
+                desktopBottom - desktopTop, desktopTop);
         }
     }
 
