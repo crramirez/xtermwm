@@ -1497,8 +1497,10 @@ public class TApplication implements Runnable {
         if (window != null) {
             assert (window.isActive());
             assert (window.isShown());
+
+            TMouseEvent mouse = null;
             if (event instanceof TMouseEvent) {
-                TMouseEvent mouse = (TMouseEvent) event;
+                mouse = (TMouseEvent) event;
                 // Convert the mouse relative x/y to window coordinates
                 assert (mouse.getX() == mouse.getAbsoluteX());
                 assert (mouse.getY() == mouse.getAbsoluteY());
@@ -1526,6 +1528,14 @@ public class TApplication implements Runnable {
             window.handleEvent(event);
             if (doubleClick != null) {
                 window.handleEvent(doubleClick);
+            }
+            if (mouse != null) {
+                if (window.mouseWouldHit(mouse)) {
+                    // If we are dragging the window, the new coordinates
+                    // might fully capture the mouse again.  If so, do not
+                    // let the desktop see it.
+                    dispatchToDesktop = false;
+                }
             }
         }
         if (dispatchToDesktop) {
