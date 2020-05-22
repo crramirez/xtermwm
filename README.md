@@ -6,9 +6,14 @@ manager for the console.  Major features include:
 
   * Virtual desktops.
 
-  * Tiled windows with mouse-draggable resizing.
+  * Cascading/overlapping/floating windows with mouse-draggable move
+    and resizing.
 
-  * A plugin system.
+  * Tiled/paned windows with mouse-draggable resizing on the pane
+    split lines.
+
+  * A plugin system for adding custom widgets, windows, and other
+    functions.
 
   * The ability to run in both Xterm-like environments (Unix command
     line shells or over ssh) and as a Swing component for
@@ -18,11 +23,12 @@ manager for the console.  Major features include:
     Xterm, images are rendered as sixel graphic sequences.
 
   * A text terminal window / shell with good Xterm/VT100 support,
-    including mouse.  Terminal windows will also resize correctly if
-    using 'ptypipe'.
+    including mouse.  Terminal windows will also resize correctly due
+    to the included 'ptypipe' utility.
 
   * Support for the raw Linux console.  GPM mouse support will work
     when run inside 'lcxterm' or 'qodem'.
+
 
 
 License

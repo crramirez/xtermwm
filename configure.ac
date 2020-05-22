@@ -1,4 +1,4 @@
-AC_INIT([xtermwm], [0.0.1])
+AC_INIT([xtermwm], [0.1.0])
 AC_CONFIG_SRCDIR([java/build.xml])
 AM_INIT_AUTOMAKE([foreign subdir-objects])
 

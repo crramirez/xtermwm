@@ -31,8 +31,8 @@ package xtwm.plugins;
 import java.util.ResourceBundle;
 
 import jexer.TAction;
+import jexer.TCalendar;
 import jexer.TWidget;
-import jexer.bits.MnemonicString;
 
 /**
  * Calendar is a simple calendar view.
@@ -52,6 +52,11 @@ public class Calendar extends PluginWidget {
     // Variables --------------------------------------------------------------
     // ------------------------------------------------------------------------
 
+    /**
+     * The calendar.
+     */
+    private TCalendar calendar;
+
     // ------------------------------------------------------------------------
     // Constructors -----------------------------------------------------------
     // ------------------------------------------------------------------------
@@ -64,7 +69,7 @@ public class Calendar extends PluginWidget {
     public Calendar(final TWidget parent) {
         super(parent);
 
-        addCalendar(0, 0, new TAction() {
+        calendar = addCalendar(0, 0, new TAction() {
             public void DO() {
                 // Nothing yet, just display the calendar.
             }
@@ -172,7 +177,7 @@ public class Calendar extends PluginWidget {
      */
     @Override
     public int getPreferredWidth() {
-        return 28;
+        return calendar.getWidth();
     }
 
     /**
@@ -182,7 +187,7 @@ public class Calendar extends PluginWidget {
      */
     @Override
     public int getPreferredHeight() {
-        return 8;
+        return calendar.getHeight();
     }
 
     // ------------------------------------------------------------------------

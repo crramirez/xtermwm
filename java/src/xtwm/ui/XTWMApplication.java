@@ -67,6 +67,7 @@ import jexer.bits.ColorTheme;
 import jexer.event.TCommandEvent;
 import jexer.event.TKeypressEvent;
 import jexer.event.TMenuEvent;
+import jexer.event.TResizeEvent;
 import jexer.help.Topic;
 import jexer.menu.TMenu;
 import jexer.menu.TMenuItem;
@@ -94,7 +95,7 @@ public class XTWMApplication extends TApplication {
     /**
      * Release version.
      */
-    public static final String VERSION = "0.0.1";
+    public static final String VERSION = "0.1.0";
 
     /**
      * The menu ID marking the beginning of application plugins.
@@ -455,7 +456,7 @@ public class XTWMApplication extends TApplication {
 
         case MENU_PANEL_CLOSE:
             widget = getDesktop().getActiveChild();
-            if (widget != null) {
+            if ((widget != null) && (widget != getDesktop())) {
                 widget.remove();
             }
             return true;
@@ -549,7 +550,20 @@ public class XTWMApplication extends TApplication {
             if (pluginClass != null) {
                 window = new TWindow(this, "PLACEHOLDER",
                     getScreen().getWidth(),
-                    getDesktopBottom() - getDesktopTop());
+                    getDesktopBottom() - getDesktopTop()) {
+
+                    public void onResize(final TResizeEvent resize) {
+                        if (resize.getType() == TResizeEvent.Type.WIDGET) {
+                            if (getChildren().size() == 1) {
+                                TWidget widget = getChildren().get(0);
+                                widget.onResize(new TResizeEvent(TResizeEvent.Type.WIDGET,
+                                        getWidth() - 2, getHeight() - 2));
+                                return;
+                            }
+                        }
+                        super.onResize(resize);
+                    }
+                };
 
                 PluginWidget plugin = null;
                 try {
@@ -562,6 +576,7 @@ public class XTWMApplication extends TApplication {
                     window.setDimensions(0, getDesktopTop(),
                         plugin.getWidth() + 2,
                         plugin.getHeight() + 2);
+                    window.setResizable(plugin.isResizable());
                 } catch (Exception e) {
                     // Show this exception to the user.
                     new TExceptionDialog(this, e);

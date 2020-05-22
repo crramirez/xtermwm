@@ -1317,6 +1317,31 @@ public class TWindow extends TWidget {
     }
 
     /**
+     * Returns true if this window is resizable.
+     *
+     * @return true if this window is resizable
+     */
+    public final boolean isResizable() {
+        if ((flags & RESIZABLE) == 0) {
+            return false;
+        }
+        return true;
+    }
+
+    /**
+     * Set this window's resizable flag.
+     *
+     * @param resizable if true, this window will be resizable
+     */
+    public final void setResizable(final boolean resizable) {
+        if (resizable) {
+            flags |= RESIZABLE;
+        } else {
+            flags &= ~RESIZABLE;
+        }
+    }
+
+    /**
      * Retrieve the background color.
      *
      * @return the background color

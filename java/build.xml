@@ -30,9 +30,10 @@
 
 <project name="xtwm" basedir="." default="jar">
 
-  <property name="version"       value="0.0.1"/>
+  <property name="version"       value="0.1.0"/>
   <property name="src.dir"       value="src"/>
   <property name="resources.dir" value="resources"/>
+  <property name="lib.dir"       value="lib"/>
   <property name="build.dir"     value="build"/>
   <property name="classes.dir"   value="${build.dir}/classes"/>
   <property name="jar.dir"       value="${build.dir}/jar"/>
@@ -43,8 +44,13 @@
     <delete dir="${apidocs.dir}"/>
   </target>
 
+  <path id="external.jars">
+    <fileset dir="${lib.dir}" includes="**/*.jar"/>
+  </path>
+
   <path id="project.classpath">
     <pathelement location="${src.dir}"/>
+    <path refid="external.jars" />
   </path>
 
   <target name="compile">
@@ -119,8 +125,10 @@
   </target>
 
   <target name="run" depends="jar">
-    <java jar="${jar.dir}/${ant.project.name}.jar" fork="true">
-      <arg value="-Djexer.Swing=true"/>
+    <java jar="${jar.dir}/${ant.project.name}.jar"
+          classpathref="external.jars"
+          fork="true">
+      <jvmarg value="-Djexer.Swing=true"/>
     </java>
   </target>
 

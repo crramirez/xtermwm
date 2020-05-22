@@ -28,14 +28,19 @@
  */
 package xtwm.plugins;
 
+import java.lang.management.ManagementFactory;
+import java.lang.management.OperatingSystemMXBean;
 import java.util.ResourceBundle;
 
 import jexer.TWidget;
-import jexer.bits.MnemonicString;
+import jexer.bits.CellAttributes;
+
+import xtwm.ui.XTWMApplication;
 
 /**
- * SystemMonitor shows real-time performance data like CPU, memory, and disk
- * usage.
+ * SystemMonitor is a simple real-time performance monitor that shows the
+ * CPU, memory, and disk usage exposed to the JVM through the Java management
+ * interfaces (java.lang.management).
  */
 public class SystemMonitor extends PluginWidget {
 
@@ -81,9 +86,56 @@ public class SystemMonitor extends PluginWidget {
     // TWidget ----------------------------------------------------------------
     // ------------------------------------------------------------------------
 
+    /**
+     * Draw the values obtained from the Java management interfaces.
+     */
+    @Override
+    public void draw() {
+        CellAttributes textColor;
+        CellAttributes valueColor;
+
+        textColor = getTheme().getColor("plugins.calendar.text");
+        valueColor = getTheme().getColor("plugins.calendar.value");
+
+        // CPU count
+        putStringXY(1, 0, i18n.getString("numCpu"), textColor);
+        String cpuCount = Integer.toString(Runtime.getRuntime().
+            availableProcessors());
+        putStringXY(getWidth() - cpuCount.length() - 1, 0, cpuCount,
+            valueColor);
+
+        // Load average
+        OperatingSystemMXBean osBean = ManagementFactory.getOperatingSystemMXBean();
+        putStringXY(1, 1, i18n.getString("loadAverage"), textColor);
+        String loadAverage = Double.toString(osBean.getSystemLoadAverage());
+        putStringXY(getWidth() - loadAverage.length() - 1, 1, loadAverage,
+            valueColor);
+
+    }
+
     // ------------------------------------------------------------------------
     // PluginWidget -----------------------------------------------------------
     // ------------------------------------------------------------------------
+
+    /**
+     * Initialize the plugin.  Since plugins are required to have a
+     * no-argument constructor, this method is called to provide a hook for
+     * the plugin perform initialization.  Subclasses that override
+     * initialize should call super.initialize() to set the XTWMApplication
+     * reference.
+     *
+     * @param app the application that will be using this plugin
+     */
+    @Override
+    public void initialize(final XTWMApplication app) {
+        super.initialize(app);
+
+        // Set the colors to use.
+        app.getTheme().setColorFromString("plugins.calendar.text",
+            "white on blue");
+        app.getTheme().setColorFromString("plugins.calendar.value",
+            "bold yellow on blue");
+    }
 
     /**
      * Get the translated menu label for this plugin.
@@ -166,7 +218,7 @@ public class SystemMonitor extends PluginWidget {
      */
     @Override
     public int getPreferredWidth() {
-        return 20;
+        return 30;
     }
 
     /**
@@ -177,6 +229,16 @@ public class SystemMonitor extends PluginWidget {
     @Override
     public int getPreferredHeight() {
         return 10;
+    }
+
+    /**
+     * Check if widget should be in a resizable window.
+     *
+     * @return true if the widget should be resizable when in a window
+     */
+    @Override
+    public boolean isResizable() {
+        return true;
     }
 
     // ------------------------------------------------------------------------

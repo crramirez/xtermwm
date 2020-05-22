@@ -32,7 +32,6 @@ import java.io.File;
 
 import jexer.TWidget;
 import jexer.TPanel;
-import jexer.bits.MnemonicString;
 
 import xtwm.ui.XTWMApplication;
 
@@ -53,7 +52,7 @@ public abstract class PluginWidget extends TWidget {
     /**
      * The XTWMApplication using this plugin.
      */
-    private XTWMApplication app;
+    protected XTWMApplication app;
 
     // ------------------------------------------------------------------------
     // Constructors -----------------------------------------------------------
@@ -161,6 +160,16 @@ public abstract class PluginWidget extends TWidget {
      * @return the height
      */
     public abstract int getPreferredHeight();
+
+    /**
+     * Check if widget should be in a resizable window.
+     *
+     * @return true if the widget should be resizable when in a window
+     */
+    public boolean isResizable() {
+        // Default is no.
+        return false;
+    }
 
     /**
      * Get an option value for this plugin.
