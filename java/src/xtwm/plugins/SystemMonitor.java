@@ -107,7 +107,8 @@ public class SystemMonitor extends PluginWidget {
         // Load average
         OperatingSystemMXBean osBean = ManagementFactory.getOperatingSystemMXBean();
         putStringXY(1, 1, i18n.getString("loadAverage"), textColor);
-        String loadAverage = Double.toString(osBean.getSystemLoadAverage());
+        String loadAverage = String.format("%.2f",
+            osBean.getSystemLoadAverage());
         putStringXY(getWidth() - loadAverage.length() - 1, 1, loadAverage,
             valueColor);
 
@@ -120,7 +121,7 @@ public class SystemMonitor extends PluginWidget {
     /**
      * Initialize the plugin.  Since plugins are required to have a
      * no-argument constructor, this method is called to provide a hook for
-     * the plugin perform initialization.  Subclasses that override
+     * the plugin to perform initialization.  Subclasses that override
      * initialize should call super.initialize() to set the XTWMApplication
      * reference.
      *
@@ -197,6 +198,17 @@ public class SystemMonitor extends PluginWidget {
     @Override
     public boolean isWidget() {
         return true;
+    }
+
+    /**
+     * Get the translated window title for this plugin.
+     *
+     * @return the title for the window when this widget is opened in the
+     * Application | Widgets menu, or null if this widget should have no
+     * title for its window.
+     */
+    public String getWindowTitle() {
+        return i18n.getString("windowTitle");
     }
 
     /**

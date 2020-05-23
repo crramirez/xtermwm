@@ -4,7 +4,7 @@ Xterm Window Manager
 Xterm Window Manager (XtermWM) is a desktop environment / window
 manager for the console.  Major features include:
 
-  * Virtual desktops.
+  * Virtual desktops and desktop pager widget.
 
   * Cascading/overlapping/floating windows with mouse-draggable move
     and resizing.
@@ -15,9 +15,11 @@ manager for the console.  Major features include:
   * A plugin system for adding custom widgets, windows, and other
     functions.
 
-  * The ability to run in both Xterm-like environments (Unix command
-    line shells or over ssh) and as a Swing component for
-    X11/Windows/Mac, with the same behavior and look-and-feel.
+  * The ability to run in Xterm-like environments (Unix command line
+    shells or over ssh) and as a Swing component for X11/Windows/Mac,
+    with the same behavior and look-and-feel.  The mouse can also work
+    for the raw Linux console when GPM installed and XtermWM is run
+    inside 'lcxterm' or 'qodem'.
 
   * Image support, for both Swing and Xterm.  When running under
     Xterm, images are rendered as sixel graphic sequences.
@@ -26,8 +28,6 @@ manager for the console.  Major features include:
     including mouse.  Terminal windows will also resize correctly due
     to the included 'ptypipe' utility.
 
-  * Support for the raw Linux console.  GPM mouse support will work
-    when run inside 'lcxterm' or 'qodem'.
 
 
 
@@ -45,7 +45,7 @@ separately under the MIT license at https://jexer.sourceforge.io .
 Screenshots
 -----------
 
-TBD
+![Terminals and Pager Image](/screenshots/pager_1.png?raw=true "Two terminal windows with the Desktop Pager and Calendar widgets")
 
 
 

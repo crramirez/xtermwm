@@ -99,6 +99,15 @@ public class Desktop extends TDesktop {
     // ------------------------------------------------------------------------
 
     /**
+     * Get the attributes for the background.
+     *
+     * @return the background attributes
+     */
+    public CellAttributes getAttributes() {
+        return attributes;
+    }
+
+    /**
      * Set the attributes for the background.
      *
      * @param attributes the attributes

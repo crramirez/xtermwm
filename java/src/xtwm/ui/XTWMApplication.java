@@ -343,7 +343,7 @@ public class XTWMApplication extends TApplication {
 
         case MENU_APPLICATION_PROGRAMS_SHELL:
             // Spawn shell
-            currentDesktop().addWindow(new TerminalWindow(this));
+            getCurrentDesktop().addWindow(new TerminalWindow(this));
             return true;
 
         case MENU_APPLICATION_PROGRAMS_EDITOR:
@@ -409,7 +409,7 @@ public class XTWMApplication extends TApplication {
             if (inputBox.isOk()) {
                 String command = inputBox.getText();
                 if (command.length() > 0) {
-                    currentDesktop().addWindow(new TerminalWindow(this,
+                    getCurrentDesktop().addWindow(new TerminalWindow(this,
                             command));
                 }
             }
@@ -474,40 +474,38 @@ public class XTWMApplication extends TApplication {
             return true;
 
         case MENU_WINDOW_ON_ALL_DESKTOPS:
-            // Funny, making a window visible to all desktops means actually
-            // removing it from all of them.
             window = getActiveWindow();
             if (window != null) {
-                if (currentDesktop().hasWindow(window)) {
+                if (getCurrentDesktop().hasWindow(window)) {
                     for (int i = 0; i < desktops.size(); i++) {
                         desktops.get(i).removeWindow(window);
                     }
                 } else {
-                    currentDesktop().addWindow(window);
+                    getCurrentDesktop().addWindow(window);
                 }
             }
             return true;
 
         case MENU_WINDOW_NEXT_DESKTOP:
-            nextDesktop();
+            switchToNextDesktop();
             return true;
 
         case MENU_WINDOW_PREVIOUS_DESKTOP:
-            previousDesktop();
+            switchToPreviousDesktop();
             return true;
 
         case TMenu.MID_HELP_HELP:
-            currentDesktop().addWindow(new THelpWindow(this,
+            getCurrentDesktop().addWindow(new THelpWindow(this,
                     THelpWindow.HELP_HELP));
             return true;
 
         case TMenu.MID_HELP_CONTENTS:
-            currentDesktop().addWindow(new THelpWindow(this,
+            getCurrentDesktop().addWindow(new THelpWindow(this,
                     helpFile.getTableOfContents()));
             return true;
 
         case TMenu.MID_HELP_INDEX:
-            currentDesktop().addWindow(new THelpWindow(this,
+            getCurrentDesktop().addWindow(new THelpWindow(this,
                     helpFile.getIndex()));
             return true;
 
@@ -516,7 +514,7 @@ public class XTWMApplication extends TApplication {
                 i18n.getString("searchHelpInputBoxCaption"), "",
                 TInputBox.Type.OKCANCEL);
             if (inputBox.isOk()) {
-                currentDesktop().addWindow(new THelpWindow(this,
+                getCurrentDesktop().addWindow(new THelpWindow(this,
                         helpFile.getSearchResults(inputBox.getText())));
             }
             return true;
@@ -525,9 +523,9 @@ public class XTWMApplication extends TApplication {
             if (helpTopics.size() > 1) {
                 Topic previous = helpTopics.remove(helpTopics.size() - 2);
                 helpTopics.remove(helpTopics.size() - 1);
-                currentDesktop().addWindow(new THelpWindow(this, previous));
+                getCurrentDesktop().addWindow(new THelpWindow(this, previous));
             } else {
-                currentDesktop().addWindow(new THelpWindow(this,
+                getCurrentDesktop().addWindow(new THelpWindow(this,
                         helpFile.getTableOfContents()));
             }
             return true;
@@ -552,12 +550,23 @@ public class XTWMApplication extends TApplication {
                     getScreen().getWidth(),
                     getDesktopBottom() - getDesktopTop()) {
 
+                    public void onMenu(final TMenuEvent menu) {
+                        // Override the NOCLOSEBOX and HIDEONCLOSE behavior
+                        // for a widget window.
+                        if (menu.getId() == TMenu.MID_WINDOW_CLOSE) {
+                            getApplication().closeWindow(this);
+                            return;
+                        }
+                        super.onMenu(menu);
+                    }
+
                     public void onResize(final TResizeEvent resize) {
                         if (resize.getType() == TResizeEvent.Type.WIDGET) {
                             if (getChildren().size() == 1) {
                                 TWidget widget = getChildren().get(0);
-                                widget.onResize(new TResizeEvent(TResizeEvent.Type.WIDGET,
-                                        getWidth() - 2, getHeight() - 2));
+                                widget.onResize(new TResizeEvent(
+                                    TResizeEvent.Type.WIDGET,
+                                    getWidth() - 2, getHeight() - 2));
                                 return;
                             }
                         }
@@ -568,12 +577,12 @@ public class XTWMApplication extends TApplication {
                 PluginWidget plugin = null;
                 try {
                     plugin = pluginClass.getConstructor(TWidget.class).newInstance(window);
-                    window.setTitle(getMenuItem(
-                        menu.getId()).getMnemonic().getRawLabel());
+                    plugin.initialize(this);
+                    window.setTitle(plugin.getWindowTitle());
                     plugin.setDimensions(0, 0,
                         plugin.getPreferredWidth(),
                         plugin.getPreferredHeight());
-                    window.setDimensions(0, getDesktopTop(),
+                    window.setDimensions(window.getX(), window.getY(),
                         plugin.getWidth() + 2,
                         plugin.getHeight() + 2);
                     window.setResizable(plugin.isResizable());
@@ -844,7 +853,7 @@ public class XTWMApplication extends TApplication {
             desktopAttr.setBold(false);
             desktop.getDesktop().setAttributes(desktopAttr);
         }
-        setDesktop(currentDesktop().getDesktop(), true);
+        setDesktop(getCurrentDesktop().getDesktop(), true);
     }
 
     // ------------------------------------------------------------------------
@@ -1220,48 +1229,70 @@ public class XTWMApplication extends TApplication {
      *
      * @return the virtual desktop
      */
-    private VirtualDesktop currentDesktop() {
+    public VirtualDesktop getCurrentDesktop() {
         return desktops.get(desktopIndex);
     }
 
     /**
      * Switch to the next desktop.
      */
-    private void nextDesktop() {
+    public void switchToNextDesktop() {
         assert (desktops.size() >= 2);
 
         if (desktops.size() == 2) {
             return;
         }
 
-        currentDesktop().hide();
+        getCurrentDesktop().hide();
         desktopIndex++;
         if (desktopIndex == desktops.size()) {
             desktopIndex = 1;
         }
-        currentDesktop().show();
-        setDesktop(currentDesktop().getDesktop(), false);
+        getCurrentDesktop().show();
+        setDesktop(getCurrentDesktop().getDesktop(), false);
         getMenuItem(MENU_TERMINAL_SEND_KEYS_TO_ALL).setChecked(getDesktop().isEchoKeystrokes());
     }
 
     /**
      * Switch to the previous desktop.
      */
-    private void previousDesktop() {
+    public void switchToPreviousDesktop() {
         assert (desktops.size() >= 2);
 
         if (desktops.size() == 2) {
             return;
         }
 
-        currentDesktop().hide();
+        getCurrentDesktop().hide();
         desktopIndex--;
         if (desktopIndex < 1) {
             desktopIndex = desktops.size() - 1;
         }
-        currentDesktop().show();
-        setDesktop(currentDesktop().getDesktop(), false);
+        getCurrentDesktop().show();
+        setDesktop(getCurrentDesktop().getDesktop(), false);
         getMenuItem(MENU_TERMINAL_SEND_KEYS_TO_ALL).setChecked(getDesktop().isEchoKeystrokes());
+    }
+
+    /**
+     * Obtain the desktops.
+     *
+     * @return the list of desktops
+     */
+    public List<VirtualDesktop> getDesktops() {
+        return desktops.subList(1, desktops.size());
+    }
+
+    /**
+     * Put a window on all desktops.
+     *
+     * @param window the window
+     */
+    public void putOnAllDesktops(final TWindow window) {
+        // Funny, making a window visible to all desktops means actually
+        // removing it from all of them.
+        for (int i = 0; i < desktops.size(); i++) {
+            desktops.get(i).removeWindow(window);
+        }
     }
 
     // Plugin management ------------------------------------------------------
@@ -1304,7 +1335,6 @@ public class XTWMApplication extends TApplication {
             PluginWidget widget = (PluginWidget) plugin.getDeclaredConstructor().newInstance();
             String pluginName = widget.getPluginName();
             loadPluginProperties(pluginName);
-            widget.initialize(this);
 
             if (widget.isApplication()) {
                 int menuId = pluginAppMenuIds.size() + APP_MENU_ID_MIN;

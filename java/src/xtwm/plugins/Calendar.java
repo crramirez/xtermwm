@@ -159,6 +159,17 @@ public class Calendar extends PluginWidget {
     }
 
     /**
+     * Get the translated window title for this plugin.
+     *
+     * @return the title for the window when this widget is opened in the
+     * Application | Widgets menu, or null if this widget should have no
+     * title for its window.
+     */
+    public String getWindowTitle() {
+        return i18n.getString("windowTitle");
+    }
+
+    /**
      * Get an interface for editing the plugin settings.
      *
      * @param parent parent widget

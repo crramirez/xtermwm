@@ -31,6 +31,7 @@ package xtwm.plugins;
 import java.io.File;
 
 import jexer.TWidget;
+import jexer.TWindow;
 import jexer.TPanel;
 
 import xtwm.ui.XTWMApplication;
@@ -124,9 +125,18 @@ public abstract class PluginWidget extends TWidget {
     public abstract boolean isWidget();
 
     /**
+     * Get the translated window title for this plugin.
+     *
+     * @return the title for the window when this widget is opened in the
+     * Application | Widgets menu, or null if this widget should have no
+     * title for its window.
+     */
+    public abstract String getWindowTitle();
+
+    /**
      * Initialize the plugin.  Since plugins are required to have a
      * no-argument constructor, this method is called to provide a hook for
-     * the plugin perform initialization.  Subclasses that override
+     * the plugin to perform initialization.  Subclasses that override
      * initialize should call super.initialize() to set the XTWMApplication
      * reference.
      *
@@ -169,6 +179,15 @@ public abstract class PluginWidget extends TWidget {
     public boolean isResizable() {
         // Default is no.
         return false;
+    }
+
+    /**
+     * Check if this widget is in a window.
+     *
+     * @return true if the widget is in a window
+     */
+    protected boolean isWindowed() {
+        return (getParent() instanceof TWindow);
     }
 
     /**

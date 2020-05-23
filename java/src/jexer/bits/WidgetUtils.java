@@ -105,7 +105,9 @@ public class WidgetUtils {
         }
 
         Collections.sort(sorted);
-        Collections.reverse(sorted);
+        if (sorted.get(0) instanceof TWindow) {
+            Collections.reverse(sorted);
+        }
         for (int i = 0; i < sorted.size(); i++) {
             int logicalX = i / b;
             int logicalY = i % b;

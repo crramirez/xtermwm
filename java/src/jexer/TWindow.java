@@ -108,7 +108,7 @@ public class TWindow extends TWidget {
     /**
      * Window title.
      */
-    private String title = "";
+    private String title = null;
 
     /**
      * Window's parent TApplication.
@@ -929,12 +929,14 @@ public class TWindow extends TWidget {
         drawBox(0, 0, getWidth(), getHeight(), border, background, borderType,
             true);
 
-        // Draw the title
-        int titleLength = StringUtils.width(title);
-        int titleLeft = (getWidth() - titleLength - 2) / 2;
-        putCharXY(titleLeft, 0, ' ', border);
-        putStringXY(titleLeft + 1, 0, title, border);
-        putCharXY(titleLeft + titleLength + 1, 0, ' ', border);
+        if ((title != null) && (title.length() > 0)) {
+            // Draw the title
+            int titleLength = StringUtils.width(title);
+            int titleLeft = (getWidth() - titleLength - 2) / 2;
+            putCharXY(titleLeft, 0, ' ', border);
+            putStringXY(titleLeft + 1, 0, title, border);
+            putCharXY(titleLeft + titleLength + 1, 0, ' ', border);
+        }
 
         if (isActive()) {
 
@@ -968,8 +970,10 @@ public class TWindow extends TWidget {
                             getBorderControls());
                     }
                 }
+            }
 
-                // Draw the resize corner
+            // Draw the resize corner
+            if (!isModal() && ((flags & RESIZABLE) != 0)) {
                 if ((flags & RESIZABLE) != 0) {
                     putCharXY(getWidth() - 2, getHeight() - 1,
                         GraphicsChars.SINGLE_BAR, getBorderControls());
@@ -1291,6 +1295,19 @@ public class TWindow extends TWidget {
     }
 
     /**
+     * Set this window's close box flag.
+     *
+     * @param closeBox if true, this window will have a close box
+     */
+    public final void setCloseBox(final boolean closeBox) {
+        if (closeBox) {
+            flags &= ~NOCLOSEBOX;
+        } else {
+            flags |= NOCLOSEBOX;
+        }
+    }
+
+    /**
      * Returns true if this window has a maximize/zoom box.
      *
      * @return true if this window has a maximize/zoom box
@@ -1300,6 +1317,19 @@ public class TWindow extends TWidget {
             return true;
         }
         return false;
+    }
+
+    /**
+     * Set this window's maximize/zoom box flag.
+     *
+     * @param zoomBox if true, this window will have a maximize/zoom box
+     */
+    public final void setZoomBox(final boolean zoomBox) {
+        if (zoomBox) {
+            flags &= ~NOZOOMBOX;
+        } else {
+            flags |= NOZOOMBOX;
+        }
     }
 
     /**
