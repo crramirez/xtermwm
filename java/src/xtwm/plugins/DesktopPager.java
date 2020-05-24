@@ -43,7 +43,7 @@ import xtwm.ui.XTWMApplication;
 
 /**
  * DesktopPager is a simple desktop pager in the style of classic X11 virtual
- * desktop pages like OLWM and AfterStep.
+ * desktop pagers like OLWM and AfterStep.
  */
 public class DesktopPager extends PluginWidget {
 

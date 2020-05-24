@@ -42,7 +42,8 @@ import jexer.TWindow;
 import jexer.bits.CellAttributes;
 
 /**
- * This window is used to configure the TJ overall application preferences.
+ * This window is used to configure the overall XtermWM application
+ * preferences.
  */
 public class ApplicationOptionsWindow extends TWindow {
 

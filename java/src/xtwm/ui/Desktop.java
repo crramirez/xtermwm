@@ -38,7 +38,7 @@ import jexer.bits.GraphicsChars;
 import static jexer.TKeypress.*;
 
 /**
- * Desktop is the main document editor window.
+ * Desktop is a desktop background and tiled panels manager.
  */
 public class Desktop extends TDesktop {
 
