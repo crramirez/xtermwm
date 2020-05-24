@@ -138,6 +138,16 @@ public class TFontChooserWindow extends TWindow {
      */
     private int oldSixelPaletteSize = 1024;
 
+    /**
+     * The wideCharImages option.
+     */
+    private TCheckBox wideCharImages;
+
+    /**
+     * The original wideCharImages value.
+     */
+    private boolean oldWideCharImages = true;
+
     // ------------------------------------------------------------------------
     // Constructors -----------------------------------------------------------
     // ------------------------------------------------------------------------
@@ -162,26 +172,33 @@ public class TFontChooserWindow extends TWindow {
             ecmaTerminal = (ECMA48Terminal) getScreen();
         }
 
-        addLabel(i18n.getString("fontName"), 1, 1, "ttext", false);
-        addLabel(i18n.getString("fontSize"), 1, 2, "ttext", false);
-        addLabel(i18n.getString("textAdjustX"), 1, 4, "ttext", false);
-        addLabel(i18n.getString("textAdjustY"), 1, 5, "ttext", false);
-        addLabel(i18n.getString("textAdjustHeight"), 1, 6, "ttext", false);
-        addLabel(i18n.getString("textAdjustWidth"), 1, 7, "ttext", false);
-        addLabel(i18n.getString("sixelPaletteSize"), 1, 9, "ttext", false);
+        addLabel(i18n.getString("fontName"), 3, 2, "ttext", false);
+        addLabel(i18n.getString("fontSize"), 3, 3, "ttext", false);
+        addLabel(i18n.getString("textAdjustX"), 3, 5, "ttext", false);
+        addLabel(i18n.getString("textAdjustY"), 3, 6, "ttext", false);
+        addLabel(i18n.getString("textAdjustHeight"), 3, 7, "ttext", false);
+        addLabel(i18n.getString("textAdjustWidth"), 3, 8, "ttext", false);
+        addLabel(i18n.getString("sixelPaletteSize"), 3, 12, "ttext", false);
+        wideCharImages = addCheckBox(3, 13, i18n.getString("wideCharImages"),
+            (ecmaTerminal != null ? ecmaTerminal.getWideCharImages() :
+                System.getProperty("jexer.ECMA48.wideCharImages",
+                    "true").equals("true")));
+        oldWideCharImages = wideCharImages.isChecked();
 
-        int col = 21;
+        int col = 23;
         if (terminal == null) {
-            // Non-Swing case: we can't change anything
-            addLabel(i18n.getString("unavailable"), col, 1);
+            // Non-Swing case: we can't change font stuff
             addLabel(i18n.getString("unavailable"), col, 2);
-            addLabel(i18n.getString("unavailable"), col, 4);
+            addLabel(i18n.getString("unavailable"), col, 3);
             addLabel(i18n.getString("unavailable"), col, 5);
             addLabel(i18n.getString("unavailable"), col, 6);
             addLabel(i18n.getString("unavailable"), col, 7);
+            addLabel(i18n.getString("unavailable"), col, 8);
         }
         if (ecmaTerminal == null) {
-            addLabel(i18n.getString("unavailable"), col, 9);
+            // Swing case: we can't change sixel and wideCharImages
+            addLabel(i18n.getString("unavailable"), col, 12);
+            wideCharImages.setEnabled(false);
         }
         if (ecmaTerminal != null) {
             oldSixelPaletteSize = ecmaTerminal.getSixelPaletteSize();
@@ -189,7 +206,7 @@ public class TFontChooserWindow extends TWindow {
             String [] sixelSizes = { "2", "256", "512", "1024", "2048" };
             List<String> sizes = new ArrayList<String>();
             sizes.addAll(Arrays.asList(sixelSizes));
-            sixelPaletteSize = addComboBox(col, 9, 10, sizes, 0, 6,
+            sixelPaletteSize = addComboBox(col, 12, 10, sizes, 0, 6,
                 new TAction() {
                     public void DO() {
                         try {
@@ -217,7 +234,7 @@ public class TFontChooserWindow extends TWindow {
             List<String> fonts = new ArrayList<String>();
             fonts.add(0, i18n.getString("builtInTerminus"));
             fonts.addAll(Arrays.asList(fontNames));
-            fontName = addComboBox(col, 1, 25, fonts, 0, 10,
+            fontName = addComboBox(col, 2, 25, fonts, 0, 8,
                 new TAction() {
                     public void DO() {
                         if (fontName.getText().equals(i18n.
@@ -243,7 +260,7 @@ public class TFontChooserWindow extends TWindow {
             );
 
             // Font size
-            fontSize = addField(col, 2, 3, true,
+            fontSize = addField(col, 3, 3, true,
                 Integer.toString(terminal.getFontSize()),
                 new TAction() {
                     public void DO() {
@@ -269,7 +286,7 @@ public class TFontChooserWindow extends TWindow {
                 },
                 null);
 
-            addSpinner(col + 3, 2,
+            addSpinner(col + 3, 3,
                 new TAction() {
                     public void DO() {
                         int currentSize = terminal.getFontSize();
@@ -321,7 +338,7 @@ public class TFontChooserWindow extends TWindow {
             );
 
             // textAdjustX
-            textAdjustX = addField(col, 4, 3, true,
+            textAdjustX = addField(col, 5, 3, true,
                 Integer.toString(terminal.getTextAdjustX()),
                 new TAction() {
                     public void DO() {
@@ -339,7 +356,7 @@ public class TFontChooserWindow extends TWindow {
                 },
                 null);
 
-            addSpinner(col + 3, 4,
+            addSpinner(col + 3, 5,
                 new TAction() {
                     public void DO() {
                         int currentAdjust = terminal.getTextAdjustX();
@@ -375,7 +392,7 @@ public class TFontChooserWindow extends TWindow {
             );
 
             // textAdjustY
-            textAdjustY = addField(col, 5, 3, true,
+            textAdjustY = addField(col, 6, 3, true,
                 Integer.toString(terminal.getTextAdjustY()),
                 new TAction() {
                     public void DO() {
@@ -393,7 +410,7 @@ public class TFontChooserWindow extends TWindow {
                 },
                 null);
 
-            addSpinner(col + 3, 5,
+            addSpinner(col + 3, 6,
                 new TAction() {
                     public void DO() {
                         int currentAdjust = terminal.getTextAdjustY();
@@ -429,7 +446,7 @@ public class TFontChooserWindow extends TWindow {
             );
 
             // textAdjustHeight
-            textAdjustHeight = addField(col, 6, 3, true,
+            textAdjustHeight = addField(col, 7, 3, true,
                 Integer.toString(terminal.getTextAdjustHeight()),
                 new TAction() {
                     public void DO() {
@@ -447,7 +464,7 @@ public class TFontChooserWindow extends TWindow {
                 },
                 null);
 
-            addSpinner(col + 3, 6,
+            addSpinner(col + 3, 7,
                 new TAction() {
                     public void DO() {
                         int currentAdjust = terminal.getTextAdjustHeight();
@@ -483,7 +500,7 @@ public class TFontChooserWindow extends TWindow {
             );
 
             // textAdjustWidth
-            textAdjustWidth = addField(col, 7, 3, true,
+            textAdjustWidth = addField(col, 8, 3, true,
                 Integer.toString(terminal.getTextAdjustWidth()),
                 new TAction() {
                     public void DO() {
@@ -501,7 +518,7 @@ public class TFontChooserWindow extends TWindow {
                 },
                 null);
 
-            addSpinner(col + 3, 7,
+            addSpinner(col + 3, 8,
                 new TAction() {
                     public void DO() {
                         int currentAdjust = terminal.getTextAdjustWidth();
@@ -538,16 +555,23 @@ public class TFontChooserWindow extends TWindow {
 
         }
 
-        addButton(i18n.getString("okButton"), 18, getHeight() - 4,
+        addButton(i18n.getString("okButton"),
+            getWidth() - 13, getHeight() - 10,
             new TAction() {
                 public void DO() {
+                    // Copy values out.
+                    if (ecmaTerminal != null) {
+                        ecmaTerminal.setWideCharImages(wideCharImages.
+                            isChecked());
+                    }
+
                     // Close window.
                     TFontChooserWindow.this.close();
                 }
             });
 
         TButton cancelButton = addButton(i18n.getString("cancelButton"),
-            30, getHeight() - 4,
+            getWidth() - 13, getHeight() - 8,
             new TAction() {
                 public void DO() {
                     // Restore old values, then close the window.
@@ -563,6 +587,7 @@ public class TFontChooserWindow extends TWindow {
                     }
                     if (ecmaTerminal != null) {
                         ecmaTerminal.setSixelPaletteSize(oldSixelPaletteSize);
+                        ecmaTerminal.setWideCharImages(oldWideCharImages);
                     }
                     TFontChooserWindow.this.close();
                 }
@@ -593,6 +618,7 @@ public class TFontChooserWindow extends TWindow {
             }
             if (ecmaTerminal != null) {
                 ecmaTerminal.setSixelPaletteSize(oldSixelPaletteSize);
+                ecmaTerminal.setWideCharImages(oldWideCharImages);
             }
             getApplication().closeWindow(this);
             return;
@@ -614,11 +640,18 @@ public class TFontChooserWindow extends TWindow {
         super.draw();
 
         int left = 34;
+
         CellAttributes color = getTheme().getColor("ttext");
-        drawBox(left, 6, left + 24, 14, color, color, 3, false);
-        putStringXY(left + 2, 6, i18n.getString("sample"), color);
-        for (int i = 7; i < 13; i++) {
-            hLineXY(left + 1, i, 22, GraphicsChars.HATCH, color);
+        drawBox(2, 2, left + 24, 11, color, color);
+        putStringXY(4, 2, i18n.getString("swingOptions"), color);
+
+        drawBox(2, 12, left + 12, 16, color, color);
+        putStringXY(4, 12, i18n.getString("xtermOptions"), color);
+
+        drawBox(left + 2, 5, left + 22, 10, color, color, 3, false);
+        putStringXY(left + 4, 5, i18n.getString("sample"), color);
+        for (int i = 6; i < 9; i++) {
+            hLineXY(left + 3, i, 18, GraphicsChars.HATCH, color);
         }
 
     }

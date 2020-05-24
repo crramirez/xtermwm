@@ -3117,6 +3117,26 @@ public class ECMA48Terminal extends LogicalScreen
     // ------------------------------------------------------------------------
 
     /**
+     * Get the wideCharImages flag.
+     *
+     * @return true if fullwidth characters (e.g. CJK) are being drawn as
+     * images
+     */
+    public boolean getWideCharImages() {
+        return wideCharImages;
+    }
+
+    /**
+     * Set the wideCharImages flag.
+     *
+     * @param wideCharImages if true, draw fullwidth characters (e.g. CJK) as
+     * images
+     */
+    public void setWideCharImages(final boolean wideCharImages) {
+        this.wideCharImages = wideCharImages;
+    }
+
+    /**
      * Get the number of colors in the sixel palette.
      *
      * @return the palette size
