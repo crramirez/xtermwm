@@ -9,8 +9,8 @@ manager for the console.  Major features include:
   * Cascading/overlapping/floating windows with mouse-draggable move
     and resizing.
 
-  * Tiled/paned windows with mouse-draggable resizing on the pane
-    split lines.
+  * Tiled/paned windows with mouse selection and divider-draggable
+    resizing.
 
   * A plugin system for adding custom widgets, windows, and other
     functions.
@@ -19,15 +19,33 @@ manager for the console.  Major features include:
     shells or over ssh) and as a Swing component for X11/Windows/Mac,
     with the same behavior and look-and-feel.  The mouse can also work
     for the raw Linux console when GPM installed and XtermWM is run
-    inside 'lcxterm' or 'qodem'.
+    inside [lcxterm](https://lcxterm.sourceforge.io).
 
   * Image support, for both Swing and Xterm.  When running under
     Xterm, images are rendered as sixel graphic sequences.
 
-  * A text terminal window / shell with good Xterm/VT100 support,
-    including mouse.  Terminal windows will also resize correctly due
-    to the included 'ptypipe' utility.
+  * Tiled and windowed terminal shells with good Xterm/VT100 support,
+    including mouse.  Terminal shells will also resize correctly due
+    to the included [ptypipe](https://gitlab.com/klamonte/ptypipde)
+    utility.
 
+
+
+Intended Audience
+-----------------
+
+XtermWM is designed to help the following kinds of people:
+
+  * Console users who want to have multiple windowed terminals, but
+    not a full X11 desktop environment.
+
+  * Data center / system administrators who want a more capable
+    physical console at the rack / head node, but will not (or cannot)
+    install X11.
+
+  * People who used the DOS-era "shells" like IBM DOS Shell,
+    WordPerfect Office, and Direct Access, and want similar features
+    in their consoles without having to learn Emacs Lisp.
 
 
 
