@@ -64,7 +64,7 @@ display_help ()
 # -----------------------------------------------------------------------------
 
 # Start with bin and shared directories, add $(dirname $0) too.
-JAR_PATHS="bin /usr/share/java $(dirname $(which $0))"
+JAR_PATHS="bin /usr/share/java /usr/local/share/java $(dirname $(which $0))"
 JAR_PATHS="$JAR_PATHS java/build/jar"
 
 for i in $JAR_PATHS ; do
