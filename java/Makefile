@@ -41,7 +41,7 @@ dist:
 
 distdir:
 
-install:
+install: build/jar/xtwm.jar
 
 uninstall:
 
