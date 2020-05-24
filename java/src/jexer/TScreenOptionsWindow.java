@@ -43,16 +43,15 @@ import jexer.event.TKeypressEvent;
 import static jexer.TKeypress.*;
 
 /**
- * TFontChooserWindow provides an easy UI for users to alter the running
- * font.
- *
+ * TScreenOptionsWindow provides an easy UI for users to alter the running
+ * screen options such as fonts and images.
  */
-public class TFontChooserWindow extends TWindow {
+public class TScreenOptionsWindow extends TWindow {
 
     /**
      * Translated strings.
      */
-    private static final ResourceBundle i18n = ResourceBundle.getBundle(TFontChooserWindow.class.getName());
+    private static final ResourceBundle i18n = ResourceBundle.getBundle(TScreenOptionsWindow.class.getName());
 
     // ------------------------------------------------------------------------
     // Variables --------------------------------------------------------------
@@ -104,6 +103,41 @@ public class TFontChooserWindow extends TWindow {
     private TComboBox sixelPaletteSize;
 
     /**
+     * The wideCharImages option.
+     */
+    private TCheckBox wideCharImages;
+
+    /**
+     * Triple-buffer support.
+     */
+    private TCheckBox tripleBuffer;
+
+    /**
+     * Cursor style.
+     */
+    private TComboBox cursorStyle;
+
+    /**
+     * Mouse style.
+     */
+    private TComboBox mouseStyle;
+
+    /**
+     * Sixel support.
+     */
+    private TCheckBox sixel;
+
+    /**
+     * Whether or not sixel uses a single shared palette.
+     */
+    private TCheckBox sixelSharedPalette;
+
+    /**
+     * 24-bit RGB color for normal system colors.
+     */
+    private TCheckBox rgbColor;
+
+    /**
      * The original font size.
      */
     private int oldFontSize = 20;
@@ -139,14 +173,39 @@ public class TFontChooserWindow extends TWindow {
     private int oldSixelPaletteSize = 1024;
 
     /**
-     * The wideCharImages option.
-     */
-    private TCheckBox wideCharImages;
-
-    /**
      * The original wideCharImages value.
      */
     private boolean oldWideCharImages = true;
+
+    /**
+     * The original triple-buffer support.
+     */
+    private boolean oldTripleBuffer = true;
+
+    /**
+     * The original cursor style.
+     */
+    private SwingTerminal.CursorStyle oldCursorStyle;
+
+    /**
+     * The original mouse style.
+     */
+    private String oldMouseStyle = "default";
+
+    /**
+     * The original sixel support.
+     */
+    private boolean oldSixel = true;
+
+    /**
+     * The original sixelSharedPalette value.
+     */
+    private boolean oldSixelSharedPalette = true;
+
+    /**
+     * The original 24-bit RGB color for normal system colors.
+     */
+    private boolean oldRgbColor = false;
 
     // ------------------------------------------------------------------------
     // Constructors -----------------------------------------------------------
@@ -157,10 +216,10 @@ public class TFontChooserWindow extends TWindow {
      *
      * @param application the TApplication that manages this window
      */
-    public TFontChooserWindow(final TApplication application) {
+    public TScreenOptionsWindow(final TApplication application) {
 
         // Register with the TApplication
-        super(application, i18n.getString("windowTitle"), 0, 0, 60, 21, MODAL);
+        super(application, i18n.getString("windowTitle"), 0, 0, 60, 23, MODAL);
 
         // Add shortcut text
         newStatusBar(i18n.getString("statusBar"));
@@ -174,31 +233,63 @@ public class TFontChooserWindow extends TWindow {
 
         addLabel(i18n.getString("fontName"), 3, 2, "ttext", false);
         addLabel(i18n.getString("fontSize"), 3, 3, "ttext", false);
-        addLabel(i18n.getString("textAdjustX"), 3, 5, "ttext", false);
-        addLabel(i18n.getString("textAdjustY"), 3, 6, "ttext", false);
-        addLabel(i18n.getString("textAdjustHeight"), 3, 7, "ttext", false);
-        addLabel(i18n.getString("textAdjustWidth"), 3, 8, "ttext", false);
-        addLabel(i18n.getString("sixelPaletteSize"), 3, 12, "ttext", false);
-        wideCharImages = addCheckBox(3, 13, i18n.getString("wideCharImages"),
-            (ecmaTerminal != null ? ecmaTerminal.getWideCharImages() :
+        addLabel(i18n.getString("textAdjustX"), 3, 4, "ttext", false);
+        addLabel(i18n.getString("textAdjustY"), 3, 5, "ttext", false);
+        addLabel(i18n.getString("textAdjustHeight"), 3, 6, "ttext", false);
+        addLabel(i18n.getString("textAdjustWidth"), 3, 7, "ttext", false);
+        addLabel(i18n.getString("cursorStyle"), 3, 10, "ttext", false,
+            new TAction() {
+                public void DO() {
+                    cursorStyle.activate();
+                }
+            });
+        addLabel(i18n.getString("mouseStyle"), 3, 11, "ttext", false,
+            new TAction() {
+                public void DO() {
+                    mouseStyle.activate();
+                }
+            });
+
+        sixel = addCheckBox(3, 15, i18n.getString("sixel"),
+            (ecmaTerminal != null ? ecmaTerminal.hasSixel() :
+                System.getProperty("jexer.ECMA48.sixel",
+                    "true").equals("true")));
+        oldSixel = sixel.isChecked();
+        sixelSharedPalette = addCheckBox(3, 16,
+            i18n.getString("sixelSharedPalette"),
+            (ecmaTerminal != null ? ecmaTerminal.hasSixelSharedPalette() :
+                System.getProperty("jexer.ECMA48.sixelSharedPalette",
+                    "true").equals("true")));
+        oldSixelSharedPalette = sixelSharedPalette.isChecked();
+        addLabel(i18n.getString("sixelPaletteSize"), 3, 17, "ttext", false);
+        wideCharImages = addCheckBox(3, 18, i18n.getString("wideCharImages"),
+            (ecmaTerminal != null ? ecmaTerminal.isWideCharImages() :
                 System.getProperty("jexer.ECMA48.wideCharImages",
                     "true").equals("true")));
         oldWideCharImages = wideCharImages.isChecked();
+        rgbColor = addCheckBox(3, 19, i18n.getString("rgbColor"),
+            (ecmaTerminal != null ? ecmaTerminal.isRgbColor() :
+                System.getProperty("jexer.ECMA48.rgbColor",
+                    "false").equals("true")));
+        oldRgbColor = rgbColor.isChecked();
 
         int col = 23;
         if (terminal == null) {
-            // Non-Swing case: we can't change font stuff
+            // Non-Swing case: turn off stuff we can't change
             addLabel(i18n.getString("unavailable"), col, 2);
             addLabel(i18n.getString("unavailable"), col, 3);
+            addLabel(i18n.getString("unavailable"), col, 4);
             addLabel(i18n.getString("unavailable"), col, 5);
             addLabel(i18n.getString("unavailable"), col, 6);
             addLabel(i18n.getString("unavailable"), col, 7);
-            addLabel(i18n.getString("unavailable"), col, 8);
         }
         if (ecmaTerminal == null) {
-            // Swing case: we can't change sixel and wideCharImages
-            addLabel(i18n.getString("unavailable"), col, 12);
+            // Swing case: turn off stuff we can't change
+            addLabel(i18n.getString("unavailable"), col, 17);
+            sixel.setEnabled(false);
+            sixelSharedPalette.setEnabled(false);
             wideCharImages.setEnabled(false);
+            rgbColor.setEnabled(false);
         }
         if (ecmaTerminal != null) {
             oldSixelPaletteSize = ecmaTerminal.getSixelPaletteSize();
@@ -206,7 +297,7 @@ public class TFontChooserWindow extends TWindow {
             String [] sixelSizes = { "2", "256", "512", "1024", "2048" };
             List<String> sizes = new ArrayList<String>();
             sizes.addAll(Arrays.asList(sixelSizes));
-            sixelPaletteSize = addComboBox(col, 12, 10, sizes, 0, 6,
+            sixelPaletteSize = addComboBox(col, 17, 10, sizes, 0, 6,
                 new TAction() {
                     public void DO() {
                         try {
@@ -228,6 +319,8 @@ public class TFontChooserWindow extends TWindow {
             oldTextAdjustY = terminal.getTextAdjustY();
             oldTextAdjustHeight = terminal.getTextAdjustHeight();
             oldTextAdjustWidth = terminal.getTextAdjustWidth();
+            oldCursorStyle = terminal.getCursorStyle();
+            oldMouseStyle = terminal.getMouseStyle();
 
             String [] fontNames = GraphicsEnvironment.
                 getLocalGraphicsEnvironment().getAvailableFontFamilyNames();
@@ -338,7 +431,7 @@ public class TFontChooserWindow extends TWindow {
             );
 
             // textAdjustX
-            textAdjustX = addField(col, 5, 3, true,
+            textAdjustX = addField(col, 4, 3, true,
                 Integer.toString(terminal.getTextAdjustX()),
                 new TAction() {
                     public void DO() {
@@ -356,7 +449,7 @@ public class TFontChooserWindow extends TWindow {
                 },
                 null);
 
-            addSpinner(col + 3, 5,
+            addSpinner(col + 3, 4,
                 new TAction() {
                     public void DO() {
                         int currentAdjust = terminal.getTextAdjustX();
@@ -392,7 +485,7 @@ public class TFontChooserWindow extends TWindow {
             );
 
             // textAdjustY
-            textAdjustY = addField(col, 6, 3, true,
+            textAdjustY = addField(col, 5, 3, true,
                 Integer.toString(terminal.getTextAdjustY()),
                 new TAction() {
                     public void DO() {
@@ -410,7 +503,7 @@ public class TFontChooserWindow extends TWindow {
                 },
                 null);
 
-            addSpinner(col + 3, 6,
+            addSpinner(col + 3, 5,
                 new TAction() {
                     public void DO() {
                         int currentAdjust = terminal.getTextAdjustY();
@@ -446,7 +539,7 @@ public class TFontChooserWindow extends TWindow {
             );
 
             // textAdjustHeight
-            textAdjustHeight = addField(col, 7, 3, true,
+            textAdjustHeight = addField(col, 6, 3, true,
                 Integer.toString(terminal.getTextAdjustHeight()),
                 new TAction() {
                     public void DO() {
@@ -464,7 +557,7 @@ public class TFontChooserWindow extends TWindow {
                 },
                 null);
 
-            addSpinner(col + 3, 7,
+            addSpinner(col + 3, 6,
                 new TAction() {
                     public void DO() {
                         int currentAdjust = terminal.getTextAdjustHeight();
@@ -500,7 +593,7 @@ public class TFontChooserWindow extends TWindow {
             );
 
             // textAdjustWidth
-            textAdjustWidth = addField(col, 8, 3, true,
+            textAdjustWidth = addField(col, 7, 3, true,
                 Integer.toString(terminal.getTextAdjustWidth()),
                 new TAction() {
                     public void DO() {
@@ -518,7 +611,7 @@ public class TFontChooserWindow extends TWindow {
                 },
                 null);
 
-            addSpinner(col + 3, 8,
+            addSpinner(col + 3, 7,
                 new TAction() {
                     public void DO() {
                         int currentAdjust = terminal.getTextAdjustWidth();
@@ -553,25 +646,78 @@ public class TFontChooserWindow extends TWindow {
                 }
             );
 
+            tripleBuffer = addCheckBox(3, 9, i18n.getString("tripleBuffer"),
+                (terminal != null ? terminal.isTripleBuffer() :
+                    System.getProperty("jexer.Swing.tripleBuffer",
+                        "true").equals("true")));
+            oldTripleBuffer = tripleBuffer.isChecked();
+
+            ArrayList<String> cursorStyles = new ArrayList<String>();
+            cursorStyles.add(i18n.getString("cursorStyleBlock").toLowerCase());
+            cursorStyles.add(i18n.getString("cursorStyleOutline").toLowerCase());
+            cursorStyles.add(i18n.getString("cursorStyleUnderline").toLowerCase());
+            cursorStyle = addComboBox(22, 10, 25, cursorStyles, 0, 4,
+                new TAction() {
+                    public void DO() {
+                        terminal.setCursorStyle(cursorStyle.getText());
+                    }
+                });
+            cursorStyle.setText((terminal == null ?
+                    System.getProperty("jexer.Swing.cursorStyle", "underline") :
+                    terminal.getCursorStyle().toString().toLowerCase()));
+
+            ArrayList<String> mouseStyles = new ArrayList<String>();
+            mouseStyles.add("default");
+            mouseStyles.add("crosshair");
+            mouseStyles.add("hand");
+            mouseStyles.add("move");
+            mouseStyles.add("text");
+            mouseStyles.add("none");
+            mouseStyle = addComboBox(22, 11, 25, mouseStyles, 0, 7,
+                new TAction() {
+                    public void DO() {
+                        terminal.setMouseStyle(mouseStyle.getText());
+                    }
+                });
+            mouseStyle.setText((terminal == null ?
+                    System.getProperty("jexer.Swing.mouseStyle", "default") :
+                    terminal.getMouseStyle().toLowerCase()));
+
+        } // if (terminal != null)
+
+        if (terminal == null) {
+            tripleBuffer.setEnabled(false);
+            cursorStyle.setEnabled(false);
+            mouseStyle.setEnabled(false);
         }
 
         addButton(i18n.getString("okButton"),
-            getWidth() - 13, getHeight() - 10,
+            getWidth() - 13, getHeight() - 7,
             new TAction() {
                 public void DO() {
                     // Copy values out.
                     if (ecmaTerminal != null) {
+                        ecmaTerminal.setHasSixel(sixel.isChecked());
+                        ecmaTerminal.setSixelSharedPalette(sixelSharedPalette.
+                            isChecked());
                         ecmaTerminal.setWideCharImages(wideCharImages.
                             isChecked());
+                        ecmaTerminal.setRgbColor(rgbColor.isChecked());
+                    }
+                    if (terminal != null) {
+                        synchronized (terminal) {
+                            terminal.setTripleBuffer(tripleBuffer.isChecked());
+                            terminal.setFont(terminal.getFont());
+                        }
                     }
 
                     // Close window.
-                    TFontChooserWindow.this.close();
+                    TScreenOptionsWindow.this.close();
                 }
             });
 
         TButton cancelButton = addButton(i18n.getString("cancelButton"),
-            getWidth() - 13, getHeight() - 8,
+            getWidth() - 13, getHeight() - 5,
             new TAction() {
                 public void DO() {
                     // Restore old values, then close the window.
@@ -583,13 +729,19 @@ public class TFontChooserWindow extends TWindow {
                             terminal.setTextAdjustY(oldTextAdjustY);
                             terminal.setTextAdjustHeight(oldTextAdjustHeight);
                             terminal.setTextAdjustWidth(oldTextAdjustWidth);
+                            terminal.setTripleBuffer(oldTripleBuffer);
+                            terminal.setCursorStyle(oldCursorStyle);
+                            terminal.setMouseStyle(oldMouseStyle);
                         }
                     }
                     if (ecmaTerminal != null) {
+                        ecmaTerminal.setHasSixel(oldSixel);
+                        ecmaTerminal.setSixelSharedPalette(oldSixelSharedPalette);
                         ecmaTerminal.setSixelPaletteSize(oldSixelPaletteSize);
                         ecmaTerminal.setWideCharImages(oldWideCharImages);
+                        ecmaTerminal.setRgbColor(oldRgbColor);
                     }
-                    TFontChooserWindow.this.close();
+                    TScreenOptionsWindow.this.close();
                 }
             });
 
@@ -613,12 +765,24 @@ public class TFontChooserWindow extends TWindow {
         if (keypress.equals(kbEsc)) {
             // Restore old values, then close the window.
             if (terminal != null) {
-                terminal.setFont(oldFont);
-                terminal.setFontSize(oldFontSize);
+                synchronized (terminal) {
+                    terminal.setFont(oldFont);
+                    terminal.setFontSize(oldFontSize);
+                    terminal.setTextAdjustX(oldTextAdjustX);
+                    terminal.setTextAdjustY(oldTextAdjustY);
+                    terminal.setTextAdjustHeight(oldTextAdjustHeight);
+                    terminal.setTextAdjustWidth(oldTextAdjustWidth);
+                    terminal.setTripleBuffer(oldTripleBuffer);
+                    terminal.setCursorStyle(oldCursorStyle);
+                    terminal.setMouseStyle(oldMouseStyle);
+                }
             }
             if (ecmaTerminal != null) {
+                ecmaTerminal.setHasSixel(oldSixel);
+                ecmaTerminal.setSixelSharedPalette(oldSixelSharedPalette);
                 ecmaTerminal.setSixelPaletteSize(oldSixelPaletteSize);
                 ecmaTerminal.setWideCharImages(oldWideCharImages);
+                ecmaTerminal.setRgbColor(oldRgbColor);
             }
             getApplication().closeWindow(this);
             return;
@@ -642,11 +806,11 @@ public class TFontChooserWindow extends TWindow {
         int left = 34;
 
         CellAttributes color = getTheme().getColor("ttext");
-        drawBox(2, 2, left + 24, 11, color, color);
+        drawBox(2, 2, left + 24, 14, color, color);
         putStringXY(4, 2, i18n.getString("swingOptions"), color);
 
-        drawBox(2, 12, left + 12, 16, color, color);
-        putStringXY(4, 12, i18n.getString("xtermOptions"), color);
+        drawBox(2, 15, left + 12, 22, color, color);
+        putStringXY(4, 15, i18n.getString("xtermOptions"), color);
 
         drawBox(left + 2, 5, left + 22, 10, color, color, 3, false);
         putStringXY(left + 4, 5, i18n.getString("sample"), color);
@@ -657,7 +821,7 @@ public class TFontChooserWindow extends TWindow {
     }
 
     // ------------------------------------------------------------------------
-    // TFontChooserWindow -----------------------------------------------------
+    // TScreenOptionsWindow ---------------------------------------------------
     // ------------------------------------------------------------------------
 
 }

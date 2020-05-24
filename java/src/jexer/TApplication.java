@@ -1111,7 +1111,7 @@ public class TApplication implements Runnable {
             return true;
         }
         if (menu.getId() == TMenu.MID_SCREEN_OPTIONS) {
-            new TFontChooserWindow(this);
+            new TScreenOptionsWindow(this);
             return true;
         }
 
