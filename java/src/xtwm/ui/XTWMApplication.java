@@ -310,6 +310,23 @@ public class XTWMApplication extends TApplication {
     protected void onPreDraw() {
         menuTrayText = String.format("%s [%d]", clockFormat.format(new Date()),
             desktopIndex);
+
+        List<TWindow> windows = getCurrentDesktop().getWindows();
+
+        // Special case: if the desktop has tiled terminals, and any windows
+        // on the screen are not part of a virtual desktop (i.e. the desktop
+        // pager is the only window visible), then permit the blinking cursor
+        // on the desktop to be visible.
+        if ((windows.size() == 0)
+            && (getDesktop().getChildren().size() > 0)
+        ) {
+            // Permit the desktop cursor to be visible, even if the top-most
+            // actual window does not have a cursor.
+            desktopCanHaveCursor = true;
+        } else {
+            desktopCanHaveCursor = false;
+        }
+
     }
 
     // ------------------------------------------------------------------------

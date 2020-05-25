@@ -310,6 +310,14 @@ public class TApplication implements Runnable {
     private boolean hideMenuBar = false;
 
     /**
+     * If true, the desktop can have the cursor blinking/visible even if the
+     * top-most window does not have the cursor active.  This can lead to a
+     * visible artifact where the desktop's cursor is "showing through" a
+     * window over it.
+     */
+    protected boolean desktopCanHaveCursor = false;
+
+    /**
      * Optional text to display at the top right of the menu.
      */
     protected String menuTrayText = "";
@@ -2321,7 +2329,7 @@ public class TApplication implements Runnable {
                     visibleWindowCount++;
                 }
             }
-            if (visibleWindowCount == 0) {
+            if ((visibleWindowCount == 0) || desktopCanHaveCursor) {
                 // No windows are visible, only the desktop.  Allow it to
                 // have the cursor.
                 if (desktop != null) {

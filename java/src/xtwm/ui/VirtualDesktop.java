@@ -119,6 +119,15 @@ public class VirtualDesktop {
     }
 
     /**
+     * Get the windows on this desktop.
+     *
+     * @return the windows
+     */
+    public List<TWindow> getWindows() {
+        return windows;
+    }
+
+    /**
      * Add a window to this desktop.
      *
      * @param window the window to add

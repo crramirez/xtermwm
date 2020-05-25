@@ -646,44 +646,44 @@ public class TScreenOptionsWindow extends TWindow {
                 }
             );
 
-            tripleBuffer = addCheckBox(3, 9, i18n.getString("tripleBuffer"),
-                (terminal != null ? terminal.isTripleBuffer() :
-                    System.getProperty("jexer.Swing.tripleBuffer",
-                        "true").equals("true")));
-            oldTripleBuffer = tripleBuffer.isChecked();
-
-            ArrayList<String> cursorStyles = new ArrayList<String>();
-            cursorStyles.add(i18n.getString("cursorStyleBlock").toLowerCase());
-            cursorStyles.add(i18n.getString("cursorStyleOutline").toLowerCase());
-            cursorStyles.add(i18n.getString("cursorStyleUnderline").toLowerCase());
-            cursorStyle = addComboBox(22, 10, 25, cursorStyles, 0, 4,
-                new TAction() {
-                    public void DO() {
-                        terminal.setCursorStyle(cursorStyle.getText());
-                    }
-                });
-            cursorStyle.setText((terminal == null ?
-                    System.getProperty("jexer.Swing.cursorStyle", "underline") :
-                    terminal.getCursorStyle().toString().toLowerCase()));
-
-            ArrayList<String> mouseStyles = new ArrayList<String>();
-            mouseStyles.add("default");
-            mouseStyles.add("crosshair");
-            mouseStyles.add("hand");
-            mouseStyles.add("move");
-            mouseStyles.add("text");
-            mouseStyles.add("none");
-            mouseStyle = addComboBox(22, 11, 25, mouseStyles, 0, 7,
-                new TAction() {
-                    public void DO() {
-                        terminal.setMouseStyle(mouseStyle.getText());
-                    }
-                });
-            mouseStyle.setText((terminal == null ?
-                    System.getProperty("jexer.Swing.mouseStyle", "default") :
-                    terminal.getMouseStyle().toLowerCase()));
-
         } // if (terminal != null)
+
+        tripleBuffer = addCheckBox(3, 9, i18n.getString("tripleBuffer"),
+            (terminal != null ? terminal.isTripleBuffer() :
+                System.getProperty("jexer.Swing.tripleBuffer",
+                    "true").equals("true")));
+        oldTripleBuffer = tripleBuffer.isChecked();
+
+        ArrayList<String> cursorStyles = new ArrayList<String>();
+        cursorStyles.add(i18n.getString("cursorStyleBlock").toLowerCase());
+        cursorStyles.add(i18n.getString("cursorStyleOutline").toLowerCase());
+        cursorStyles.add(i18n.getString("cursorStyleUnderline").toLowerCase());
+        cursorStyle = addComboBox(22, 10, 25, cursorStyles, 0, 4,
+            new TAction() {
+                public void DO() {
+                    terminal.setCursorStyle(cursorStyle.getText());
+                }
+            });
+        cursorStyle.setText((terminal == null ?
+                System.getProperty("jexer.Swing.cursorStyle", "underline") :
+                terminal.getCursorStyle().toString().toLowerCase()));
+
+        ArrayList<String> mouseStyles = new ArrayList<String>();
+        mouseStyles.add("default");
+        mouseStyles.add("crosshair");
+        mouseStyles.add("hand");
+        mouseStyles.add("move");
+        mouseStyles.add("text");
+        mouseStyles.add("none");
+        mouseStyle = addComboBox(22, 11, 25, mouseStyles, 0, 7,
+            new TAction() {
+                public void DO() {
+                    terminal.setMouseStyle(mouseStyle.getText());
+                }
+            });
+        mouseStyle.setText((terminal == null ?
+                System.getProperty("jexer.Swing.mouseStyle", "default") :
+                terminal.getMouseStyle().toLowerCase()));
 
         if (terminal == null) {
             tripleBuffer.setEnabled(false);

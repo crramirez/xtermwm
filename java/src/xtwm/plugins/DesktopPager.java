@@ -351,13 +351,26 @@ public class DesktopPager extends PluginWidget {
             application.getScreen().getWidth(),
             application.getDesktopBottom() - application.getDesktopTop()) {
 
-            // For DesktopPager, the only menu item is MID_WINDOW_CLOSE.
-            // Everything else should be routed to the desktop if it is set.
+            // For DesktopPager, only a few menu items are handled as a
+            // normal TWindow.  Everything else should be routed to the
+            // desktop if it is set.
             public void onMenu(final TMenuEvent menu) {
-                if (menu.getId() == TMenu.MID_WINDOW_CLOSE) {
-                    getApplication().closeWindow(this);
+                switch (menu.getId()) {
+                case TMenu.MID_WINDOW_CLOSE:
+                    application.closeWindow(this);
                     return;
+
+                case TMenu.MID_WINDOW_NEXT:
+                    // Fall through...
+                case TMenu.MID_WINDOW_PREVIOUS:
+                    // Fall through...
+                case TMenu.MID_WINDOW_MOVE:
+                    super.onMenu(menu);
+                    return;
+                default:
+                    break;
                 }
+
                 TDesktop desktop = getApplication().getDesktop();
                 if (desktop != null) {
                     desktop.onMenu(menu);
