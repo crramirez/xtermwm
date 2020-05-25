@@ -33,6 +33,9 @@ import java.io.File;
 import jexer.TWidget;
 import jexer.TWindow;
 import jexer.TPanel;
+import jexer.event.TMenuEvent;
+import jexer.event.TResizeEvent;
+import jexer.menu.TMenu;
 
 import xtwm.ui.XTWMApplication;
 
@@ -179,6 +182,49 @@ public abstract class PluginWidget extends TWidget {
     public boolean isResizable() {
         // Default is no.
         return false;
+    }
+
+    /**
+     * Get the window that will be used for this plugin when isWindowed() is
+     * true.  The plugin will be reparented inside this window.
+     *
+     * @param application the application
+     * @return the window
+     */
+    public TWindow getWindow(final XTWMApplication application) {
+        TWindow window = new TWindow(application, getWindowTitle(),
+            application.getScreen().getWidth(),
+            application.getDesktopBottom() - application.getDesktopTop()) {
+
+            public void onMenu(final TMenuEvent menu) {
+                // Override the NOCLOSEBOX and HIDEONCLOSE behavior for a
+                // widget window.  This permits a widget window to be
+                // closeable from the menu even if it lacks the close button.
+                if (menu.getId() == TMenu.MID_WINDOW_CLOSE) {
+                    getApplication().closeWindow(this);
+                    return;
+                }
+                super.onMenu(menu);
+            }
+
+            public void onResize(final TResizeEvent resize) {
+                // If there is only one widget in the window (which should be
+                // typical for a plugin window), resize that widget to match
+                // the window dimensions.
+                if (resize.getType() == TResizeEvent.Type.WIDGET) {
+                    if (getChildren().size() == 1) {
+                        TWidget widget = getChildren().get(0);
+                        widget.onResize(new TResizeEvent(
+                            TResizeEvent.Type.WIDGET,
+                            getWidth() - 2, getHeight() - 2));
+                        return;
+                    }
+                }
+                super.onResize(resize);
+            }
+        };
+
+        return window;
     }
 
     /**

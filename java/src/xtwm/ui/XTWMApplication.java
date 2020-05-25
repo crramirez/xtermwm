@@ -51,10 +51,10 @@ import jexer.TApplication;
 import jexer.TDesktop;
 import jexer.TEditColorThemeWindow;
 import jexer.TExceptionDialog;
-import jexer.TFontChooserWindow;
 import jexer.THelpWindow;
 import jexer.TInputBox;
 import jexer.TMessageBox;
+import jexer.TScreenOptionsWindow;
 import jexer.TSplitPane;
 import jexer.TStatusBar;
 import jexer.TWidget;
@@ -160,14 +160,6 @@ public class XTWMApplication extends TApplication {
      * The filename to save options to.
      */
     private String configFilename = null;
-
-    /**
-     * The password used to unlock the lock screen.  Unfortunately the lock
-     * screen cannot use the operating system password for this, because the
-     * only means of verifying credentials requires some ridiculous insecure
-     * shenanigans I don't want to get into.
-     */
-    private String lockScreenPassword = "a";
 
     /**
      * The virtual desktops.
@@ -351,7 +343,7 @@ public class XTWMApplication extends TApplication {
             return true;
 
         case MENU_APPLICATION_SETTINGS_DISPLAY:
-            new TFontChooserWindow(this);
+            new TScreenOptionsWindow(this);
             return true;
 
         case MENU_APPLICATION_SETTINGS_COLORS:
@@ -546,45 +538,17 @@ public class XTWMApplication extends TApplication {
             pluginClass = pluginWidgetMenuIds.get(menu.getId());
 
             if (pluginClass != null) {
-                window = new TWindow(this, "PLACEHOLDER",
-                    getScreen().getWidth(),
-                    getDesktopBottom() - getDesktopTop()) {
-
-                    public void onMenu(final TMenuEvent menu) {
-                        // Override the NOCLOSEBOX and HIDEONCLOSE behavior
-                        // for a widget window.
-                        if (menu.getId() == TMenu.MID_WINDOW_CLOSE) {
-                            getApplication().closeWindow(this);
-                            return;
-                        }
-                        super.onMenu(menu);
-                    }
-
-                    public void onResize(final TResizeEvent resize) {
-                        if (resize.getType() == TResizeEvent.Type.WIDGET) {
-                            if (getChildren().size() == 1) {
-                                TWidget widget = getChildren().get(0);
-                                widget.onResize(new TResizeEvent(
-                                    TResizeEvent.Type.WIDGET,
-                                    getWidth() - 2, getHeight() - 2));
-                                return;
-                            }
-                        }
-                        super.onResize(resize);
-                    }
-                };
-
                 PluginWidget plugin = null;
                 try {
-                    plugin = pluginClass.getConstructor(TWidget.class).newInstance(window);
+                    plugin = pluginClass.getConstructor().newInstance();
                     plugin.initialize(this);
-                    window.setTitle(plugin.getWindowTitle());
+                    window = plugin.getWindow(this);
+                    plugin.setParent(window, false);
                     plugin.setDimensions(0, 0,
                         plugin.getPreferredWidth(),
                         plugin.getPreferredHeight());
                     window.setDimensions(window.getX(), window.getY(),
-                        plugin.getWidth() + 2,
-                        plugin.getHeight() + 2);
+                        plugin.getWidth() + 2, plugin.getHeight() + 2);
                     window.setResizable(plugin.isResizable());
                 } catch (Exception e) {
                     // Show this exception to the user.
@@ -1099,6 +1063,10 @@ public class XTWMApplication extends TApplication {
         getBackend().reloadOptions();
 
         // Now reset any XTWM variables based on option values.
+        setHideStatusBar(getOption("xtwm.hideStatusLine",
+                "true").equals("true"));
+
+        // Display options
         if (getScreen() instanceof SwingTerminal) {
             SwingTerminal terminal = (SwingTerminal) getScreen();
             if (!options.getProperty("ui.font.name", "").equals("")) {
@@ -1203,6 +1171,8 @@ public class XTWMApplication extends TApplication {
         setHideMenuBar(true);
         setHideStatusBar(true);
 
+        String lockScreenPassword = getOption("xtwm.lockPassword");
+
         for (;;) {
             TInputBox inputBox = inputBox(i18n.
                 getString("lockScreenInputBoxTitle"),
@@ -1210,16 +1180,21 @@ public class XTWMApplication extends TApplication {
                 TInputBox.Type.OKCANCEL);
             if (inputBox.isOk()) {
                 String password = inputBox.getText();
-                if (password.length() > 0) {
-                    if (password.equals(lockScreenPassword)) {
-                        break;
+                if (lockScreenPassword.length() > 0) {
+                    if (password.length() > 0) {
+                        if (password.equals(lockScreenPassword)) {
+                            break;
+                        }
                     }
+                } else {
+                    break;
                 }
             }
         } // for (;;)
 
         setHideMenuBar(false);
-        setHideStatusBar(false);
+        setHideStatusBar(getOption("xtwm.hideStatusLine",
+                "true").equals("true"));
     }
 
     // Desktop management -----------------------------------------------------

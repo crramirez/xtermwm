@@ -1029,7 +1029,7 @@ public class TWindow extends TWidget {
      *
      * @param key the key to start taking control of
      */
-    protected void addShortcutKeypress(final TKeypress key) {
+    public void addShortcutKeypress(final TKeypress key) {
         keyboardShortcuts.add(key);
     }
 
@@ -1038,7 +1038,7 @@ public class TWindow extends TWidget {
      *
      * @param key the key to stop taking control of
      */
-    protected void removeShortcutKeypress(final TKeypress key) {
+    public void removeShortcutKeypress(final TKeypress key) {
         keyboardShortcuts.remove(key);
     }
 

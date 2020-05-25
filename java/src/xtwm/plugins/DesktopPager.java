@@ -30,13 +30,18 @@ package xtwm.plugins;
 
 import java.util.ResourceBundle;
 
+import jexer.TDesktop;
 import jexer.TWidget;
 import jexer.TWindow;
 import jexer.bits.CellAttributes;
 import jexer.bits.GraphicsChars;
 import jexer.bits.WidgetUtils;
+import jexer.event.TKeypressEvent;
+import jexer.event.TMenuEvent;
 import jexer.event.TMouseEvent;
 import jexer.event.TResizeEvent;
+import jexer.menu.TMenu;
+import static jexer.TKeypress.*;
 
 import xtwm.ui.VirtualDesktop;
 import xtwm.ui.XTWMApplication;
@@ -239,11 +244,6 @@ public class DesktopPager extends PluginWidget {
     public void initialize(final XTWMApplication app) {
         super.initialize(app);
 
-        if (isWindowed()) {
-            ((TWindow) getParent()).setCloseBox(false);
-            ((TWindow) getParent()).setZoomBox(false);
-        }
-
         int i = 1;
         for (VirtualDesktop desktop: app.getDesktops()) {
             new PagerButton(this, desktop, i);
@@ -251,13 +251,6 @@ public class DesktopPager extends PluginWidget {
         }
 
         layoutButtons();
-
-        if (isWindowed()) {
-            // Place on right side, and put on all desktops.
-            ((TWindow) getParent()).setX(getScreen().getWidth() -
-                (getWidth() + 2));
-            app.putOnAllDesktops((TWindow) getParent());
-        }
     }
 
     /**
@@ -343,6 +336,69 @@ public class DesktopPager extends PluginWidget {
     @Override
     public boolean isResizable() {
         return true;
+    }
+
+    /**
+     * Get the window that will be used for this plugin when isWindowed() is
+     * true.  The plugin will be reparented inside this window.
+     *
+     * @param application the application
+     * @return the window
+     */
+    @Override
+    public TWindow getWindow(final XTWMApplication application) {
+        TWindow window = new TWindow(application, getWindowTitle(),
+            application.getScreen().getWidth(),
+            application.getDesktopBottom() - application.getDesktopTop()) {
+
+            // For DesktopPager, the only menu item is MID_WINDOW_CLOSE.
+            // Everything else should be routed to the desktop if it is set.
+            public void onMenu(final TMenuEvent menu) {
+                if (menu.getId() == TMenu.MID_WINDOW_CLOSE) {
+                    getApplication().closeWindow(this);
+                    return;
+                }
+                TDesktop desktop = getApplication().getDesktop();
+                if (desktop != null) {
+                    desktop.onMenu(menu);
+                    return;
+                }
+            }
+
+            public void onResize(final TResizeEvent resize) {
+                if (resize.getType() == TResizeEvent.Type.WIDGET) {
+                    if (getChildren().size() == 1) {
+                        TWidget widget = getChildren().get(0);
+                        widget.onResize(new TResizeEvent(
+                            TResizeEvent.Type.WIDGET,
+                            getWidth() - 2, getHeight() - 2));
+                        return;
+                    }
+                }
+                super.onResize(resize);
+            }
+
+            @Override
+            public void onKeypress(final TKeypressEvent keypress) {
+                if (inWindowMove || inWindowResize || inKeyboardResize) {
+                    super.onKeypress(keypress);
+                    return;
+                }
+
+                TDesktop desktop = getApplication().getDesktop();
+                if (desktop != null) {
+                    desktop.onKeypress(keypress);
+                    return;
+                }
+            }
+        };
+
+        window.setCloseBox(false);
+        window.setZoomBox(false);
+        application.putOnAllDesktops(window);
+        window.setX(application.getScreen().getWidth() - (getWidth() + 2));
+        window.addShortcutKeypress(kbCtrlW);
+        return window;
     }
 
     // ------------------------------------------------------------------------
