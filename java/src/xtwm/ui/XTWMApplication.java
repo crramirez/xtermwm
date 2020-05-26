@@ -1157,6 +1157,14 @@ public class XTWMApplication extends TApplication {
             "true").equals("true");
         setFocusFollowsMouse(getOption("window.focusFollowsMouse",
                 "true").equals("true"));
+        String hideTextMouse = getOption("xtwm.hideTextMouse");
+        if (hideTextMouse.equals("always")) {
+            textMouse = false;
+        } else if (hideTextMouse.equals("never")) {
+            textMouse = true;
+        } else if (getBackend() instanceof SwingTerminal) {
+            textMouse = false;
+        }
 
         // Display options
         if (getScreen() instanceof SwingTerminal) {
@@ -1396,6 +1404,7 @@ public class XTWMApplication extends TApplication {
             throw new IllegalArgumentException("Class " + plugin +
                 " is not an instance of xtwm.plugins.PluginWidget");
         }
+        boolean loadDesktopPager = getOption("desktop.pager").equals("true");
 
         // Every plugin must have a zero-argument constructor.
         try {
@@ -1413,6 +1422,12 @@ public class XTWMApplication extends TApplication {
                 int menuId = pluginWidgetMenuIds.size() + WIDGET_MENU_ID_MIN;
                 widgetsMenu.addItem(menuId, widget.getMenuMnemonic());
                 pluginWidgetMenuIds.put(menuId, widget.getClass());
+                if (loadDesktopPager) {
+                    if (widget instanceof xtwm.plugins.DesktopPager) {
+                        // Load the desktop pager automatically.
+                        postMenuEvent(new TMenuEvent(menuId));
+                    }
+                }
             }
 
         } catch (NoSuchMethodException e) {

@@ -231,22 +231,68 @@ public class TScreenOptionsWindow extends TWindow {
             ecmaTerminal = (ECMA48Terminal) getScreen();
         }
 
-        addLabel(i18n.getString("fontName"), 3, 2, "ttext", false);
-        addLabel(i18n.getString("fontSize"), 3, 3, "ttext", false);
-        addLabel(i18n.getString("textAdjustX"), 3, 4, "ttext", false);
-        addLabel(i18n.getString("textAdjustY"), 3, 5, "ttext", false);
-        addLabel(i18n.getString("textAdjustHeight"), 3, 6, "ttext", false);
-        addLabel(i18n.getString("textAdjustWidth"), 3, 7, "ttext", false);
+        addLabel(i18n.getString("fontName"), 3, 2, "ttext", false,
+            new TAction() {
+                public void DO() {
+                    if (fontName != null) {
+                        fontName.activate();
+                    }
+                }
+            });
+        addLabel(i18n.getString("fontSize"), 3, 3, "ttext", false,
+            new TAction() {
+                public void DO() {
+                    if (fontSize != null) {
+                        fontSize.activate();
+                    }
+                }
+            });
+        addLabel(i18n.getString("textAdjustX"), 3, 4, "ttext", false,
+            new TAction() {
+                public void DO() {
+                    if (textAdjustX != null) {
+                        textAdjustX.activate();
+                    }
+                }
+            });
+        addLabel(i18n.getString("textAdjustY"), 3, 5, "ttext", false,
+            new TAction() {
+                public void DO() {
+                    if (textAdjustY != null) {
+                        textAdjustY.activate();
+                    }
+                }
+            });
+        addLabel(i18n.getString("textAdjustHeight"), 3, 6, "ttext", false,
+            new TAction() {
+                public void DO() {
+                    if (textAdjustHeight != null) {
+                        textAdjustHeight.activate();
+                    }
+                }
+            });
+        addLabel(i18n.getString("textAdjustWidth"), 3, 7, "ttext", false,
+            new TAction() {
+                public void DO() {
+                    if (textAdjustWidth != null) {
+                        textAdjustWidth.activate();
+                    }
+                }
+            });
         addLabel(i18n.getString("cursorStyle"), 3, 10, "ttext", false,
             new TAction() {
                 public void DO() {
-                    cursorStyle.activate();
+                    if (cursorStyle != null) {
+                        cursorStyle.activate();
+                    }
                 }
             });
         addLabel(i18n.getString("mouseStyle"), 3, 11, "ttext", false,
             new TAction() {
                 public void DO() {
-                    mouseStyle.activate();
+                    if (mouseStyle != null) {
+                        mouseStyle.activate();
+                    }
                 }
             });
 
@@ -261,7 +307,14 @@ public class TScreenOptionsWindow extends TWindow {
                 System.getProperty("jexer.ECMA48.sixelSharedPalette",
                     "true").equals("true")));
         oldSixelSharedPalette = sixelSharedPalette.isChecked();
-        addLabel(i18n.getString("sixelPaletteSize"), 3, 17, "ttext", false);
+        addLabel(i18n.getString("sixelPaletteSize"), 3, 17, "ttext", false,
+            new TAction() {
+                public void DO() {
+                    if (sixelPaletteSize != null) {
+                        sixelPaletteSize.activate();
+                    }
+                }
+            });
         wideCharImages = addCheckBox(3, 18, i18n.getString("wideCharImages"),
             (ecmaTerminal != null ? ecmaTerminal.isWideCharImages() :
                 System.getProperty("jexer.ECMA48.wideCharImages",

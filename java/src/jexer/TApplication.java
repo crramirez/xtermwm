@@ -286,7 +286,7 @@ public class TApplication implements Runnable {
     /**
      * If true, display a text-based mouse cursor.
      */
-    private boolean textMouse = true;
+    protected boolean textMouse = true;
 
     /**
      * If true, hide the mouse after typing a keystroke.
@@ -1282,6 +1282,8 @@ public class TApplication implements Runnable {
             // Screen resize
             if (event instanceof TResizeEvent) {
                 TResizeEvent resize = (TResizeEvent) event;
+                assert (resize.getType() == TResizeEvent.Type.SCREEN);
+
                 synchronized (getScreen()) {
                     if ((System.currentTimeMillis() - screenResizeTime >= 15)
                         || (resize.getWidth() < getScreen().getWidth())
@@ -1302,6 +1304,9 @@ public class TApplication implements Runnable {
                     desktop.setDimensions(0, desktopTop, resize.getWidth(),
                         (desktopBottom - desktopTop));
                     desktop.onResize(resize);
+                }
+                for (TWindow window: windows) {
+                    window.onResize(resize);
                 }
 
                 // Change menu edges if needed.

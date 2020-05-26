@@ -388,6 +388,13 @@ public class DesktopPager extends PluginWidget {
                         return;
                     }
                 }
+
+                if (resize.getType() == TResizeEvent.Type.SCREEN) {
+                    setX(getScreen().getWidth() - getWidth());
+                    setY(getApplication().getDesktopTop());
+                    return;
+                }
+
                 super.onResize(resize);
             }
 
