@@ -101,7 +101,7 @@ public class TApplication implements Runnable {
      * If true, do "smart placement" on new windows that are not specified to
      * be centered.
      */
-    private static final boolean smartWindowPlacement = true;
+    protected boolean smartWindowPlacement = true;
 
     /**
      * Two backend types are available.

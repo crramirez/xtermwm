@@ -177,9 +177,19 @@ public class XTWMApplication extends TApplication {
     private int desktopCount = 4;
 
     /**
-     * The clock time format.
+     * If true, display a clock in the top-right menu bar line.
+     */
+    private boolean menuTrayClock = true;
+
+    /**
+     * The menu bar clock time format.
      */
     private SimpleDateFormat clockFormat = null;
+
+    /**
+     * If true, display the desktop number in the top-right menu bar line.
+     */
+    private boolean menuTrayDesktop = true;
 
     /**
      * The Application | Programs submenu.
@@ -210,6 +220,7 @@ public class XTWMApplication extends TApplication {
      * A map of menu ID to plugin class, for the Application | Widgets menu.
      */
     private Map<Integer, Class<? extends PluginWidget>> pluginWidgetMenuIds;
+
 
     // ------------------------------------------------------------------------
     // Constructors -----------------------------------------------------------
@@ -270,9 +281,6 @@ public class XTWMApplication extends TApplication {
         loadPlugins();
         addDesktops();
 
-        // Menu system tray
-        // clockFormat = new SimpleDateFormat("MM/dd/YYYY hh:mm:ss a");
-        clockFormat = new SimpleDateFormat("h:mm:ss a");
         if (getBackend() instanceof jexer.backend.ECMA48Backend) {
             // For the Xterm backend, force a repaint so that the clock will
             // be updated.
@@ -308,8 +316,18 @@ public class XTWMApplication extends TApplication {
      */
     @Override
     protected void onPreDraw() {
-        menuTrayText = String.format("%s [%d]", clockFormat.format(new Date()),
-            desktopIndex);
+        String text = "";
+
+        if (menuTrayClock) {
+            text = clockFormat.format(new Date());
+            if (menuTrayDesktop) {
+                text += " ";
+            }
+        }
+        if (menuTrayDesktop) {
+            text += String.format("[%d]", desktopIndex);
+        }
+        menuTrayText = text;
 
         List<TWindow> windows = getCurrentDesktop().getWindows();
 
@@ -360,7 +378,29 @@ public class XTWMApplication extends TApplication {
             return true;
 
         case MENU_APPLICATION_SETTINGS_DISPLAY:
-            new TScreenOptionsWindow(this);
+            new TScreenOptionsWindow(this) {
+                /*
+                 * We have finished editing screen options, now save to the
+                 * xtwm.properties file.
+                 */
+                @Override
+                public void onClose() {
+                    /*
+                     * TODO:
+                     *
+                     *   jexer.ECMA48.sixel
+                     *   jexer.ECMA48.sixelSharedPalette
+                     *   jexer.ECMA48.wideCharImages
+                     *   jexer.ECMA48.rgbColor
+                     *   jexer.Swing.tripleBuffer
+                     *   jexer.Swing.cursorStyle
+                     *   jexer.Swing.mouseStyle
+                     */
+
+                    saveOptions();
+                    super.onClose();
+                }
+            };
             return true;
 
         case MENU_APPLICATION_SETTINGS_COLORS:
@@ -430,7 +470,7 @@ public class XTWMApplication extends TApplication {
 
         case MENU_APPLICATION_EXIT:
             // Post a quit command
-            postMenuEvent(new TCommandEvent(cmQuit));
+            postMenuEvent(new TCommandEvent(cmExit));
             return true;
 
         case MENU_TERMINAL_NEW_WINDOW:
@@ -590,12 +630,17 @@ public class XTWMApplication extends TApplication {
     protected boolean onCommand(final TCommandEvent command) {
         // Override cmExit to show a different dialog.
         if (command.equals(cmExit)) {
-            if (messageBox(i18n.getString("exitDialogTitle"),
-                    i18n.getString("exitDialogText"),
-                    TMessageBox.Type.YESNO).isYes()) {
+            if (getOption("xtwm.confirmOnExit", "true").equals("true")) {
+                if (messageBox(i18n.getString("exitDialogTitle"),
+                        i18n.getString("exitDialogText"),
+                        TMessageBox.Type.YESNO).isYes()) {
 
-                exit();
+                    exit();
+                }
+                return true;
             }
+            // No confirm on exit, just exit.
+            exit();
             return true;
         }
 
@@ -959,20 +1004,44 @@ public class XTWMApplication extends TApplication {
     void setDefaultOptions() {
 
         // Application options, keep these in sync with xtwm.properties.
-
-        setOption("ui.font.name", "");
-        setOption("ui.font.size", "20");
-        setOption("ui.font.adjustX", "0");
-        setOption("ui.font.adjustY", "0");
-        setOption("ui.font.adjustWidth", "0");
-        setOption("ui.font.adjustHeight", "0");
-
-        setOption("jexer.TTerminal.ptypipe", "auto");
-        setOption("jexer.TTerminal.closeOnExit", "false");
-        setOption("jexer.Swing.cursorStyle", "underline");
-        setOption("jexer.Swing.tripleBuffer", "true");
+        setOption("desktop.count", "4");
+        setOption("desktop.pager", "true");
+        setOption("editor.external.new", "$VISUAL");
+        setOption("editor.external.open", "$VISUAL {0}");
+        setOption("editor.internal.backspaceUnindents", "true");
+        setOption("editor.internal.indentLevel", "4");
+        setOption("editor.internal.saveWithTabs", "false");
+        setOption("editor.internal.trimWhitespace", "true");
+        setOption("editor.internal.undoLevel", "50");
         setOption("jexer.ECMA48.rgbColor", "false");
         setOption("jexer.ECMA48.sixel", "true");
+        setOption("jexer.ECMA48.wideCharImages", "true");
+        setOption("jexer.Swing.cursorStyle", "underline");
+        setOption("jexer.Swing.mouseStyle", "default");
+        setOption("jexer.Swing.tripleBuffer", "true");
+        setOption("jexer.TTerminal.closeOnExit", "true");
+        setOption("jexer.TTerminal.ptypipe", "auto");
+        setOption("jexer.TTerminal.scrollbackMax", "2000");
+        setOption("menuTray.clock", "true");
+        setOption("menuTray.clock.format", "h:mm:ss a");
+        setOption("menuTray.desktop", "true");
+        setOption("panel.focusFollowsMouse", "false");
+        setOption("screensaver.lock", "true");
+        setOption("screensaver.timeout", "600");
+        setOption("ui.font.adjustHeight", "0");
+        setOption("ui.font.adjustWidth", "0");
+        setOption("ui.font.adjustX", "0");
+        setOption("ui.font.adjustY", "0");
+        setOption("ui.font.name", "");
+        setOption("ui.font.size", "20");
+        setOption("window.focusFollowsMouse", "false");
+        setOption("window.smartPlacement", "true");
+        setOption("xtwm.confirmOnExit", "true");
+        setOption("xtwm.hideStatusLine", "true");
+        setOption("xtwm.hideTextMouse", "swing");
+        setOption("xtwm.lockScreenPassword", "");
+        setOption("xtwm.maximizeOnSwing", "true");
+        setOption("xtwm.useExternalEditor", "false");
 
         // Colors
         getTheme().setDefaultTheme();
@@ -1080,7 +1149,13 @@ public class XTWMApplication extends TApplication {
         getBackend().reloadOptions();
 
         // Now reset any XTWM variables based on option values.
-        setHideStatusBar(getOption("xtwm.hideStatusLine",
+        setHideStatusBar(getOption("xtwm.hideStatusLine").equals("true"));
+        menuTrayClock = getOption("menuTray.clock").equals("true");
+        clockFormat = new SimpleDateFormat(getOption("menuTray.clock.format"));
+        menuTrayDesktop = getOption("menuTray.desktop").equals("true");
+        smartWindowPlacement = getOption("window.smartPlacement",
+            "true").equals("true");
+        setFocusFollowsMouse(getOption("window.focusFollowsMouse",
                 "true").equals("true"));
 
         // Display options
@@ -1139,7 +1214,7 @@ public class XTWMApplication extends TApplication {
             } catch (NumberFormatException e) {
                 // SQUASH
             }
-        }
+        } // if (getScreen() instanceof SwingTerminal)
     }
 
     /**
@@ -1188,7 +1263,7 @@ public class XTWMApplication extends TApplication {
         setHideMenuBar(true);
         setHideStatusBar(true);
 
-        String lockScreenPassword = getOption("xtwm.lockPassword");
+        String lockScreenPassword = getOption("xtwm.lockPassword", "");
 
         for (;;) {
             TInputBox inputBox = inputBox(i18n.

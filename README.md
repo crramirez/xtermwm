@@ -34,7 +34,7 @@ manager for the console.  Major features include:
 Intended Audience
 -----------------
 
-XtermWM is expected to be of help for the following kinds of people:
+XtermWM is expected to be helpful to the following kinds of people:
 
   * Console users who want to have multiple windowed terminals, but
     not a full X11 desktop environment.
@@ -45,7 +45,7 @@ XtermWM is expected to be of help for the following kinds of people:
 
   * People who used the DOS-era "shells" like IBM DOS Shell, DESQview,
     WordPerfect Office, and Direct Access, and want similar features
-    in their consoles without having to learn Emacs Lisp.
+    in their terminals without having to learn Emacs Lisp.
 
 
 

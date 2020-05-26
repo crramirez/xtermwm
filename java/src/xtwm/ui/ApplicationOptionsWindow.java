@@ -71,24 +71,69 @@ public class ApplicationOptionsWindow extends TWindow {
     private TCheckBox closeOnExit = null;
 
     /**
-     * Triple-buffer support.
+     * Terminal scrollback size.
      */
-    private TCheckBox tripleBuffer;
+    private TField scrollbackMax = null;
 
     /**
-     * Cursor style.
+     * Whether or not windows raise when the mouse moves over them.
      */
-    private TComboBox cursorStyle;
+    private TCheckBox windowFocusFollowsMouse = null;
 
     /**
-     * Sixel support.
+     * Whether or not panels get focus when the mouse moves over them.
      */
-    private TCheckBox sixel;
+    private TCheckBox panelFocusFollowsMouse = null;
 
     /**
-     * 24-bit RGB color for normal system colors.
+     * Whether or not new windows are placed so as to minimize overlap.
      */
-    private TCheckBox rgbColor;
+    private TCheckBox smartPlacement = null;
+
+    /**
+     * Number of desktops.
+     */
+    private TField desktopCount = null;
+
+    /**
+     * Whether or not to show the desktop pager on startup.
+     */
+    private TCheckBox desktopPager = null;
+
+    /**
+     * Whether or not to have a confirmation dialog when exiting.
+     */
+    private TCheckBox confirmOnExit = null;
+
+    /**
+     * Options for hiding the text mouse.
+     */
+    private TComboBox hideTextMouse = null;
+
+    /**
+     * Whether or not to show a clock on the menu bar.
+     */
+    private TCheckBox menuTrayClock = null;
+
+    /**
+     * The format for the time display for the clock on the menu bar.
+     */
+    private TField menuTrayClockFormat = null;
+
+    /**
+     * Whether or not to show the desktop number on the menu bar.
+     */
+    private TCheckBox menuTrayDesktop = null;
+
+    /**
+     * The number of seconds to wait for the screensaver to turn on.
+     */
+    private TField screensaverTimeout = null;
+
+    /**
+     * Whether or not the screensaver will require a password.
+     */
+    private TCheckBox screensaverLock = null;
 
     // ------------------------------------------------------------------------
     // Constructors -----------------------------------------------------------
@@ -101,7 +146,7 @@ public class ApplicationOptionsWindow extends TWindow {
      */
     public ApplicationOptionsWindow(final TApplication parent) {
 
-        super(parent, i18n.getString("windowTitle"), 0, 0, 76, 18,
+        super(parent, i18n.getString("windowTitle"), 0, 0, 76, 21,
             MODAL | CENTERED);
 
         final XTWMApplication app = ((XTWMApplication) getApplication());
@@ -134,30 +179,115 @@ public class ApplicationOptionsWindow extends TWindow {
         closeOnExit = addCheckBox(3, 3, i18n.getString("closeWindowOnExit"),
             app.getOption("jexer.TTerminal.closeOnExit").equals("true"));
 
-        tripleBuffer = addCheckBox(3, 7, i18n.getString("tripleBuffer"),
-            app.getOption("jexer.Swing.tripleBuffer", "true").equals("true"));
-
-        addLabel(i18n.getString("cursorStyle"), 3, 8, "ttext", false,
+        addLabel(i18n.getString("scrollbackLines"), 3, 4, "ttext", false,
             new TAction() {
                 public void DO() {
-                    cursorStyle.activate();
+                    scrollbackMax.activate();
                 }
             });
-        ArrayList<String> cursorStyles = new ArrayList<String>();
-        cursorStyles.add(i18n.getString("cursorStyleBlock").toLowerCase());
-        cursorStyles.add(i18n.getString("cursorStyleOutline").toLowerCase());
-        cursorStyles.add(i18n.getString("cursorStyleUnderline").toLowerCase());
-        cursorStyle = addComboBox(22, 8, 25, cursorStyles, 0, 4, null);
-        cursorStyle.setText(app.getOption("jexer.Swing.cursorStyle",
-                "underline").toLowerCase());
+        scrollbackMax = addField(22, 4, 6, false,
+            app.getOption("jexer.TTerminal.scrollbackMax"));
 
-        sixel = addCheckBox(3, 12, i18n.getString("sixel"),
-            app.getOption("jexer.ECMA48.sixel", "true").equals("true"));
-        rgbColor = addCheckBox(3, 13, i18n.getString("rgbColor"),
-            app.getOption("jexer.ECMA48.rgbColor", "false").equals("true"));
+        // Window / panel options
+        windowFocusFollowsMouse = addCheckBox(39, 2,
+            i18n.getString("windowFocusFollowsMouse"),
+            app.getOption("window.focusFollowsMouse", "false").equals("true"));
+        panelFocusFollowsMouse = addCheckBox(39, 3,
+            i18n.getString("panelFocusFollowsMouse"),
+            app.getOption("panel.focusFollowsMouse", "false").equals("true"));
+        smartPlacement = addCheckBox(39, 4, i18n.getString("smartPlacement"),
+            app.getOption("window.smartPlacement", "true").equals("true"));
+
+        // Desktop count: label, field, spinner
+        addLabel(i18n.getString("desktopCount"), 39, 5, "ttext", false,
+            new TAction() {
+                public void DO() {
+                    desktopCount.activate();
+                }
+            });
+        desktopCount = addField(66, 5, 3, false,
+            app.getOption("desktop.count", "4"));
+        addSpinner(69, 5,
+            new TAction() {
+                public void DO() {
+                    try {
+                        int newVal = Integer.parseInt(desktopCount.getText());
+                        newVal++;
+                        desktopCount.setText(Integer.toString(newVal));
+                    } catch (NumberFormatException e) {
+                        // SQUASH
+                    }
+                }
+            },
+            new TAction() {
+                public void DO() {
+                    try {
+                        int newVal = Integer.parseInt(desktopCount.getText());
+                        newVal--;
+                        if (newVal >= 1) {
+                            desktopCount.setText(Integer.toString(newVal));
+                        }
+                    } catch (NumberFormatException e) {
+                        // SQUASH
+                    }
+                }
+            }
+        );
+
+        desktopPager = addCheckBox(39, 6, i18n.getString("desktopPager"),
+            app.getOption("desktop.pager", "true").equals("true"));
+
+
+        // Application options
+        confirmOnExit = addCheckBox(3, 10, i18n.getString("confirmOnExit"),
+            app.getOption("xtwm.confirmOnExit").equals("true"));
+        addLabel(i18n.getString("hideTextMouse"), 3, 11, "tcheckbox.inactive",
+            false,
+            new TAction() {
+                public void DO() {
+                    hideTextMouse.activate();
+                }
+            });
+        List<String> hideTextMouseOptions = new ArrayList<String>();
+        hideTextMouseOptions.add("always");
+        hideTextMouseOptions.add("never");
+        hideTextMouseOptions.add("swing");
+        hideTextMouse = addComboBox(36, 11, 10, hideTextMouseOptions, 0, 5,
+            new TAction() {
+                public void DO() {
+                    app.setOption("xtwm.hideTextMouse",
+                        hideTextMouse.getText());
+                }
+            });
+        hideTextMouse.setText(app.getOption("xtwm.hideTextMouse"), false);
+        menuTrayClock = addCheckBox(3, 12, i18n.getString("menuTrayClock"),
+            app.getOption("menuTray.clock").equals("true"));
+
+        addLabel(i18n.getString("menuTrayClockFormat"), 3, 13, "ttext", false,
+            new TAction() {
+                public void DO() {
+                    menuTrayClockFormat.activate();
+                }
+            });
+        menuTrayClockFormat = addField(36, 13, 10, false,
+            app.getOption("menuTray.clock.format"));
+
+        menuTrayDesktop = addCheckBox(3, 14, i18n.getString("menuTrayDesktop"),
+            app.getOption("menuTray.desktop").equals("true"));
+
+        addLabel(i18n.getString("screensaverTimeout"), 3, 15, "ttext", false,
+            new TAction() {
+                public void DO() {
+                    screensaverTimeout.activate();
+                }
+            });
+        screensaverTimeout = addField(36, 15, 10, false,
+            app.getOption("screensaver.timeout"));
+        screensaverLock = addCheckBox(3, 16, i18n.getString("screensaverLock"),
+            app.getOption("screensaver.lock").equals("true"));
 
         // Buttons
-        addButton(i18n.getString("saveButton"), getWidth() - buttonOffset, 4,
+        addButton(i18n.getString("saveButton"), getWidth() - buttonOffset, 9,
             new TAction() {
                 public void DO() {
                     // Copy values from window to properties, save and close
@@ -168,7 +298,7 @@ public class ApplicationOptionsWindow extends TWindow {
                 }
             });
 
-        addButton(i18n.getString("resetButton"), getWidth() - buttonOffset, 6,
+        addButton(i18n.getString("resetButton"), getWidth() - buttonOffset, 11,
             new TAction() {
                 public void DO() {
                     // Reset to defaults, copy values into window.
@@ -177,7 +307,7 @@ public class ApplicationOptionsWindow extends TWindow {
                 }
             });
 
-        addButton(i18n.getString("okButton"), getWidth() - buttonOffset, 8,
+        addButton(i18n.getString("okButton"), getWidth() - buttonOffset, 13,
             new TAction() {
                 public void DO() {
                     // Copy values from window to properties, close window.
@@ -187,7 +317,7 @@ public class ApplicationOptionsWindow extends TWindow {
             });
 
         TButton cancelButton = addButton(i18n.getString("cancelButton"),
-            getWidth() - buttonOffset, 10,
+            getWidth() - buttonOffset, 15,
             new TAction() {
                 public void DO() {
                     // Don't copy anything, just close the window.
@@ -220,18 +350,19 @@ public class ApplicationOptionsWindow extends TWindow {
 
         CellAttributes boxColor = getTheme().getColor("ttext");
 
-        // Shells
-        drawBox(2, 2, 50, 6, boxColor, boxColor);
+        int column2 = 38;
+
+        // Terminals
+        drawBox(2, 2, 36, 7, boxColor, boxColor);
         putStringXY(4, 2, i18n.getString("osShellTitle"), boxColor);
 
-        // Swing backend options
-        drawBox(2, 7, 50, 11, boxColor, boxColor);
-        putStringXY(4, 7, i18n.getString("swingTitle"), boxColor);
+        // Windows/Panels
+        drawBox(column2, 2, column2 + 36, 9, boxColor, boxColor);
+        putStringXY(column2 + 2, 2, i18n.getString("windowsTitle"), boxColor);
 
-        // ECMA48 backend options
-        drawBox(2, 12, 50, 16, boxColor, boxColor);
-        putStringXY(4, 12, i18n.getString("ecma48Title"), boxColor);
-
+        // Application
+        drawBox(2, 10, 50, 19, boxColor, boxColor);
+        putStringXY(4, 10, i18n.getString("applicationTitle"), boxColor);
     }
 
     // ------------------------------------------------------------------------
@@ -246,32 +377,48 @@ public class ApplicationOptionsWindow extends TWindow {
 
         app.setOption("jexer.TTerminal.ptypipe", ptypipe.getText());
 
-        if (closeOnExit.isChecked()) {
-            app.setOption("jexer.TTerminal.closeOnExit", "true");
-        } else {
-            app.setOption("jexer.TTerminal.closeOnExit", "false");
+        app.setOption("jexer.TTerminal.closeOnExit",
+            (closeOnExit.isChecked() ?  "true" : "false"));
+
+        app.setOption("jexer.TTerminal.scrollbackMax",
+            scrollbackMax.getText());
+
+        app.setOption("window.focusFollowsMouse",
+            (windowFocusFollowsMouse.isChecked() ?  "true" : "false"));
+
+        app.setOption("panel.focusFollowsMouse",
+            (panelFocusFollowsMouse.isChecked() ?  "true" : "false"));
+
+        app.setOption("window.smartPlacement",
+            (smartPlacement.isChecked() ?  "true" : "false"));
+
+        try {
+            int count = Integer.parseInt(desktopCount.getText());
+            app.setOption("desktop.count", Integer.toString(count));
+        } catch (NumberFormatException e) {
+            // SQUASH
         }
 
-        if (tripleBuffer.isChecked()) {
-            app.setOption("jexer.Swing.tripleBuffer", "true");
-        } else {
-            app.setOption("jexer.Swing.tripleBuffer", "false");
-        }
+        app.setOption("desktop.pager",
+            (desktopPager.isChecked() ?  "true" : "false"));
 
-        app.setOption("jexer.Swing.cursorStyle",
-            cursorStyle.getText().toLowerCase());
+        app.setOption("xtwm.confirmOnExit",
+            (confirmOnExit.isChecked() ?  "true" : "false"));
 
-        if (rgbColor.isChecked()) {
-            app.setOption("jexer.ECMA48.rgbColor", "true");
-        } else {
-            app.setOption("jexer.ECMA48.rgbColor", "false");
-        }
+        app.setOption("xtwm.hideTextMouse", hideTextMouse.getText());
 
-        if (sixel.isChecked()) {
-            app.setOption("jexer.ECMA48.sixel", "true");
-        } else {
-            app.setOption("jexer.ECMA48.sixel", "false");
-        }
+        app.setOption("menuTray.clock",
+            (menuTrayClock.isChecked() ?  "true" : "false"));
+
+        app.setOption("menuTray.clock.format", menuTrayClockFormat.getText());
+
+        app.setOption("menuTray.desktop",
+            (menuTrayDesktop.isChecked() ?  "true" : "false"));
+
+        app.setOption("screensaver.timeout", screensaverTimeout.getText());
+
+        app.setOption("screensaver.lock",
+            (screensaverLock.isChecked() ?  "true" : "false"));
 
         // Make these options effective for the running session.
         app.resolveOptions();
@@ -296,16 +443,38 @@ public class ApplicationOptionsWindow extends TWindow {
         closeOnExit.setChecked(app.getOption("jexer.TTerminal.closeOnExit").
             equals("true"));
 
-        tripleBuffer.setChecked(app.getOption("jexer.Swing.tripleBuffer").
+        scrollbackMax.setText(app.getOption("jexer.TTerminal.scrollbackMax"));
+
+        windowFocusFollowsMouse.setChecked(app.getOption(
+            "window.focusFollowsMouse").equals("true"));
+
+        panelFocusFollowsMouse.setChecked(app.getOption(
+            "panel.focusFollowsMouse").equals("true"));
+
+        smartPlacement.setChecked(app.getOption("window.smartPlacement").
             equals("true"));
 
-        cursorStyle.setText(app.getOption("jexer.Swing.cursorStyle").
-            toLowerCase());
+        desktopCount.setText(app.getOption("desktop.count"));
 
-        rgbColor.setChecked(app.getOption("jexer.ECMA48.rgbColor").
+        desktopPager.setChecked(app.getOption("desktop.pager").
             equals("true"));
 
-        sixel.setChecked(app.getOption("jexer.ECMA48.sixel").
+        confirmOnExit.setChecked(app.getOption("xtwm.confirmOnExit").
+            equals("true"));
+
+        hideTextMouse.setText(app.getOption("xtwm.hideTextMouse"));
+
+        menuTrayClock.setChecked(app.getOption("menuTray.clock").
+            equals("true"));
+
+        menuTrayClockFormat.setText(app.getOption("menuTray.clock.format"));
+
+        menuTrayDesktop.setChecked(app.getOption("menuTray.desktop").
+            equals("true"));
+
+        screensaverTimeout.setText(app.getOption("screensaver.timeout"));
+
+        screensaverLock.setChecked(app.getOption("screensaver.lock").
             equals("true"));
 
     }
