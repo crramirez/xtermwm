@@ -148,8 +148,11 @@ public class DesktopPager extends PluginWidget {
                 }
             }
             String str = Integer.toString(number);
+            if (app.getDesktop() == desktop.getDesktop()) {
+                color.setBold(true);
+            }
             putStringXY((getWidth() - str.length()) / 2,
-                (getHeight() - 1) / 2, str);
+                (getHeight() - 1) / 2, str, color);
         }
 
     }

@@ -1231,7 +1231,8 @@ public class TApplication implements Runnable {
         // Process timers and call doIdle()'s
         doIdle();
 
-        // Give subclass TApplications a chance to update something
+        // Give subclass TApplications a chance to update something before
+        // the screen is drawn.
         onPreDraw();
 
         // Update the screen
@@ -2049,6 +2050,16 @@ public class TApplication implements Runnable {
     }
 
     /**
+     * Function called immediately after the screen is drawn, while the
+     * screen is still synchronized/locked.  This can be used by subclasses
+     * of TApplication to alter the final post-rendered screen before it goes
+     * out -- or even replace the entire thing such as a screensaver.
+     */
+    protected void onPostDraw() {
+        // Default does nothing
+    }
+
+    /**
      * Draw the text mouse at position.
      *
      * @param x column position
@@ -2167,7 +2178,12 @@ public class TApplication implements Runnable {
                 oldDrawnMouseX = mouseX;
                 oldDrawnMouseY = mouseY;
             }
+
             if (getScreen().isDirty()) {
+                // Give subclass TApplications a chance to update the
+                // post-rendered screen.
+                onPostDraw();
+
                 screenHandler.setDirty();
             }
             return;
@@ -2370,6 +2386,10 @@ public class TApplication implements Runnable {
         }
 
         if (getScreen().isDirty()) {
+            // Give subclass TApplications a chance to update the
+            // post-rendered screen.
+            onPostDraw();
+
             screenHandler.setDirty();
         }
         repaint = false;

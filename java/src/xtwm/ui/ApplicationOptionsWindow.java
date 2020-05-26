@@ -135,6 +135,11 @@ public class ApplicationOptionsWindow extends TWindow {
      */
     private TCheckBox screensaverLock = null;
 
+    /**
+     * Whether or not to convert box-drawing glyphs to simple lines.
+     */
+    private TCheckBox simpleBoxGlyphs = null;
+
     // ------------------------------------------------------------------------
     // Constructors -----------------------------------------------------------
     // ------------------------------------------------------------------------
@@ -146,7 +151,7 @@ public class ApplicationOptionsWindow extends TWindow {
      */
     public ApplicationOptionsWindow(final TApplication parent) {
 
-        super(parent, i18n.getString("windowTitle"), 0, 0, 76, 21,
+        super(parent, i18n.getString("windowTitle"), 0, 0, 76, 22,
             MODAL | CENTERED);
 
         final XTWMApplication app = ((XTWMApplication) getApplication());
@@ -285,6 +290,8 @@ public class ApplicationOptionsWindow extends TWindow {
             app.getOption("screensaver.timeout"));
         screensaverLock = addCheckBox(3, 16, i18n.getString("screensaverLock"),
             app.getOption("screensaver.lock").equals("true"));
+        simpleBoxGlyphs = addCheckBox(3, 17, i18n.getString("simpleBoxGlyphs"),
+            app.getOption("xtwm.simpleBoxGlyphs").equals("true"));
 
         // Buttons
         addButton(i18n.getString("saveButton"), getWidth() - buttonOffset, 9,
@@ -361,7 +368,7 @@ public class ApplicationOptionsWindow extends TWindow {
         putStringXY(column2 + 2, 2, i18n.getString("windowsTitle"), boxColor);
 
         // Application
-        drawBox(2, 10, 50, 19, boxColor, boxColor);
+        drawBox(2, 10, 50, 20, boxColor, boxColor);
         putStringXY(4, 10, i18n.getString("applicationTitle"), boxColor);
     }
 
@@ -378,19 +385,19 @@ public class ApplicationOptionsWindow extends TWindow {
         app.setOption("jexer.TTerminal.ptypipe", ptypipe.getText());
 
         app.setOption("jexer.TTerminal.closeOnExit",
-            (closeOnExit.isChecked() ?  "true" : "false"));
+            (closeOnExit.isChecked() ? "true" : "false"));
 
         app.setOption("jexer.TTerminal.scrollbackMax",
             scrollbackMax.getText());
 
         app.setOption("window.focusFollowsMouse",
-            (windowFocusFollowsMouse.isChecked() ?  "true" : "false"));
+            (windowFocusFollowsMouse.isChecked() ? "true" : "false"));
 
         app.setOption("panel.focusFollowsMouse",
-            (panelFocusFollowsMouse.isChecked() ?  "true" : "false"));
+            (panelFocusFollowsMouse.isChecked() ? "true" : "false"));
 
         app.setOption("window.smartPlacement",
-            (smartPlacement.isChecked() ?  "true" : "false"));
+            (smartPlacement.isChecked() ? "true" : "false"));
 
         try {
             int count = Integer.parseInt(desktopCount.getText());
@@ -400,25 +407,28 @@ public class ApplicationOptionsWindow extends TWindow {
         }
 
         app.setOption("desktop.pager",
-            (desktopPager.isChecked() ?  "true" : "false"));
+            (desktopPager.isChecked() ? "true" : "false"));
 
         app.setOption("xtwm.confirmOnExit",
-            (confirmOnExit.isChecked() ?  "true" : "false"));
+            (confirmOnExit.isChecked() ? "true" : "false"));
 
         app.setOption("xtwm.hideTextMouse", hideTextMouse.getText());
 
         app.setOption("menuTray.clock",
-            (menuTrayClock.isChecked() ?  "true" : "false"));
+            (menuTrayClock.isChecked() ? "true" : "false"));
 
         app.setOption("menuTray.clock.format", menuTrayClockFormat.getText());
 
         app.setOption("menuTray.desktop",
-            (menuTrayDesktop.isChecked() ?  "true" : "false"));
+            (menuTrayDesktop.isChecked() ? "true" : "false"));
 
         app.setOption("screensaver.timeout", screensaverTimeout.getText());
 
         app.setOption("screensaver.lock",
-            (screensaverLock.isChecked() ?  "true" : "false"));
+            (screensaverLock.isChecked() ? "true" : "false"));
+
+        app.setOption("xtwm.simpleBoxGlyphs",
+            (simpleBoxGlyphs.isChecked() ? "true" : "false"));
 
         // Make these options effective for the running session.
         app.resolveOptions();

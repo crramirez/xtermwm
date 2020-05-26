@@ -61,6 +61,7 @@ import jexer.TWidget;
 import jexer.TWindow;
 import jexer.backend.Backend;
 import jexer.backend.SwingTerminal;
+import jexer.bits.Cell;
 import jexer.bits.CellAttributes;
 import jexer.bits.Color;
 import jexer.bits.ColorTheme;
@@ -190,6 +191,11 @@ public class XTWMApplication extends TApplication {
      * If true, display the desktop number in the top-right menu bar line.
      */
     private boolean menuTrayDesktop = true;
+
+    /**
+     * Whether or not to convert box-drawing glyphs to simple lines.
+     */
+    private boolean simpleBoxGlyphs = false;
 
     /**
      * The Application | Programs submenu.
@@ -345,6 +351,34 @@ public class XTWMApplication extends TApplication {
             desktopCanHaveCursor = false;
         }
 
+    }
+
+    /**
+     * Function called immediately after the screen is drawn, while the
+     * screen is still synchronized/locked.  This can be used by subclasses
+     * of TApplication to alter the final post-rendered screen before it goes
+     * out -- or even replace the entire thing such as a screensaver.
+     */
+    @Override
+    protected void onPostDraw() {
+        // TODO - add screensaver logic here
+
+        if (simpleBoxGlyphs) {
+            // Many terminal fonts lack all of the box-drawing glyphs.  This
+            // filter will convert them to the simplest form.
+            int width = getScreen().getWidth();
+            int height = getScreen().getHeight();
+            for (int x = 0; x < width; x++) {
+                for (int y = 0; y < width; y++) {
+                    Cell cell = getScreen().getCharXY(x, y);
+                    if (cell.isImage()) {
+                        continue;
+                    }
+                    cell.setChar(simpleBoxDrawingChar(cell.getChar()));
+                    getScreen().putCharXY(x, y, cell);
+                }
+            }
+        }
     }
 
     // ------------------------------------------------------------------------
@@ -1041,6 +1075,7 @@ public class XTWMApplication extends TApplication {
         setOption("xtwm.hideTextMouse", "swing");
         setOption("xtwm.lockScreenPassword", "");
         setOption("xtwm.maximizeOnSwing", "true");
+        setOption("xtwm.simpleBoxGlyphs", "false");
         setOption("xtwm.useExternalEditor", "false");
 
         // Colors
@@ -1165,6 +1200,8 @@ public class XTWMApplication extends TApplication {
         } else if (getBackend() instanceof SwingTerminal) {
             textMouse = false;
         }
+        simpleBoxGlyphs = getOption("xtwm.simpleBoxGlyphs",
+            "true").equals("true");
 
         // Display options
         if (getScreen() instanceof SwingTerminal) {
@@ -1531,6 +1568,168 @@ public class XTWMApplication extends TApplication {
      */
     public File getPluginDataDir() {
         return pluginDataDir;
+    }
+
+    // Miscellaneous ----------------------------------------------------------
+
+    /**
+     * Convert a complex box-drawing character to a simpler one.
+     *
+     * @param ch the codepoint
+     * @return the codepoint, or a simplified version
+     */
+    private int simpleBoxDrawingChar(final int ch) {
+        switch (ch) {
+        case 0x2501:
+        case 0x2504:
+        case 0x2505:
+        case 0x2508:
+        case 0x2509:
+        case 0x254C:
+        case 0x254D:
+        case 0x2550:
+        case 0x2574:
+        case 0x2576:
+        case 0x2578:
+        case 0x257A:
+        case 0x257C:
+        case 0x257E:
+            // ─
+            return 0x2500;
+
+        case 0x2503:
+        case 0x2506:
+        case 0x2507:
+        case 0x250A:
+        case 0x250B:
+        case 0x254E:
+        case 0x254F:
+        case 0x2551:
+        case 0x2575:
+        case 0x2577:
+        case 0x2579:
+        case 0x257B:
+        case 0x257D:
+        case 0x257F:
+            // │
+            return 0x2502;
+
+        case 0x250D:
+        case 0x250E:
+        case 0x250F:
+        case 0x2552:
+        case 0x2553:
+        case 0x2554:
+        case 0x256D:
+            // ┌
+            return 0x250C;
+
+        case 0x2511:
+        case 0x2512:
+        case 0x2513:
+        case 0x2555:
+        case 0x2556:
+        case 0x2557:
+        case 0x256E:
+            // ┐
+            return 0x2510;
+
+        case 0x2515:
+        case 0x2516:
+        case 0x2517:
+        case 0x2558:
+        case 0x2559:
+        case 0x255A:
+        case 0x2570:
+            // └
+            return 0x2514;
+
+        case 0x2519:
+        case 0x251A:
+        case 0x251B:
+        case 0x255B:
+        case 0x255C:
+        case 0x255D:
+        case 0x256F:
+            // ┘
+            return 0x2518;
+
+        case 0x251D:
+        case 0x251E:
+        case 0x251F:
+        case 0x2520:
+        case 0x2521:
+        case 0x2522:
+        case 0x2523:
+        case 0x255E:
+        case 0x255F:
+        case 0x2560:
+            // ├
+            return 0x251C;
+
+        case 0x2525:
+        case 0x2526:
+        case 0x2527:
+        case 0x2528:
+        case 0x2529:
+        case 0x252A:
+        case 0x252B:
+        case 0x2561:
+        case 0x2562:
+        case 0x2563:
+            // ┤
+            return 0x2524;
+
+        case 0x252D:
+        case 0x252E:
+        case 0x252F:
+        case 0x2530:
+        case 0x2531:
+        case 0x2532:
+        case 0x2533:
+        case 0x2564:
+        case 0x2565:
+        case 0x2566:
+            // ┬
+            return 0x252C;
+
+        case 0x2535:
+        case 0x2536:
+        case 0x2537:
+        case 0x2538:
+        case 0x2539:
+        case 0x253A:
+        case 0x253B:
+        case 0x2567:
+        case 0x2568:
+        case 0x2569:
+            // ┴
+            return 0x2534;
+
+        case 0x253D:
+        case 0x253E:
+        case 0x253F:
+        case 0x2540:
+        case 0x2541:
+        case 0x2542:
+        case 0x2543:
+        case 0x2544:
+        case 0x2545:
+        case 0x2546:
+        case 0x2547:
+        case 0x2548:
+        case 0x2549:
+        case 0x254A:
+        case 0x254B:
+        case 0x256A:
+        case 0x256B:
+        case 0x256C:
+            // ┼
+            return 0x253C;
+
+        default:
+            return ch;
+        }
     }
 
 }
