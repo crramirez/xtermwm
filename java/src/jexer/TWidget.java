@@ -1686,6 +1686,9 @@ public abstract class TWidget implements Comparable<TWidget> {
             // TSplitPane has a left/right/top/bottom link to me somewhere,
             // replace it with a link to splitPane.
             ((TSplitPane) myParent).replaceWidget(this, splitPane);
+
+            splitPane.setFocusFollowsMouse(((TSplitPane) myParent).
+                getFocusFollowsMouse());
         }
         splitPane.setParent(myParent, false);
         if (newWidgetOnLeft) {
@@ -1737,6 +1740,9 @@ public abstract class TWidget implements Comparable<TWidget> {
             // TSplitPane has a left/right/top/bottom link to me somewhere,
             // replace it with a link to splitPane.
             ((TSplitPane) myParent).replaceWidget(this, splitPane);
+
+            splitPane.setFocusFollowsMouse(((TSplitPane) myParent).
+                getFocusFollowsMouse());
         }
         splitPane.setParent(myParent, false);
         if (newWidgetOnTop) {

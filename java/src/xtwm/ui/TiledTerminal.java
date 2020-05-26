@@ -118,16 +118,28 @@ public class TiledTerminal extends TTerminalWidget {
         assert (getParent() != null);
         TInputBox inputBox;
         Writer writer = null;
+        TSplitPane pane;
+        TDesktop desktop;
 
         switch (event.getId()) {
 
         case XTWMApplication.MENU_TERMINAL_HORIZONTAL_SPLIT:
-            splitHorizontal(false, new TiledTerminal(getParent()));
+            pane = splitHorizontal(false, new TiledTerminal(getParent()));
+            desktop = getApplication().getDesktop();
+            if (desktop instanceof Desktop) {
+                pane.setFocusFollowsMouse(((Desktop) desktop).
+                    getFocusFollowsMouse());
+            }
             getParent().setEchoKeystrokes(isEchoKeystrokes(), true);
             return;
 
         case XTWMApplication.MENU_TERMINAL_VERTICAL_SPLIT:
-            splitVertical(false, new TiledTerminal(getParent()));
+            pane = splitVertical(false, new TiledTerminal(getParent()));
+            desktop = getApplication().getDesktop();
+            if (desktop instanceof Desktop) {
+                pane.setFocusFollowsMouse(((Desktop) desktop).
+                    getFocusFollowsMouse());
+            }
             getParent().setEchoKeystrokes(isEchoKeystrokes(), true);
             return;
 

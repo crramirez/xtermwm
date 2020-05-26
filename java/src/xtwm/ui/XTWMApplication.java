@@ -117,10 +117,9 @@ public class XTWMApplication extends TApplication {
     private static final int MENU_APPLICATION_SETTINGS_DISPLAY          = 2030;
     private static final int MENU_APPLICATION_SETTINGS_COLORS           = 2031;
     private static final int MENU_APPLICATION_SETTINGS_ENVIRONMENT      = 2032;
-    private static final int MENU_APPLICATION_SETTINGS_WINDOWS          = 2033;
-    private static final int MENU_APPLICATION_SETTINGS_PLUGINS          = 2034;
-    private static final int MENU_APPLICATION_SETTINGS_SAVE             = 2035;
-    private static final int MENU_APPLICATION_SETTINGS_LOAD             = 2036;
+    private static final int MENU_APPLICATION_SETTINGS_PLUGINS          = 2033;
+    private static final int MENU_APPLICATION_SETTINGS_SAVE             = 2034;
+    private static final int MENU_APPLICATION_SETTINGS_LOAD             = 2035;
     private static final int MENU_APPLICATION_RUN                       = 2091;
     private static final int MENU_APPLICATION_LOCK_SCREEN               = 2092;
     private static final int MENU_APPLICATION_EXIT                      = 2099;
@@ -459,10 +458,6 @@ public class XTWMApplication extends TApplication {
             new ApplicationOptionsWindow(this);
             return true;
 
-        case MENU_APPLICATION_SETTINGS_WINDOWS:
-            // TODO
-            return true;
-
         case MENU_APPLICATION_SETTINGS_PLUGINS:
             // TODO
             return true;
@@ -750,8 +745,6 @@ public class XTWMApplication extends TApplication {
             i18n.getString("applicationSettingsColors"));
         subSettings.addItem(MENU_APPLICATION_SETTINGS_ENVIRONMENT,
             i18n.getString("applicationSettingsEnvironment"));
-        subSettings.addItem(MENU_APPLICATION_SETTINGS_WINDOWS,
-            i18n.getString("applicationSettingsWindows"));
         subSettings.addItem(MENU_APPLICATION_SETTINGS_PLUGINS,
             i18n.getString("applicationSettingsPlugins"));
         subSettings.addSeparator();
@@ -893,6 +886,9 @@ public class XTWMApplication extends TApplication {
         for (int i = 1; i <= desktopCount; i++) {
             VirtualDesktop desktop = new VirtualDesktop(this);
             desktops.add(desktop);
+
+            desktop.getDesktop().setFocusFollowsMouse(getOption(
+                "panel.focusFollowsMouse", "true").equals("true"));
 
             CellAttributes desktopAttr = new CellAttributes();
             switch ((i - 1) % 4) {
@@ -1203,6 +1199,11 @@ public class XTWMApplication extends TApplication {
         simpleBoxGlyphs = getOption("xtwm.simpleBoxGlyphs",
             "true").equals("true");
 
+        if (getCurrentDesktop() != null) {
+            getCurrentDesktop().getDesktop().setFocusFollowsMouse(getOption(
+                "panel.focusFollowsMouse", "true").equals("true"));
+        }
+
         // Display options
         if (getScreen() instanceof SwingTerminal) {
             SwingTerminal terminal = (SwingTerminal) getScreen();
@@ -1339,9 +1340,14 @@ public class XTWMApplication extends TApplication {
     /**
      * Get the current desktop.
      *
-     * @return the virtual desktop
+     * @return the virtual desktop, or null if no virtual desktops are
+     * defined
      */
     public VirtualDesktop getCurrentDesktop() {
+        if ((desktopIndex >= desktops.size()) || (desktopIndex < 0)) {
+            assert (desktops.size() == 0);
+            return null;
+        }
         return desktops.get(desktopIndex);
     }
 
@@ -1361,6 +1367,8 @@ public class XTWMApplication extends TApplication {
             desktopIndex = 1;
         }
         getCurrentDesktop().show();
+        getCurrentDesktop().getDesktop().setFocusFollowsMouse(getOption(
+            "panel.focusFollowsMouse", "true").equals("true"));
         setDesktop(getCurrentDesktop().getDesktop(), false);
         getMenuItem(MENU_TERMINAL_SEND_KEYS_TO_ALL).setChecked(getDesktop().isEchoKeystrokes());
     }
@@ -1381,6 +1389,8 @@ public class XTWMApplication extends TApplication {
             desktopIndex = desktops.size() - 1;
         }
         getCurrentDesktop().show();
+        getCurrentDesktop().getDesktop().setFocusFollowsMouse(getOption(
+            "panel.focusFollowsMouse", "true").equals("true"));
         setDesktop(getCurrentDesktop().getDesktop(), false);
         getMenuItem(MENU_TERMINAL_SEND_KEYS_TO_ALL).setChecked(getDesktop().isEchoKeystrokes());
     }

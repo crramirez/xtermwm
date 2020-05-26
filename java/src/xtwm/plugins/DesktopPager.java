@@ -129,7 +129,8 @@ public class DesktopPager extends PluginWidget {
          */
         @Override
         public void draw() {
-            CellAttributes color = desktop.getDesktop().getAttributes();
+            CellAttributes color = new CellAttributes(desktop.getDesktop().
+                getAttributes());
             CellAttributes borderColor = new CellAttributes(color);
             CellAttributes windowBorder = getTheme().getColor("twindow.border");
             borderColor.setBackColor(windowBorder.getBackColor());
@@ -149,7 +150,7 @@ public class DesktopPager extends PluginWidget {
             }
             String str = Integer.toString(number);
             if (app.getDesktop() == desktop.getDesktop()) {
-                color.setBold(true);
+                color.setUnderline(true);
             }
             putStringXY((getWidth() - str.length()) / 2,
                 (getHeight() - 1) / 2, str, color);

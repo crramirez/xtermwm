@@ -32,6 +32,7 @@ import java.util.LinkedList;
 
 import jexer.TApplication;
 import jexer.TDesktop;
+import jexer.TSplitPane;
 import jexer.TWidget;
 import jexer.bits.CellAttributes;
 import jexer.bits.GraphicsChars;
@@ -64,6 +65,11 @@ public class Desktop extends TDesktop {
      * The list of panels on this desktop.
      */
     private LinkedList<TWidget> panels = new LinkedList<TWidget>();
+
+    /**
+     * If true, focus will follow mouse across panels.
+     */
+    private boolean focusFollowsMouse = false;
 
     // ------------------------------------------------------------------------
     // Constructors -----------------------------------------------------------
@@ -278,6 +284,32 @@ public class Desktop extends TDesktop {
         System.err.println(toPrettyString());
         System.err.println("\n");
          */
+    }
+
+    /**
+     * Set focusFollowsMouse flag.
+     *
+     * @param focusFollowsMouse if true, focus follows mouse: panels are
+     * automatically activated if the mouse passes over them
+     */
+    public void setFocusFollowsMouse(final boolean focusFollowsMouse) {
+        this.focusFollowsMouse = focusFollowsMouse;
+
+        for (TWidget w: getChildren()) {
+            if (w instanceof TSplitPane) {
+                ((TSplitPane) w).setFocusFollowsMouse(focusFollowsMouse, true);
+            }
+        }
+    }
+
+    /**
+     * Get focusFollowsMouse flag.
+     *
+     * @return true if focus follows mouse: panels automatically activate if
+     * the mouse passes over them
+     */
+    public boolean getFocusFollowsMouse() {
+        return focusFollowsMouse;
     }
 
 }
