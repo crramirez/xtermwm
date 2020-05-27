@@ -465,6 +465,13 @@ public class TMenu extends TWindow {
         this.context = context;
         setX(x);
         setY(y);
+
+        while (getX() + getWidth() > getScreen().getWidth()) {
+            setX(getX() - 1);
+        }
+        while (getY() + getHeight() > getApplication().getDesktopBottom()) {
+            setY(getY() - 1);
+        }
     }
 
     /**

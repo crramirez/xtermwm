@@ -177,7 +177,16 @@ public class TSubMenu extends TMenuItem {
         if (isAbsoluteActive()) {
             if (!menu.isActive()) {
                 menu.setX(getAbsoluteX() + getWidth() - 1);
-                menu.setY(getAbsoluteY() - 1);
+                menu.setY(getAbsoluteY());
+                while (menu.getX() + menu.getWidth() > getScreen().getWidth()) {
+                    menu.setX(menu.getX() - 1);
+                }
+                while (menu.getY() + menu.getHeight() > getApplication().
+                    getDesktopBottom()
+                ) {
+                    menu.setY(menu.getY() - 1);
+                }
+
                 getApplication().addSubMenu(menu);
                 menu.setActive(true);
                 TMenu parentMenu = (TMenu) getParent();
