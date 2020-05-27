@@ -60,6 +60,7 @@ import jexer.TStatusBar;
 import jexer.TWidget;
 import jexer.TWindow;
 import jexer.backend.Backend;
+import jexer.backend.ECMA48Terminal;
 import jexer.backend.SwingTerminal;
 import jexer.bits.Cell;
 import jexer.bits.CellAttributes;
@@ -117,35 +118,40 @@ public class XTWMApplication extends TApplication {
     private static final int MENU_APPLICATION_SETTINGS_DISPLAY          = 2030;
     private static final int MENU_APPLICATION_SETTINGS_COLORS           = 2031;
     private static final int MENU_APPLICATION_SETTINGS_ENVIRONMENT      = 2032;
-    private static final int MENU_APPLICATION_SETTINGS_PLUGINS          = 2033;
-    private static final int MENU_APPLICATION_SETTINGS_SAVE             = 2034;
-    private static final int MENU_APPLICATION_SETTINGS_LOAD             = 2035;
+    private static final int MENU_APPLICATION_SETTINGS_EDITOR           = 2033;
+    private static final int MENU_APPLICATION_SETTINGS_PLUGINS          = 2034;
+    private static final int MENU_APPLICATION_SETTINGS_SAVE             = 2035;
+    private static final int MENU_APPLICATION_SETTINGS_LOAD             = 2036;
     private static final int MENU_APPLICATION_RUN                       = 2091;
     private static final int MENU_APPLICATION_LOCK_SCREEN               = 2092;
     private static final int MENU_APPLICATION_EXIT                      = 2099;
 
+    // Package private values are handled by InternalEditor.
+            static final int MENU_EDIT_SAVE                             = 2100;
+            static final int MENU_EDIT_SAVE_AS                          = 2101;
+
     // Package private values are handled by TiledTerminal.
-    private static final int MENU_TERMINAL_NEW_WINDOW                   = 2100;
-            static final int MENU_TERMINAL_HORIZONTAL_SPLIT             = 2101;
-            static final int MENU_TERMINAL_VERTICAL_SPLIT               = 2102;
-    private static final int MENU_TERMINAL_SEND_KEYS_TO_ALL             = 2103;
-            static final int MENU_TERMINAL_SESSION_SAVE_HTML            = 2104;
-            static final int MENU_TERMINAL_SESSION_SAVE_TEXT            = 2105;
-            static final int MENU_TERMINAL_SESSION_SEND_SIGTERM         = 2106;
-            static final int MENU_TERMINAL_SESSION_SEND_OTHER_SIGNAL    = 2107;
-            static final int MENU_TERMINAL_CLOSE                        = 2108;
+    private static final int MENU_TERMINAL_NEW_WINDOW                   = 2200;
+            static final int MENU_TERMINAL_HORIZONTAL_SPLIT             = 2201;
+            static final int MENU_TERMINAL_VERTICAL_SPLIT               = 2202;
+    private static final int MENU_TERMINAL_SEND_KEYS_TO_ALL             = 2203;
+            static final int MENU_TERMINAL_SESSION_SAVE_HTML            = 2204;
+            static final int MENU_TERMINAL_SESSION_SAVE_TEXT            = 2205;
+            static final int MENU_TERMINAL_SESSION_SEND_SIGTERM         = 2206;
+            static final int MENU_TERMINAL_SESSION_SEND_OTHER_SIGNAL    = 2207;
+            static final int MENU_TERMINAL_CLOSE                        = 2208;
 
-    private static final int MENU_PANEL_SWITCH_TO                       = 2201;
-    private static final int MENU_PANEL_NEXT                            = 2202;
-    private static final int MENU_PANEL_PREVIOUS                        = 2203;
-    private static final int MENU_PANEL_CLOSE                           = 2204;
-    private static final int MENU_PANEL_SAVE_LAYOUT                     = 2205;
-    private static final int MENU_PANEL_LOAD_LAYOUT                     = 2206;
+    private static final int MENU_PANEL_SWITCH_TO                       = 2301;
+    private static final int MENU_PANEL_NEXT                            = 2302;
+    private static final int MENU_PANEL_PREVIOUS                        = 2303;
+    private static final int MENU_PANEL_CLOSE                           = 2304;
+    private static final int MENU_PANEL_SAVE_LAYOUT                     = 2305;
+    private static final int MENU_PANEL_LOAD_LAYOUT                     = 2306;
 
-    private static final int MENU_WINDOW_TO_DESKTOP                     = 2300;
-    private static final int MENU_WINDOW_ON_ALL_DESKTOPS                = 2301;
-    private static final int MENU_WINDOW_NEXT_DESKTOP                   = 2302;
-    private static final int MENU_WINDOW_PREVIOUS_DESKTOP               = 2303;
+    private static final int MENU_WINDOW_TO_DESKTOP                     = 2400;
+    private static final int MENU_WINDOW_ON_ALL_DESKTOPS                = 2401;
+    private static final int MENU_WINDOW_NEXT_DESKTOP                   = 2402;
+    private static final int MENU_WINDOW_PREVIOUS_DESKTOP               = 2403;
 
     // ------------------------------------------------------------------------
     // Variables --------------------------------------------------------------
@@ -226,6 +232,38 @@ public class XTWMApplication extends TApplication {
      */
     private Map<Integer, Class<? extends PluginWidget>> pluginWidgetMenuIds;
 
+    /**
+     * Last used search text.  Note package private access.
+     */
+    String searchText = "";
+
+    /**
+     * Last used search case sensitivity flag.  Note package private access.
+     */
+    boolean searchCaseSensitive = false;
+
+    /**
+     * Last used search regular expression flag.  Note package private
+     * access.
+     */
+    boolean searchRegularExpression = false;
+
+    /**
+     * Last used search whole words only flag.  Note package private access.
+     */
+    boolean searchWholeWordsOnly = false;
+
+    /**
+     * Last used search direction.  1 means forward, 2 means backward.  Note
+     * package private access.
+     */
+    int searchDirection = 1;
+
+    /**
+     * Last used search scope.  1 means entire file, 2 means selected text
+     * only.  Note package private access.
+     */
+    int searchScope = 1;
 
     // ------------------------------------------------------------------------
     // Constructors -----------------------------------------------------------
@@ -407,7 +445,11 @@ public class XTWMApplication extends TApplication {
             return true;
 
         case MENU_APPLICATION_PROGRAMS_EDITOR:
-            // TODO
+            if (getOption("editor.useExternal", "false").equals("true")) {
+                new ExternalEditorWindow(this);
+            } else {
+                new InternalEditorWindow(this);
+            }
             return true;
 
         case MENU_APPLICATION_SETTINGS_DISPLAY:
@@ -418,17 +460,30 @@ public class XTWMApplication extends TApplication {
                  */
                 @Override
                 public void onClose() {
-                    /*
-                     * TODO:
-                     *
-                     *   jexer.ECMA48.sixel
-                     *   jexer.ECMA48.sixelSharedPalette
-                     *   jexer.ECMA48.wideCharImages
-                     *   jexer.ECMA48.rgbColor
-                     *   jexer.Swing.tripleBuffer
-                     *   jexer.Swing.cursorStyle
-                     *   jexer.Swing.mouseStyle
-                     */
+                    if (getScreen() instanceof ECMA48Terminal) {
+                        ECMA48Terminal terminal = (ECMA48Terminal) getScreen();
+                        setOption("jexer.ECMA48.sixel",
+                            (terminal.hasSixel() ? "true" : "false"));
+                        setOption("jexer.ECMA48.sixelSharedPalette",
+                            (terminal.hasSixelSharedPalette() ? "true" :
+                                "false"));
+                        setOption("jexer.ECMA48.sixelPaletteSize",
+                            Integer.toString(terminal.getSixelPaletteSize()));
+                        setOption("jexer.ECMA48.wideCharImages",
+                            (terminal.isWideCharImages() ? "true" : "false"));
+                        setOption("jexer.ECMA48.rgbColor",
+                            (terminal.isRgbColor() ? "true" : "false"));
+                    }
+
+                    if (getScreen() instanceof SwingTerminal) {
+                        SwingTerminal terminal = (SwingTerminal) getScreen();
+                        setOption("jexer.Swing.tripleBuffer",
+                            (terminal.isTripleBuffer() ? "true" : "false"));
+                        setOption("jexer.Swing.cursorStyle",
+                            terminal.getCursorStyle().toString().toLowerCase());
+                        setOption("jexer.Swing.mouseStyle",
+                            terminal.getMouseStyle());
+                    }
 
                     saveOptions();
                     super.onClose();
@@ -456,6 +511,10 @@ public class XTWMApplication extends TApplication {
 
         case MENU_APPLICATION_SETTINGS_ENVIRONMENT:
             new ApplicationOptionsWindow(this);
+            return true;
+
+        case MENU_APPLICATION_SETTINGS_EDITOR:
+            new EditorOptionsWindow(this);
             return true;
 
         case MENU_APPLICATION_SETTINGS_PLUGINS:
@@ -500,6 +559,22 @@ public class XTWMApplication extends TApplication {
         case MENU_APPLICATION_EXIT:
             // Post a quit command
             postMenuEvent(new TCommandEvent(cmExit));
+            return true;
+
+        case TMenu.MID_FIND:
+            menuSearchFind();
+            return true;
+
+        case TMenu.MID_REPLACE:
+            menuSearchReplace();
+            return true;
+
+        case TMenu.MID_SEARCH_AGAIN:
+            menuSearchAgain();
+            return true;
+
+        case TMenu.MID_GOTO_LINE:
+            menuSearchGoToLine();
             return true;
 
         case MENU_TERMINAL_NEW_WINDOW:
@@ -745,6 +820,8 @@ public class XTWMApplication extends TApplication {
             i18n.getString("applicationSettingsColors"));
         subSettings.addItem(MENU_APPLICATION_SETTINGS_ENVIRONMENT,
             i18n.getString("applicationSettingsEnvironment"));
+        subSettings.addItem(MENU_APPLICATION_SETTINGS_EDITOR,
+            i18n.getString("applicationSettingsEditor"));
         subSettings.addItem(MENU_APPLICATION_SETTINGS_PLUGINS,
             i18n.getString("applicationSettingsPlugins"));
         subSettings.addSeparator();
@@ -767,7 +844,17 @@ public class XTWMApplication extends TApplication {
 
         // Edit menu ----------------------------------------------------------
 
-        addEditMenu();
+        TMenu editMenu = addEditMenu();
+        editMenu.addSeparator();
+        editMenu.addItem(MENU_EDIT_SAVE, i18n.getString("editMenuSave"));
+        editMenu.addItem(MENU_EDIT_SAVE, i18n.getString("editMenuSaveAs"));
+        editMenu.addSeparator();
+        editMenu.addItem(TMenu.MID_FIND, i18n.getString("editMenuFind"));
+        editMenu.addItem(TMenu.MID_REPLACE, i18n.getString("editMenuReplace"));
+        editMenu.addItem(TMenu.MID_SEARCH_AGAIN,
+            i18n.getString("editMenuSearchAgain"));
+        editMenu.addItem(TMenu.MID_GOTO_LINE,
+            i18n.getString("editMenuGotoLine"));
 
         // Terminal menu ------------------------------------------------------
 
@@ -1043,6 +1130,7 @@ public class XTWMApplication extends TApplication {
         setOption("editor.internal.saveWithTabs", "false");
         setOption("editor.internal.trimWhitespace", "true");
         setOption("editor.internal.undoLevel", "50");
+        setOption("editor.useExternal", "false");
         setOption("jexer.ECMA48.rgbColor", "false");
         setOption("jexer.ECMA48.sixel", "true");
         setOption("jexer.ECMA48.wideCharImages", "true");
@@ -1072,7 +1160,6 @@ public class XTWMApplication extends TApplication {
         setOption("xtwm.lockScreenPassword", "");
         setOption("xtwm.maximizeOnSwing", "true");
         setOption("xtwm.simpleBoxGlyphs", "false");
-        setOption("xtwm.useExternalEditor", "false");
 
         // Colors
         getTheme().setDefaultTheme();
@@ -1739,6 +1826,133 @@ public class XTWMApplication extends TApplication {
 
         default:
             return ch;
+        }
+    }
+
+    /**
+     * Convenience function to open a file in an editor window and make it
+     * active.
+     *
+     * @param filename the file to open
+     * @return the editor window opened, either an ExternalTerminalWindow or
+     * a InternalEditorWindow, or null if filename exists and is not a file
+     * @throws IOException if a java.io operation throws
+     */
+    public TWindow openEditor(final String filename) throws IOException {
+
+        File file = new File(filename);
+        if (file.exists() && !file.isFile()) {
+            return null;
+        }
+
+        if (getOption("editor.useExternal", "false").equals("true")) {
+            ExternalEditorWindow editor;
+            editor = new ExternalEditorWindow(this, filename);
+            return editor;
+        } else {
+            return openInternalEditor(filename);
+        }
+    }
+
+    /**
+     * Convenience function to open a file in an internal editor window and
+     * make it active.
+     *
+     * @param filename the file to open
+     * @return the editor window, or null if filename exists and is not a
+     * file
+     * @throws IOException if a java.io operation throws
+     */
+    public InternalEditorWindow openInternalEditor(final String filename) throws IOException {
+
+        File file = new File(filename);
+        if (file.exists() && !file.isFile()) {
+            return null;
+        }
+
+        InternalEditorWindow editor;
+        try {
+            editor = new InternalEditorWindow(this, new File(filename),
+                0, 0, getScreen().getWidth(),
+                getDesktopBottom() - getDesktopTop());
+        } catch (IOException e) {
+            // Show this exception to the user.
+            new TExceptionDialog(this, e);
+            return null;
+        }
+        return editor;
+    }
+
+    /**
+     * Handle the Edit | Find menu item.
+     */
+    private void menuSearchFind() {
+        new SearchInputWindow(this, false);
+    }
+
+    /**
+     * Handle the Edit | Replace menu item.
+     */
+    private void menuSearchReplace() {
+        new SearchInputWindow(this, true);
+    }
+
+    /**
+     * Handle the Edit | Search again menu item.
+     */
+    private void menuSearchAgain() {
+        if (searchText.length() == 0) {
+            return;
+        }
+        TWindow window = getActiveWindow();
+        if (!(window instanceof InternalEditorWindow)) {
+            return;
+        }
+        InternalEditorWindow editor = (InternalEditorWindow) window;
+        assert (editor.getZ() == 0);
+
+        int line = editor.getEditingRowNumber();
+        line++;
+        if (line > editor.getLineCount()) {
+            line = 1;
+        }
+        SearchInputWindow.searchEditor(editor, searchText,
+            (searchDirection == 1 ? true : false),
+            line, (searchScope == 2 ? true : false),
+            searchCaseSensitive, searchRegularExpression, searchWholeWordsOnly);
+    }
+
+    /**
+     * Handle the Edit | Go to line menu item.
+     */
+    private void menuSearchGoToLine() {
+        TWindow window = getActiveWindow();
+        if (window instanceof InternalEditorWindow) {
+            TInputBox inputBox = inputBox(i18n.
+                getString("searchGoToLineInputBoxTitle"),
+                i18n.getString("searchGoToLineInputBoxCaption"), "",
+                TInputBox.Type.OKCANCEL);
+
+            if (!inputBox.isOk()) {
+                return;
+            }
+
+            InternalEditorWindow editor = (InternalEditorWindow) window;
+            if (inputBox.getText().trim().length() > 0) {
+                int lineNumber = editor.getEditingRowNumber();
+                try {
+                    lineNumber = Integer.parseInt(inputBox.getText().trim());
+                    if (lineNumber < 0) {
+                        editor.setEditingRowNumber(1);
+                    } else if (lineNumber > editor.getLineCount()) {
+                        editor.setEditingRowNumber(editor.getLineCount());
+                    } else {
+                        editor.setEditingRowNumber(lineNumber);
+                    }
+                } catch (NumberFormatException e) {
+                    // SQUASH
+                }
+            }
         }
     }
 
