@@ -1178,6 +1178,7 @@ public class XTWMApplication extends TApplication {
         setOption("window.focusFollowsMouse", "false");
         setOption("window.smartPlacement", "true");
         setOption("xtwm.confirmOnExit", "true");
+        setOption("xtwm.hideMenuBar", "false");
         setOption("xtwm.hideStatusBar", "true");
         setOption("xtwm.hideTextMouse", "swing");
         setOption("xtwm.lockScreenPassword", "");
@@ -1290,6 +1291,7 @@ public class XTWMApplication extends TApplication {
         getBackend().reloadOptions();
 
         // Now reset any XTWM variables based on option values.
+        setHideMenuBar(getOption("xtwm.hideMenuBar").equals("true"));
         setHideStatusBar(getOption("xtwm.hideStatusBar").equals("true"));
         menuTrayClock = getOption("menuTray.clock").equals("true");
         clockFormat = new SimpleDateFormat(getOption("menuTray.clock.format"));
@@ -1297,8 +1299,6 @@ public class XTWMApplication extends TApplication {
         smartWindowPlacement = getOption("window.smartPlacement",
             "true").equals("true");
         setFocusFollowsMouse(getOption("window.focusFollowsMouse",
-                "true").equals("true"));
-        setHideStatusBar(getOption("xtwm.hideStatusBar",
                 "true").equals("true"));
         String hideTextMouse = getOption("xtwm.hideTextMouse");
         if (hideTextMouse.equals("always")) {
@@ -1442,9 +1442,8 @@ public class XTWMApplication extends TApplication {
             }
         } // for (;;)
 
-        setHideMenuBar(false);
-        setHideStatusBar(getOption("xtwm.hideStatusBar",
-                "true").equals("true"));
+        setHideMenuBar(getOption("xtwm.hideMenuBar").equals("true"));
+        setHideStatusBar(getOption("xtwm.hideStatusBar").equals("true"));
     }
 
     // Desktop management -----------------------------------------------------

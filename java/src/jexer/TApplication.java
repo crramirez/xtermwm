@@ -1968,6 +1968,14 @@ public class TApplication implements Runnable {
                 getScreen().getWidth(), desktop.getHeight());
             desktop.onResize(resize);
         }
+        if (hideMenuBar == false) {
+            // Push any windows that are on the top line down.
+            for (TWindow window: windows) {
+                if (window.getY() == 0) {
+                    window.setY(1);
+                }
+            }
+        }
     }
 
     /**
@@ -2220,31 +2228,34 @@ public class TApplication implements Runnable {
         }
 
         if (hideMenuBar == false) {
-
             // Draw the blank menubar line - reset the screen clipping first
             // so it won't trim it out.
             getScreen().resetClipping();
             getScreen().hLineXY(0, 0, getScreen().getWidth(), ' ',
                 theme.getColor("tmenu"));
-            // Now draw the menus.
-            int x = 1;
-            for (TMenu menu: menus) {
-                CellAttributes menuColor;
-                CellAttributes menuMnemonicColor;
-                if (menu.isActive()) {
-                    menuIsActive = true;
-                    if (!menu.isContext()) {
-                        menuColor = theme.getColor("tmenu.highlighted");
-                        menuMnemonicColor = theme.getColor("tmenu.mnemonic.highlighted");
-                    } else {
-                        menuColor = theme.getColor("tmenu");
-                        menuMnemonicColor = theme.getColor("tmenu.mnemonic");
-                    }
-                    topLevel = menu;
+        }
+
+        // Now draw the menus.
+        int x = 1;
+        for (TMenu menu: menus) {
+            CellAttributes menuColor;
+            CellAttributes menuMnemonicColor;
+            if (menu.isActive()) {
+                menuIsActive = true;
+                if (!menu.isContext()) {
+                    menuColor = theme.getColor("tmenu.highlighted");
+                    menuMnemonicColor = theme.getColor("tmenu.mnemonic.highlighted");
                 } else {
                     menuColor = theme.getColor("tmenu");
                     menuMnemonicColor = theme.getColor("tmenu.mnemonic");
                 }
+                topLevel = menu;
+            } else {
+                menuColor = theme.getColor("tmenu");
+                menuMnemonicColor = theme.getColor("tmenu.mnemonic");
+            }
+
+            if (hideMenuBar == false) {
                 // Draw the menu title
                 getScreen().hLineXY(x, 0,
                     StringUtils.width(menu.getTitle()) + 2, ' ', menuColor);
@@ -2253,31 +2264,30 @@ public class TApplication implements Runnable {
                 getScreen().putCharXY(x + 1 +
                     menu.getMnemonic().getScreenShortcutIdx(),
                     0, menu.getMnemonic().getShortcut(), menuMnemonicColor);
-
-                if (menu.isActive()) {
-                    ((TWindow) menu).drawChildren();
-                    // Reset the screen clipping so we can draw the next
-                    // title.
-                    getScreen().resetClipping();
-                }
-                x += StringUtils.width(menu.getTitle()) + 2;
             }
 
-            for (TMenu menu: subMenus) {
-                // Reset the screen clipping so we can draw the next
-                // sub-menu.
-                getScreen().resetClipping();
+            if (menu.isActive()) {
                 ((TWindow) menu).drawChildren();
+                // Reset the screen clipping so we can draw the next title.
+                getScreen().resetClipping();
             }
+            x += StringUtils.width(menu.getTitle()) + 2;
+        }
 
+        for (TMenu menu: subMenus) {
+            // Reset the screen clipping so we can draw the next sub-menu.
+            getScreen().resetClipping();
+            ((TWindow) menu).drawChildren();
+        }
+
+        if (hideMenuBar == false) {
             if ((menuTrayText != null) && (menuTrayText.length() > 0)) {
                 getScreen().resetClipping();
                 getScreen().putStringXY(getScreen().getWidth() -
                     StringUtils.width(menuTrayText), 0, menuTrayText,
                     theme.getColor("tmenu"));
             }
-
-        } // if (hideMenuBar == false)
+        }
 
         getScreen().resetClipping();
 

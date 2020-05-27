@@ -101,7 +101,12 @@ public class ApplicationOptionsWindow extends TWindow {
     private TCheckBox desktopPager = null;
 
     /**
-     * Whether or not to hide the status line.
+     * Whether or not to hide the top line menu bar.
+     */
+    private TCheckBox hideMenuBar = null;
+
+    /**
+     * Whether or not to hide the bottom line status bar.
      */
     private TCheckBox hideStatusBar = null;
 
@@ -156,7 +161,7 @@ public class ApplicationOptionsWindow extends TWindow {
      */
     public ApplicationOptionsWindow(final TApplication parent) {
 
-        super(parent, i18n.getString("windowTitle"), 0, 0, 76, 23,
+        super(parent, i18n.getString("windowTitle"), 0, 0, 76, 24,
             MODAL | CENTERED);
 
         final XTWMApplication app = ((XTWMApplication) getApplication());
@@ -249,11 +254,13 @@ public class ApplicationOptionsWindow extends TWindow {
 
 
         // Application options
-        hideStatusBar = addCheckBox(3, 10, i18n.getString("hideStatusBar"),
+        hideMenuBar = addCheckBox(3, 10, i18n.getString("hideMenuBar"),
+            app.getOption("xtwm.hideMenuBar").equals("true"));
+        hideStatusBar = addCheckBox(3, 11, i18n.getString("hideStatusBar"),
             app.getOption("xtwm.hideStatusBar").equals("true"));
-        confirmOnExit = addCheckBox(3, 11, i18n.getString("confirmOnExit"),
+        confirmOnExit = addCheckBox(3, 12, i18n.getString("confirmOnExit"),
             app.getOption("xtwm.confirmOnExit").equals("true"));
-        addLabel(i18n.getString("hideTextMouse"), 3, 12, "tcheckbox.inactive",
+        addLabel(i18n.getString("hideTextMouse"), 3, 13, "tcheckbox.inactive",
             false,
             new TAction() {
                 public void DO() {
@@ -264,7 +271,7 @@ public class ApplicationOptionsWindow extends TWindow {
         hideTextMouseOptions.add("always");
         hideTextMouseOptions.add("never");
         hideTextMouseOptions.add("swing");
-        hideTextMouse = addComboBox(36, 12, 10, hideTextMouseOptions, 0, 5,
+        hideTextMouse = addComboBox(36, 13, 10, hideTextMouseOptions, 0, 5,
             new TAction() {
                 public void DO() {
                     app.setOption("xtwm.hideTextMouse",
@@ -272,32 +279,32 @@ public class ApplicationOptionsWindow extends TWindow {
                 }
             });
         hideTextMouse.setText(app.getOption("xtwm.hideTextMouse"), false);
-        menuTrayClock = addCheckBox(3, 13, i18n.getString("menuTrayClock"),
+        menuTrayClock = addCheckBox(3, 14, i18n.getString("menuTrayClock"),
             app.getOption("menuTray.clock").equals("true"));
 
-        addLabel(i18n.getString("menuTrayClockFormat"), 3, 14, "ttext", false,
+        addLabel(i18n.getString("menuTrayClockFormat"), 3, 15, "ttext", false,
             new TAction() {
                 public void DO() {
                     menuTrayClockFormat.activate();
                 }
             });
-        menuTrayClockFormat = addField(36, 14, 10, false,
+        menuTrayClockFormat = addField(36, 15, 10, false,
             app.getOption("menuTray.clock.format"));
 
-        menuTrayDesktop = addCheckBox(3, 15, i18n.getString("menuTrayDesktop"),
+        menuTrayDesktop = addCheckBox(3, 16, i18n.getString("menuTrayDesktop"),
             app.getOption("menuTray.desktop").equals("true"));
 
-        addLabel(i18n.getString("screensaverTimeout"), 3, 16, "ttext", false,
+        addLabel(i18n.getString("screensaverTimeout"), 3, 17, "ttext", false,
             new TAction() {
                 public void DO() {
                     screensaverTimeout.activate();
                 }
             });
-        screensaverTimeout = addField(36, 16, 10, false,
+        screensaverTimeout = addField(36, 17, 10, false,
             app.getOption("screensaver.timeout"));
-        screensaverLock = addCheckBox(3, 17, i18n.getString("screensaverLock"),
+        screensaverLock = addCheckBox(3, 18, i18n.getString("screensaverLock"),
             app.getOption("screensaver.lock").equals("true"));
-        simpleBoxGlyphs = addCheckBox(3, 18, i18n.getString("simpleBoxGlyphs"),
+        simpleBoxGlyphs = addCheckBox(3, 19, i18n.getString("simpleBoxGlyphs"),
             app.getOption("xtwm.simpleBoxGlyphs").equals("true"));
 
         // Buttons
@@ -375,7 +382,7 @@ public class ApplicationOptionsWindow extends TWindow {
         putStringXY(column2 + 2, 2, i18n.getString("windowsTitle"), boxColor);
 
         // Application
-        drawBox(2, 10, 50, 21, boxColor, boxColor);
+        drawBox(2, 10, 50, 22, boxColor, boxColor);
         putStringXY(4, 10, i18n.getString("applicationTitle"), boxColor);
     }
 
@@ -415,6 +422,9 @@ public class ApplicationOptionsWindow extends TWindow {
 
         app.setOption("desktop.pager",
             (desktopPager.isChecked() ? "true" : "false"));
+
+        app.setOption("xtwm.hideMenuBar",
+            (hideMenuBar.isChecked() ? "true" : "false"));
 
         app.setOption("xtwm.hideStatusBar",
             (hideStatusBar.isChecked() ? "true" : "false"));
@@ -477,6 +487,9 @@ public class ApplicationOptionsWindow extends TWindow {
         desktopCount.setText(app.getOption("desktop.count"));
 
         desktopPager.setChecked(app.getOption("desktop.pager").
+            equals("true"));
+
+        hideMenuBar.setChecked(app.getOption("xtwm.hideMenuBar").
             equals("true"));
 
         hideStatusBar.setChecked(app.getOption("xtwm.hideStatusBar").
