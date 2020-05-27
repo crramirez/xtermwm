@@ -127,8 +127,9 @@ public class XTWMApplication extends TApplication {
     private static final int MENU_APPLICATION_EXIT                      = 2099;
 
     // Package private values are handled by InternalEditor.
-            static final int MENU_EDIT_SAVE                             = 2100;
-            static final int MENU_EDIT_SAVE_AS                          = 2101;
+    private static final int MENU_EDIT_OPEN                             = 2100;
+            static final int MENU_EDIT_SAVE                             = 2101;
+            static final int MENU_EDIT_SAVE_AS                          = 2102;
 
     // Package private values are handled by TiledTerminal.
     private static final int MENU_TERMINAL_NEW_WINDOW                   = 2200;
@@ -561,6 +562,18 @@ public class XTWMApplication extends TApplication {
             postMenuEvent(new TCommandEvent(cmExit));
             return true;
 
+        case MENU_EDIT_OPEN:
+            try {
+                String filename = fileOpenBox(".");
+                if (filename != null) {
+                    openEditor(filename);
+                }
+            } catch (IOException e) {
+                // Show this exception to the user.
+                new TExceptionDialog(this, e);
+            }
+            return true;
+
         case TMenu.MID_FIND:
             menuSearchFind();
             return true;
@@ -846,15 +859,20 @@ public class XTWMApplication extends TApplication {
 
         TMenu editMenu = addEditMenu();
         editMenu.addSeparator();
-        editMenu.addItem(MENU_EDIT_SAVE, i18n.getString("editMenuSave"));
-        editMenu.addItem(MENU_EDIT_SAVE, i18n.getString("editMenuSaveAs"));
+        editMenu.addItem(MENU_EDIT_OPEN, i18n.getString("editMenuOpen"),
+            kbCtrlO);
+        editMenu.addItem(MENU_EDIT_SAVE, i18n.getString("editMenuSave"), false);
+        editMenu.addItem(MENU_EDIT_SAVE_AS, i18n.getString("editMenuSaveAs"),
+            false);
         editMenu.addSeparator();
-        editMenu.addItem(TMenu.MID_FIND, i18n.getString("editMenuFind"));
-        editMenu.addItem(TMenu.MID_REPLACE, i18n.getString("editMenuReplace"));
+        editMenu.addItem(TMenu.MID_FIND, i18n.getString("editMenuFind"),
+            kbCtrlF, false);
+        editMenu.addItem(TMenu.MID_REPLACE, i18n.getString("editMenuReplace"),
+            false);
         editMenu.addItem(TMenu.MID_SEARCH_AGAIN,
-            i18n.getString("editMenuSearchAgain"));
+            i18n.getString("editMenuSearchAgain"), kbCtrlL, false);
         editMenu.addItem(TMenu.MID_GOTO_LINE,
-            i18n.getString("editMenuGotoLine"));
+            i18n.getString("editMenuGotoLine"), kbCtrlG, false);
 
         // Terminal menu ------------------------------------------------------
 
@@ -1155,7 +1173,7 @@ public class XTWMApplication extends TApplication {
         setOption("window.focusFollowsMouse", "false");
         setOption("window.smartPlacement", "true");
         setOption("xtwm.confirmOnExit", "true");
-        setOption("xtwm.hideStatusLine", "true");
+        setOption("xtwm.hideStatusBar", "true");
         setOption("xtwm.hideTextMouse", "swing");
         setOption("xtwm.lockScreenPassword", "");
         setOption("xtwm.maximizeOnSwing", "true");
@@ -1267,13 +1285,15 @@ public class XTWMApplication extends TApplication {
         getBackend().reloadOptions();
 
         // Now reset any XTWM variables based on option values.
-        setHideStatusBar(getOption("xtwm.hideStatusLine").equals("true"));
+        setHideStatusBar(getOption("xtwm.hideStatusBar").equals("true"));
         menuTrayClock = getOption("menuTray.clock").equals("true");
         clockFormat = new SimpleDateFormat(getOption("menuTray.clock.format"));
         menuTrayDesktop = getOption("menuTray.desktop").equals("true");
         smartWindowPlacement = getOption("window.smartPlacement",
             "true").equals("true");
         setFocusFollowsMouse(getOption("window.focusFollowsMouse",
+                "true").equals("true"));
+        setHideStatusBar(getOption("xtwm.hideStatusBar",
                 "true").equals("true"));
         String hideTextMouse = getOption("xtwm.hideTextMouse");
         if (hideTextMouse.equals("always")) {
@@ -1418,7 +1438,7 @@ public class XTWMApplication extends TApplication {
         } // for (;;)
 
         setHideMenuBar(false);
-        setHideStatusBar(getOption("xtwm.hideStatusLine",
+        setHideStatusBar(getOption("xtwm.hideStatusBar",
                 "true").equals("true"));
     }
 

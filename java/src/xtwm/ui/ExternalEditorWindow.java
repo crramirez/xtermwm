@@ -28,6 +28,7 @@
  */
 package xtwm.ui;
 
+import java.io.File;
 import java.text.MessageFormat;
 import java.util.ResourceBundle;
 
@@ -67,7 +68,7 @@ public class ExternalEditorWindow extends TTerminalWindow {
 
         super(parent, 0, 0, getCommandLineNew(parent));
 
-        setTitle(i18n.getString("editorTitle"));
+        setTitle(i18n.getString("editorTitle"), true);
         newStatusBar(i18n.getString("statusBarRunning"));
     }
 
@@ -83,7 +84,7 @@ public class ExternalEditorWindow extends TTerminalWindow {
         super(parent, 0, 0, getCommandLineOpen(parent, filename));
 
         setTitle(MessageFormat.format(i18n.getString("editorTitleFilename"),
-                filename));
+                new File(filename).getName()), true);
         newStatusBar(i18n.getString("statusBarRunning"));
     }
 

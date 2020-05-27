@@ -1314,27 +1314,15 @@ public class SwingTerminal extends LogicalScreen
         // Draw the background rectangle, then the foreground character.
         assert (cell.isImage());
 
-        // Enable anti-aliasing
-        if (gr instanceof Graphics2D) {
-            ((Graphics2D) gr).setRenderingHint(RenderingHints.KEY_ANTIALIASING,
-                RenderingHints.VALUE_ANTIALIAS_ON);
-            ((Graphics2D) gr).setRenderingHint(RenderingHints.KEY_RENDERING,
-                RenderingHints.VALUE_RENDER_QUALITY);
-        }
-
-        gr.setColor(cell.getBackground());
-        gr.fillRect(xPixel, yPixel, textWidth, textHeight);
-
         BufferedImage image = cell.getImage();
-        if (image != null) {
-            if (swing.getFrame() != null) {
-                gr.drawImage(image, xPixel, yPixel, getTextWidth(),
-                    getTextHeight(), swing.getFrame());
-            } else {
-                gr.drawImage(image, xPixel, yPixel,  getTextWidth(),
-                    getTextHeight(), swing.getComponent());
-            }
-            return;
+        assert (image != null);
+
+        if (swing.getFrame() != null) {
+            gr.drawImage(image, xPixel, yPixel, textWidth,
+                textHeight, swing.getFrame());
+        } else {
+            gr.drawImage(image, xPixel, yPixel, textWidth,
+                textHeight, swing.getComponent());
         }
     }
 
@@ -1392,17 +1380,6 @@ public class SwingTerminal extends LogicalScreen
         if (cell.isReverse()) {
             cellColor.setForeColor(cell.getBackColor());
             cellColor.setBackColor(cell.getForeColor());
-        }
-
-        // Enable anti-aliasing
-        if ((gr instanceof Graphics2D) && (swing.getFrame() != null)) {
-            // Anti-aliasing on JComponent makes the hash character disappear
-            // for Terminus font, and also kills performance.  Only enable it
-            // for JFrame.
-            ((Graphics2D) gr).setRenderingHint(RenderingHints.KEY_ANTIALIASING,
-                RenderingHints.VALUE_ANTIALIAS_ON);
-            ((Graphics2D) gr).setRenderingHint(RenderingHints.KEY_RENDERING,
-                RenderingHints.VALUE_RENDER_QUALITY);
         }
 
         // Draw the background rectangle, then the foreground character.
