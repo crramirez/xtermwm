@@ -2233,8 +2233,13 @@ public class TApplication implements Runnable {
                 CellAttributes menuMnemonicColor;
                 if (menu.isActive()) {
                     menuIsActive = true;
-                    menuColor = theme.getColor("tmenu.highlighted");
-                    menuMnemonicColor = theme.getColor("tmenu.mnemonic.highlighted");
+                    if (!menu.isContext()) {
+                        menuColor = theme.getColor("tmenu.highlighted");
+                        menuMnemonicColor = theme.getColor("tmenu.mnemonic.highlighted");
+                    } else {
+                        menuColor = theme.getColor("tmenu");
+                        menuMnemonicColor = theme.getColor("tmenu.mnemonic");
+                    }
                     topLevel = menu;
                 } else {
                     menuColor = theme.getColor("tmenu");
@@ -2272,7 +2277,8 @@ public class TApplication implements Runnable {
                     theme.getColor("tmenu"));
             }
 
-        }
+        } // if (hideMenuBar == false)
+
         getScreen().resetClipping();
 
         if (hideStatusBar == false) {
@@ -3085,14 +3091,33 @@ public class TApplication implements Runnable {
 
         if ((mouse.getType() == TMouseEvent.Type.MOUSE_DOWN)
             && (activeMenu != null)
-            && (mouse.getAbsoluteY() != 0)
+            && (activeMenu.isContext())
             && (!mouseOnMenu(mouse))
         ) {
-            // They clicked outside the active menu, turn it off
+            // They clicked outside the active context menu, turn it off
             activeMenu.setActive(false);
+            activeMenu.setContext(false);
             activeMenu = null;
             for (TMenu menu: subMenus) {
                 menu.setActive(false);
+                menu.setContext(false);
+            }
+            subMenus.clear();
+            // Continue checks
+        }
+
+        if ((mouse.getType() == TMouseEvent.Type.MOUSE_DOWN)
+            && (activeMenu != null)
+            && (mouse.getAbsoluteY() != 0)
+            && (!mouseOnMenu(mouse))
+        ) {
+            // They clicked outside the active non-context menu, turn it off
+            activeMenu.setActive(false);
+            assert (activeMenu.isContext() == false);
+            activeMenu = null;
+            for (TMenu menu: subMenus) {
+                menu.setActive(false);
+                menu.setContext(false);
             }
             subMenus.clear();
             // Continue checks
@@ -3109,6 +3134,7 @@ public class TApplication implements Runnable {
 
             for (TMenu menu: subMenus) {
                 menu.setActive(false);
+                assert (menu.isContext() == false);
             }
             subMenus.clear();
 
@@ -3119,6 +3145,7 @@ public class TApplication implements Runnable {
                         + StringUtils.width(menu.getTitle()) + 2)
                 ) {
                     menu.setActive(true);
+                    assert (menu.isContext() == false);
                     activeMenu = menu;
                 } else {
                     menu.setActive(false);
@@ -3138,6 +3165,7 @@ public class TApplication implements Runnable {
             TMenu oldMenu = activeMenu;
             for (TMenu menu: subMenus) {
                 menu.setActive(false);
+                assert (menu.isContext() == false);
             }
             subMenus.clear();
 
@@ -3148,6 +3176,7 @@ public class TApplication implements Runnable {
                         + StringUtils.width(menu.getTitle()) + 2)
                 ) {
                     menu.setActive(true);
+                    assert (menu.isContext() == false);
                     activeMenu = menu;
                 }
             }
@@ -3208,9 +3237,14 @@ public class TApplication implements Runnable {
     public final void closeMenu() {
         if (activeMenu != null) {
             activeMenu.setActive(false);
+            if (activeMenu.isContext()) {
+                activeMenu.setY(0);
+                activeMenu.setContext(false);
+            }
             activeMenu = null;
             for (TMenu menu: subMenus) {
                 menu.setActive(false);
+                menu.setContext(false);
             }
             subMenus.clear();
         }
@@ -3224,6 +3258,34 @@ public class TApplication implements Runnable {
     public final List<TMenu> getAllMenus() {
         return new ArrayList<TMenu>(menus);
     }
+
+    /**
+     * Open a previously created menu as a context menu at a specific
+     * location.
+     *
+     * @param menu the menu to open
+     * @param x the context menu X position
+     * @param y the context menu Y position
+     * @throws IllegalArgumentException if the menu is already used in
+     * another TApplication
+     */
+    public final void openContextMenu(final TMenu menu, final int x,
+        final int y) {
+
+        if ((menu.getApplication() != null)
+            && (menu.getApplication() != this)
+        ) {
+            throw new IllegalArgumentException("Menu " + menu + " is already " +
+                "part of application " + menu.getApplication());
+        }
+
+        assert (activeMenu == null);
+
+        menu.setContext(true, x, y);
+        menu.setActive(true);
+        activeMenu = menu;
+    }
+
 
     /**
      * Add a top-level menu to the list.

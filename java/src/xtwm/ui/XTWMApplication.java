@@ -266,6 +266,11 @@ public class XTWMApplication extends TApplication {
      */
     int searchScope = 1;
 
+    /**
+     * The Application menu.  Note package private access.
+     */
+    TMenu applicationMenu = null;
+
     // ------------------------------------------------------------------------
     // Constructors -----------------------------------------------------------
     // ------------------------------------------------------------------------
@@ -810,7 +815,7 @@ public class XTWMApplication extends TApplication {
 
         // Application menu ---------------------------------------------------
 
-        TMenu applicationMenu = addMenu(i18n.getString("applicationMenuTitle"));
+        applicationMenu = addMenu(i18n.getString("applicationMenuTitle"));
 
         TSubMenu subPrograms = applicationMenu.addSubMenu(i18n.
             getString("applicationPrograms"));
@@ -1843,6 +1848,37 @@ public class XTWMApplication extends TApplication {
         case 0x256C:
             // ┼
             return 0x253C;
+
+        case 0x2580:
+        case 0x2581:
+        case 0x2582:
+        case 0x2583:
+        case 0x2584:
+        case 0x2585:
+        case 0x2586:
+        case 0x2587:
+        case 0x2588:
+        case 0x258A:
+        case 0x258B:
+        case 0x258C:
+        case 0x258D:
+        case 0x258E:
+        case 0x258F:
+        case 0x2590:
+        case 0x2594:
+        case 0x2595:
+        case 0x2596:
+        case 0x2597:
+        case 0x2598:
+        case 0x2599:
+        case 0x259A:
+        case 0x259B:
+        case 0x259C:
+        case 0x259D:
+        case 0x259E:
+        case 0x259F:
+            // Turn most of the Block Elements into full block: █
+            return 0x2588;
 
         default:
             return ch;

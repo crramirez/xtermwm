@@ -36,6 +36,7 @@ import jexer.TSplitPane;
 import jexer.TWidget;
 import jexer.bits.CellAttributes;
 import jexer.bits.GraphicsChars;
+import jexer.event.TMouseEvent;
 import static jexer.TKeypress.*;
 
 /**
@@ -87,6 +88,29 @@ public class Desktop extends TDesktop {
     // ------------------------------------------------------------------------
     // Event handlers ---------------------------------------------------------
     // ------------------------------------------------------------------------
+
+    /**
+     * Handle mouse press events.
+     *
+     * @param mouse mouse button press event
+     */
+    @Override
+    public void onMouseDown(final TMouseEvent mouse) {
+        if (getChildren().size() == 0) {
+            if (mouse.isMouse3()) {
+                // Right-click context menu.
+                if (getApplication() instanceof XTWMApplication) {
+                    XTWMApplication app = (XTWMApplication) getApplication();
+                    app.openContextMenu(app.applicationMenu,
+                        mouse.getAbsoluteX(), mouse.getAbsoluteY());
+                }
+                return;
+            }
+        }
+
+        // Use TWidget's code to pass the event to the children.
+        super.onMouseDown(mouse);
+    }
 
     // ------------------------------------------------------------------------
     // TDesktop ---------------------------------------------------------------

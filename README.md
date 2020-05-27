@@ -19,7 +19,7 @@ manager for the console.  Major features include:
     shells or over ssh) and as a Swing component for X11/Windows/Mac,
     with the same behavior and look-and-feel.  The mouse can also work
     for the raw Linux console when GPM installed and XtermWM is run
-    inside [lcxterm](https://lcxterm.sourceforge.io).
+    inside [LCxterm](https://lcxterm.sourceforge.io).
 
   * Image support, for both Swing and Xterm.  When running under
     Xterm, images are rendered as sixel graphic sequences.
