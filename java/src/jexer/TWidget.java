@@ -1351,9 +1351,9 @@ public abstract class TWidget implements Comparable<TWidget> {
     }
 
     /**
-     * Called by parent to render to TWindow.  Note package private access.
+     * Called by parent to render to TWindow.
      */
-    final void drawChildren() {
+    public final void drawChildren() {
         if (!isDrawable()) {
             return;
         }

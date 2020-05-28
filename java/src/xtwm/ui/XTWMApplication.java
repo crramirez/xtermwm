@@ -79,6 +79,7 @@ import static jexer.TKeypress.*;
 
 import xtwm.plugins.PluginLoader;
 import xtwm.plugins.PluginWidget;
+import xtwm.plugins.ScreensaverPlugin;
 
 /**
  * The main Xterm Window Manager application.
@@ -271,6 +272,31 @@ public class XTWMApplication extends TApplication {
      */
     TMenu applicationMenu = null;
 
+    /**
+     * The list of screensaver classes.
+     */
+    private List<Class<? extends ScreensaverPlugin>> screensavers = new ArrayList<Class<? extends ScreensaverPlugin>>();
+
+    /**
+     * The selected screensaver type.
+     */
+    private Class<? extends ScreensaverPlugin> screensaverClass = null;
+
+    /**
+     * The screensaver timeout in seconds.  0 means screensaver is disabled.
+     */
+    private int screensaverTimeout = 0;
+
+    /**
+     * Whether or not the screensaver also locks the screen.
+     */
+    private boolean screensaverLock = true;
+
+    /**
+     * The desktop that was active before the screensaver kicked in.
+     */
+    private int screensaverLastDesktop = -1;
+
     // ------------------------------------------------------------------------
     // Constructors -----------------------------------------------------------
     // ------------------------------------------------------------------------
@@ -365,8 +391,57 @@ public class XTWMApplication extends TApplication {
      */
     @Override
     protected void onPreDraw() {
-        String text = "";
+        long now = System.currentTimeMillis();
 
+        if ((screensaverTimeout > 0) && (desktopIndex != 0)) {
+            if (((now - lastUserInputTime) / 1000) > screensaverTimeout) {
+                // Screensaver needs to be active.
+                screensaverLastDesktop = desktopIndex;
+                getCurrentDesktop().hide();
+                desktopIndex = 0;
+                getCurrentDesktop().show();
+                TDesktop desktop = getCurrentDesktop().getDesktop();
+                setDesktop(getCurrentDesktop().getDesktop(), true);
+                setHideMenuBar(true);
+                setHideStatusBar(true);
+                if (screensaverClass != null) {
+                    ScreensaverPlugin screensaver;
+                    try {
+                        screensaver = screensaverClass.getConstructor().newInstance();
+                        screensaver.initialize(this);
+                        screensaver.setParent(desktop, false);
+                        screensaver.setDimensions(0, 0,
+                            desktop.getWidth(), desktop.getHeight());
+                    } catch (Exception e) {
+                        if (e instanceof RuntimeException) {
+                            throw (RuntimeException) e;
+                        }
+                        new TExceptionDialog(this, e);
+                    }
+                }
+            }
+        } else if ((screensaverTimeout > 0) && (desktopIndex == 0)) {
+            if (((now - lastUserInputTime) / 1000) < screensaverTimeout) {
+                // Screensaver needs to be turned off.
+
+                // TODO: check for screensaver lock
+
+                // Switch the desktop back.
+                getCurrentDesktop().getDesktop().getChildren().get(0).remove();
+                getCurrentDesktop().hide();
+                desktopIndex = screensaverLastDesktop;
+                getCurrentDesktop().show();
+                getCurrentDesktop().getDesktop().setFocusFollowsMouse(getOption(
+                    "panel.focusFollowsMouse", "true").equals("true"));
+                setDesktop(getCurrentDesktop().getDesktop(), false);
+                getMenuItem(MENU_TERMINAL_SEND_KEYS_TO_ALL).setChecked(getDesktop().isEchoKeystrokes());
+                setHideMenuBar(getOption("xtwm.hideMenuBar").equals("true"));
+                setHideStatusBar(getOption("xtwm.hideStatusBar").equals("true"));
+            }
+        }
+
+        // Menu tray text
+        String text = "";
         if (menuTrayClock) {
             text = clockFormat.format(new Date());
             if (menuTrayDesktop) {
@@ -386,6 +461,7 @@ public class XTWMApplication extends TApplication {
         // on the desktop to be visible.
         if ((windows.size() == 0)
             && (getDesktop().getChildren().size() > 0)
+            && (desktopIndex != 0)
         ) {
             // Permit the desktop cursor to be visible, even if the top-most
             // actual window does not have a cursor.
@@ -404,7 +480,11 @@ public class XTWMApplication extends TApplication {
      */
     @Override
     protected void onPostDraw() {
-        // TODO - add screensaver logic here
+        if (desktopIndex == 0) {
+            // The screensaver is active, draw it.
+            getScreen().resetClipping();
+            getCurrentDesktop().getDesktop().drawChildren();
+        }
 
         if (simpleBoxGlyphs) {
             // Many terminal fonts lack all of the box-drawing glyphs.  This
@@ -1310,6 +1390,13 @@ public class XTWMApplication extends TApplication {
         }
         simpleBoxGlyphs = getOption("xtwm.simpleBoxGlyphs",
             "true").equals("true");
+        try {
+            screensaverTimeout = Integer.parseInt(getOption(
+                "screensaver.timeout"));
+        } catch (NumberFormatException e) {
+            // SQUASH
+        }
+        screensaverLock = getOption("screensaver.lock").equals("true");
 
         if (getCurrentDesktop() != null) {
             getCurrentDesktop().getDesktop().setFocusFollowsMouse(getOption(
@@ -1570,6 +1657,10 @@ public class XTWMApplication extends TApplication {
             String pluginName = widget.getPluginName();
             loadPluginProperties(pluginName);
 
+            if (widget instanceof ScreensaverPlugin) {
+                addScreensaver(((ScreensaverPlugin) widget).getClass());
+            }
+
             if (widget.isApplication()) {
                 int menuId = pluginAppMenuIds.size() + APP_MENU_ID_MIN;
                 programsMenu.addItem(menuId, widget.getMenuMnemonic());
@@ -1689,6 +1780,20 @@ public class XTWMApplication extends TApplication {
      */
     public File getPluginDataDir() {
         return pluginDataDir;
+    }
+
+    /**
+     * Add a screensaver to the list of available system screensavers.
+     *
+     * @param screensaver the screensaver plugin class
+     */
+    private void addScreensaver(final Class<? extends ScreensaverPlugin> screensaver) {
+        if (!screensavers.contains(screensaver)) {
+            screensavers.add(screensaver);
+            if (screensaverClass == null) {
+                screensaverClass = screensaver;
+            }
+        }
     }
 
     // Miscellaneous ----------------------------------------------------------
@@ -1928,8 +2033,8 @@ public class XTWMApplication extends TApplication {
         InternalEditorWindow editor;
         try {
             editor = new InternalEditorWindow(this, new File(filename),
-                0, 0, getScreen().getWidth(),
-                getDesktopBottom() - getDesktopTop());
+                0, 0, Math.min(82, getScreen().getWidth()),
+                Math.min(25, getDesktopBottom() - getDesktopTop()));
         } catch (IOException e) {
             // Show this exception to the user.
             new TExceptionDialog(this, e);

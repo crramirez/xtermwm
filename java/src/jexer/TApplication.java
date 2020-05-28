@@ -373,6 +373,11 @@ public class TApplication implements Runnable {
     protected ArrayList<Topic> helpTopics = new ArrayList<Topic>();
 
     /**
+     * The last time user input (mouse or keyboard) was received.
+     */
+    protected long lastUserInputTime = System.currentTimeMillis();
+
+    /**
      * WidgetEventHandler is the main event consumer loop.  There are at most
      * two such threads in existence: the primary for normal case and a
      * secondary that is used for TMessageBox, TInputBox, and similar.
@@ -1269,6 +1274,12 @@ public class TApplication implements Runnable {
         }
 
         // Special application-wide events -------------------------------
+
+        if ((event instanceof TMouseEvent)
+            || (event instanceof TKeypressEvent)
+        ) {
+            lastUserInputTime = event.getTime().getTime();
+        }
 
         // Abort everything
         if (event instanceof TCommandEvent) {
