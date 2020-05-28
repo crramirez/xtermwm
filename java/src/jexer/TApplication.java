@@ -2055,6 +2055,20 @@ public class TApplication implements Runnable {
         return true;
     }
 
+    /**
+     * Check if a system-wide modal thread is running.  This thread is used
+     * to drive a few special dialog boxes such as TMessageBox, TInputBox,
+     * and TFileOpenBox.
+     *
+     * @return true if the modal (secondary) thread is running
+     */
+    public boolean isModalThreadRunning() {
+        if (secondaryEventReceiver != null) {
+            return true;
+        }
+        return false;
+    }
+
     // ------------------------------------------------------------------------
     // Screen refresh loop ----------------------------------------------------
     // ------------------------------------------------------------------------

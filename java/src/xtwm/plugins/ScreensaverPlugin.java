@@ -28,12 +28,19 @@
  */
 package xtwm.plugins;
 
-import jexer.TTimer;
+import java.util.ResourceBundle;
+
+import jexer.TAction;
+import jexer.TField;
+import jexer.TPanel;
 import jexer.TWidget;
 import jexer.TWindow;
+import jexer.backend.Screen;
+import jexer.bits.CellAttributes;
+import jexer.bits.StringUtils;
 import jexer.event.TKeypressEvent;
-import jexer.event.TMouseEvent;
 import jexer.event.TResizeEvent;
+import static jexer.TKeypress.*;
 
 import xtwm.ui.XTWMApplication;
 
@@ -44,6 +51,11 @@ import xtwm.ui.XTWMApplication;
  */
 public abstract class ScreensaverPlugin extends PluginWidget {
 
+    /**
+     * Translated strings.
+     */
+    private static ResourceBundle i18n = ResourceBundle.getBundle(ScreensaverPlugin.class.getName());
+
     // ------------------------------------------------------------------------
     // Constants --------------------------------------------------------------
     // ------------------------------------------------------------------------
@@ -51,6 +63,21 @@ public abstract class ScreensaverPlugin extends PluginWidget {
     // ------------------------------------------------------------------------
     // Variables --------------------------------------------------------------
     // ------------------------------------------------------------------------
+
+    /**
+     * If true, the user entered the password, or there is no password.
+     */
+    protected boolean unlocked = false;
+
+    /**
+     * The password panel.
+     */
+    protected TPanel passwordPanel = null;
+
+    /**
+     * The password field.
+     */
+    protected TField passwordField = null;
 
     // ------------------------------------------------------------------------
     // Constructors -----------------------------------------------------------
@@ -68,6 +95,25 @@ public abstract class ScreensaverPlugin extends PluginWidget {
     // ------------------------------------------------------------------------
     // Event handlers ---------------------------------------------------------
     // ------------------------------------------------------------------------
+
+    /**
+     * Handle keystrokes.
+     *
+     * @param keypress keystroke event
+     */
+    @Override
+    public void onKeypress(final TKeypressEvent keypress) {
+        if (passwordPanel != null) {
+            if (keypress.equals(kbEsc)) {
+                passwordPanel.setEnabled(false);
+                passwordPanel.setVisible(false);
+                return;
+            }
+            passwordPanel.setEnabled(true);
+            passwordPanel.setVisible(true);
+            passwordPanel.onKeypress(keypress);
+        }
+    }
 
     // ------------------------------------------------------------------------
     // PluginWidget -----------------------------------------------------------
@@ -140,5 +186,81 @@ public abstract class ScreensaverPlugin extends PluginWidget {
     // ScreensaverPlugin ------------------------------------------------------
     // ------------------------------------------------------------------------
 
+    /**
+     * This method is called when the screensaver is activated.
+     *
+     * @param screen a snapshot of the screen "under" the screensaver.
+     */
+    public abstract void startScreensaver(final Screen screen);
+
+    /**
+     * This method is called when the screensaver ends.
+     */
+    public abstract void endScreensaver();
+
+    /**
+     * Called to flag the screensaver to ask for a password.
+     */
+    public void checkPassword() {
+        String password = app.getOption("xtwm.lockScreenPassword", "");
+        if (password.length() == 0) {
+            unlocked = true;
+            return;
+        }
+
+        if (passwordPanel != null) {
+            return;
+        }
+
+        // Add a simple password box widget.
+        int panelWidth = 50;
+        int panelHeight = 6;
+        passwordPanel = new TPanel(this, (getWidth() - panelWidth) / 2,
+            (getHeight() - panelHeight) / 2, panelWidth, panelHeight) {
+
+            /**
+             * Draw a shadowed box for the "dialog".
+             */
+            public void draw() {
+                CellAttributes border = getTheme().getColor("twindow.border");
+                CellAttributes background = getTheme().getColor("twindow.background");
+                int borderType = 2;
+                drawBox(0, 0, getWidth(), getHeight(), border, background,
+                    borderType, true);
+
+                String title = i18n.getString("lockScreenInputBoxTitle");
+                int titleLength = StringUtils.width(title);
+                int titleLeft = (getWidth() - titleLength - 2) / 2;
+                putCharXY(titleLeft, 0, ' ', border);
+                putStringXY(titleLeft + 1, 0, title, border);
+                putCharXY(titleLeft + titleLength + 1, 0, ' ', border);
+            }
+        };
+        passwordPanel.addLabel(i18n.getString("lockScreenInputBoxCaption"),
+            2, 1);
+        passwordField = passwordPanel.addField(2, 3, panelWidth - 4, false,
+            "",
+            new TAction() {
+                public void DO() {
+                    String text = passwordField.getText();
+                    if (text.length() > 0) {
+                        if (text.equals(password)) {
+                            unlocked = true;
+                            passwordPanel.remove();
+                            passwordPanel = null;
+                        }
+                    }
+                }
+            }, null);
+    }
+
+    /**
+     * Called to see if the password was entered OK.
+     *
+     * @return true if the user entered the password successfully
+     */
+    public boolean isUnlocked() {
+        return unlocked;
+    }
 
 }

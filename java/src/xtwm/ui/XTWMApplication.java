@@ -297,6 +297,11 @@ public class XTWMApplication extends TApplication {
      */
     private int screensaverLastDesktop = -1;
 
+    /**
+     * The actively running screensaver.
+     */
+    private ScreensaverPlugin screensaver = null;
+
     // ------------------------------------------------------------------------
     // Constructors -----------------------------------------------------------
     // ------------------------------------------------------------------------
@@ -394,7 +399,9 @@ public class XTWMApplication extends TApplication {
         long now = System.currentTimeMillis();
 
         if ((screensaverTimeout > 0) && (desktopIndex != 0)) {
-            if (((now - lastUserInputTime) / 1000) > screensaverTimeout) {
+            if ((((now - lastUserInputTime) / 1000) > screensaverTimeout)
+                && (!isModalThreadRunning())
+            ) {
                 // Screensaver needs to be active.
                 screensaverLastDesktop = desktopIndex;
                 getCurrentDesktop().hide();
@@ -405,13 +412,14 @@ public class XTWMApplication extends TApplication {
                 setHideMenuBar(true);
                 setHideStatusBar(true);
                 if (screensaverClass != null) {
-                    ScreensaverPlugin screensaver;
+                    assert (screensaver == null);
                     try {
                         screensaver = screensaverClass.getConstructor().newInstance();
                         screensaver.initialize(this);
                         screensaver.setParent(desktop, false);
                         screensaver.setDimensions(0, 0,
                             desktop.getWidth(), desktop.getHeight());
+                        screensaver.startScreensaver(getScreen().snapshot());
                     } catch (Exception e) {
                         if (e instanceof RuntimeException) {
                             throw (RuntimeException) e;
@@ -423,27 +431,39 @@ public class XTWMApplication extends TApplication {
         } else if ((screensaverTimeout > 0) && (desktopIndex == 0)) {
             if (((now - lastUserInputTime) / 1000) < screensaverTimeout) {
                 // Screensaver needs to be turned off.
+                assert (screensaver != null);
 
-                // TODO: check for screensaver lock
+                if ((getOption("screensaver.lock").equals("true"))
+                    && (!screensaver.isUnlocked())
+                ) {
+                    // Have the screensaver ask for a password.
+                    screensaver.checkPassword();
+                }
 
-                // Switch the desktop back.
-                getCurrentDesktop().getDesktop().getChildren().get(0).remove();
-                getCurrentDesktop().hide();
-                desktopIndex = screensaverLastDesktop;
-                getCurrentDesktop().show();
-                getCurrentDesktop().getDesktop().setFocusFollowsMouse(getOption(
-                    "panel.focusFollowsMouse", "true").equals("true"));
-                setDesktop(getCurrentDesktop().getDesktop(), false);
-                getMenuItem(MENU_TERMINAL_SEND_KEYS_TO_ALL).setChecked(getDesktop().isEchoKeystrokes());
-                setHideMenuBar(getOption("xtwm.hideMenuBar").equals("true"));
-                setHideStatusBar(getOption("xtwm.hideStatusBar").equals("true"));
+                if (screensaver.isUnlocked()) {
+                    // The user successfully entered the password (or there
+                    // is no password).
+                    screensaver.endScreensaver();
+                    screensaver = null;
+
+                    // Switch the desktop back.
+                    getCurrentDesktop().getDesktop().getChildren().get(0).remove();
+                    getCurrentDesktop().hide();
+                    desktopIndex = screensaverLastDesktop;
+                    getCurrentDesktop().show();
+                    getCurrentDesktop().getDesktop().setFocusFollowsMouse(getOption("panel.focusFollowsMouse", "true").equals("true"));
+                    setDesktop(getCurrentDesktop().getDesktop(), false);
+                    getMenuItem(MENU_TERMINAL_SEND_KEYS_TO_ALL).setChecked(getDesktop().isEchoKeystrokes());
+                    setHideMenuBar(getOption("xtwm.hideMenuBar").equals("true"));
+                    setHideStatusBar(getOption("xtwm.hideStatusBar").equals("true"));
+                }
             }
         }
 
         // Menu tray text
         String text = "";
         if (menuTrayClock) {
-            text = clockFormat.format(new Date());
+            text = clockFormat.format(new Date(now));
             if (menuTrayDesktop) {
                 text += " ";
             }
@@ -1508,7 +1528,7 @@ public class XTWMApplication extends TApplication {
         setHideMenuBar(true);
         setHideStatusBar(true);
 
-        String lockScreenPassword = getOption("xtwm.lockPassword", "");
+        String lockScreenPassword = getOption("xtwm.lockScreenPassword", "");
 
         for (;;) {
             TInputBox inputBox = inputBox(i18n.

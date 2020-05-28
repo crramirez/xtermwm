@@ -31,6 +31,7 @@ package xtwm.plugins;
 import java.util.ResourceBundle;
 
 import jexer.TWidget;
+import jexer.backend.Screen;
 import jexer.bits.CellAttributes;
 
 /**
@@ -154,7 +155,7 @@ public class BlankScreensaver extends ScreensaverPlugin {
     }
 
     // ------------------------------------------------------------------------
-    // ScreensaverWidget ------------------------------------------------------
+    // ScreensaverPlugin ------------------------------------------------------
     // ------------------------------------------------------------------------
 
     /**
@@ -162,7 +163,26 @@ public class BlankScreensaver extends ScreensaverPlugin {
      */
     @Override
     public void draw() {
-        putAll(' ', new CellAttributes());
+        CellAttributes color = new CellAttributes();
+        putAll(' ', color);
+    }
+
+    /**
+     * This method is called when the screensaver is activated.
+     *
+     * @param screen a snapshot of the screen "under" the screensaver.
+     */
+    @Override
+    public void startScreensaver(final Screen screen) {
+        // Nothing to do.
+    }
+
+    /**
+     * This method is called when the screensaver ends.
+     */
+    @Override
+    public void endScreensaver() {
+        // Nothing to do.
     }
 
     // ------------------------------------------------------------------------
