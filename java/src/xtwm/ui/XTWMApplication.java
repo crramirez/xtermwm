@@ -367,6 +367,10 @@ public class XTWMApplication extends TApplication {
         loadPlugins();
         addDesktops();
 
+        // Call resolveOptions() again to alter behavior based on loaded
+        // plugins.
+        resolveOptions();
+
         if (getBackend() instanceof jexer.backend.ECMA48Backend) {
             // For the Xterm backend, force a repaint so that the clock will
             // be updated.

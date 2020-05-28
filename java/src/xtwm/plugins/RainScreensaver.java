@@ -30,19 +30,21 @@ package xtwm.plugins;
 
 import java.util.ResourceBundle;
 
+import jexer.TAction;
+import jexer.TTimer;
 import jexer.TWidget;
 import jexer.backend.Screen;
-import jexer.bits.CellAttributes;
+import jexer.bits.Cell;
 
 /**
- * BlankScreensaver is a simple blank screen.
+ * RainScreensaver is a simple calendar view.
  */
-public class BlankScreensaver extends ScreensaverPlugin {
+public class RainScreensaver extends ScreensaverPlugin {
 
     /**
      * Translated strings.
      */
-    private static ResourceBundle i18n = ResourceBundle.getBundle(BlankScreensaver.class.getName());
+    private static ResourceBundle i18n = ResourceBundle.getBundle(RainScreensaver.class.getName());
 
     // ------------------------------------------------------------------------
     // Constants --------------------------------------------------------------
@@ -51,6 +53,21 @@ public class BlankScreensaver extends ScreensaverPlugin {
     // ------------------------------------------------------------------------
     // Variables --------------------------------------------------------------
     // ------------------------------------------------------------------------
+
+    /**
+     * The animation timer.
+     */
+    private TTimer timer = null;
+
+    /**
+     * The original screen.
+     */
+    private Screen originalScreen = null;
+
+    /**
+     * The raining screen.
+     */
+    private Screen rainScreen = null;
 
     // ------------------------------------------------------------------------
     // Constructors -----------------------------------------------------------
@@ -61,7 +78,7 @@ public class BlankScreensaver extends ScreensaverPlugin {
      *
      * @param parent parent widget
      */
-    public BlankScreensaver(final TWidget parent) {
+    public RainScreensaver(final TWidget parent) {
         super(parent);
     }
 
@@ -69,7 +86,7 @@ public class BlankScreensaver extends ScreensaverPlugin {
      * No-argument constructor that is intended only for use by
      * XTWMApplication.loadPlugin().
      */
-    public BlankScreensaver() {
+    public RainScreensaver() {
         super(null);
     }
 
@@ -94,7 +111,7 @@ public class BlankScreensaver extends ScreensaverPlugin {
     /**
      * Get the translated short name for this plugin.
      *
-     * @return a short name, e.g. "BlankScreensaver"
+     * @return a short name, e.g. "RainScreensaver"
      */
     @Override
     public String getPluginName() {
@@ -163,8 +180,13 @@ public class BlankScreensaver extends ScreensaverPlugin {
      */
     @Override
     public void draw() {
-        CellAttributes color = new CellAttributes();
-        putAll(' ', color);
+        synchronized (rainScreen) {
+            for (int y = 0; y < rainScreen.getHeight(); y++) {
+                for (int x = 0; x < rainScreen.getWidth(); x++) {
+                    putCharXY(x, y, rainScreen.getCharXY(x, y));
+                }
+            }
+        }
     }
 
     /**
@@ -174,7 +196,15 @@ public class BlankScreensaver extends ScreensaverPlugin {
      */
     @Override
     public void startScreensaver(final Screen screen) {
-        // Nothing to do.
+        originalScreen = screen;
+        rainScreen = originalScreen.snapshot();
+
+        timer = app.addTimer((int) Math.ceil(1000.0 / 18.2), true,
+            new TAction() {
+                public void DO() {
+                    RainScreensaver.this.doRain();
+                }
+            });
     }
 
     /**
@@ -182,11 +212,53 @@ public class BlankScreensaver extends ScreensaverPlugin {
      */
     @Override
     public void endScreensaver() {
-        // Nothing to do.
+        if (timer != null) {
+            app.removeTimer(timer);
+        }
     }
 
     // ------------------------------------------------------------------------
-    // BlankScreensaver -------------------------------------------------------
+    // RainScreensaver --------------------------------------------------------
     // ------------------------------------------------------------------------
+
+    /**
+     * Perform the rain sequence.
+     */
+    private void doRain() {
+        boolean found = false;
+
+        synchronized (rainScreen) {
+            for (int x = 0; x < rainScreen.getWidth(); x++) {
+
+                // Add some odds for skipping columns.
+                if ((x > 0) && (Math.random() > 0.6)) {
+                    x++;
+                }
+
+                Cell rainDrop = null;
+                int y = rainScreen.getHeight() - 1;
+                for (; y >= 0; y--) {
+                    Cell ch = rainScreen.getCharXY(x, y);
+                    if (!ch.isBlank()) {
+                        rainDrop = ch;
+                        found = true;
+                        break;
+                    }
+                }
+                if (y < 0) {
+                    y = 0;
+                }
+                rainScreen.putCharXY(x, y, new Cell());
+                if ((rainDrop != null) && (y < rainScreen.getHeight() - 1)) {
+                    rainScreen.putCharXY(x, y + 1, rainDrop);
+                }
+            }
+
+            if (!found) {
+                rainScreen = originalScreen.snapshot();
+            }
+
+        } // synchronized (rainScreen)
+    }
 
 }
