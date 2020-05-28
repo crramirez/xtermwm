@@ -37,6 +37,8 @@ import jexer.TCheckBox;
 import jexer.TField;
 import jexer.TWindow;
 import jexer.bits.CellAttributes;
+import jexer.event.TKeypressEvent;
+import static jexer.TKeypress.*;
 
 /**
  * This window is used to configure the editor preferences.
@@ -213,6 +215,23 @@ public class EditorOptionsWindow extends TWindow {
     // ------------------------------------------------------------------------
     // Event handlers ---------------------------------------------------------
     // ------------------------------------------------------------------------
+
+    /**
+     * Handle keystrokes.
+     *
+     * @param keypress keystroke event
+     */
+    @Override
+    public void onKeypress(final TKeypressEvent keypress) {
+        // Escape - behave like cancel
+        if (keypress.equals(kbEsc)) {
+            getApplication().closeWindow(this);
+            return;
+        }
+
+        // Pass to my parent
+        super.onKeypress(keypress);
+    }
 
     // ------------------------------------------------------------------------
     // TWindow ----------------------------------------------------------------

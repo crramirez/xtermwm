@@ -77,6 +77,7 @@ import jexer.menu.TSubMenu;
 import static jexer.TCommand.*;
 import static jexer.TKeypress.*;
 
+import xtwm.plugins.DesktopPager;
 import xtwm.plugins.PluginLoader;
 import xtwm.plugins.PluginWidget;
 import xtwm.plugins.ScreensaverPlugin;
@@ -183,6 +184,11 @@ public class XTWMApplication extends TApplication {
      * The desired number of virtual desktops.
      */
     private int desktopCount = 4;
+
+    /**
+     * The desktop pager widget.
+     */
+    private DesktopPager desktopPager;
 
     /**
      * If true, display a clock in the top-right menu bar line.
@@ -559,7 +565,7 @@ public class XTWMApplication extends TApplication {
             return true;
 
         case MENU_APPLICATION_SETTINGS_DISPLAY:
-            new TScreenOptionsWindow(this) {
+            getCurrentDesktop().addWindow(new TScreenOptionsWindow(this) {
                 /*
                  * We have finished editing screen options, now save to the
                  * xtwm.properties file.
@@ -594,11 +600,11 @@ public class XTWMApplication extends TApplication {
                     saveOptions();
                     super.onClose();
                 }
-            };
+            });
             return true;
 
         case MENU_APPLICATION_SETTINGS_COLORS:
-            new TEditColorThemeWindow(this) {
+            getCurrentDesktop().addWindow(new TEditColorThemeWindow(this) {
                 /*
                  * We have finished editing colors, now save to the
                  * xtwm.properties file.
@@ -612,15 +618,15 @@ public class XTWMApplication extends TApplication {
                     saveOptions();
                     super.onClose();
                 }
-            };
+            });
             return true;
 
         case MENU_APPLICATION_SETTINGS_ENVIRONMENT:
-            new ApplicationOptionsWindow(this);
+            getCurrentDesktop().addWindow(new ApplicationOptionsWindow(this));
             return true;
 
         case MENU_APPLICATION_SETTINGS_EDITOR:
-            new EditorOptionsWindow(this);
+            getCurrentDesktop().addWindow(new EditorOptionsWindow(this));
             return true;
 
         case MENU_APPLICATION_SETTINGS_PLUGINS:
@@ -817,22 +823,8 @@ public class XTWMApplication extends TApplication {
             pluginClass = pluginWidgetMenuIds.get(menu.getId());
 
             if (pluginClass != null) {
-                PluginWidget plugin = null;
-                try {
-                    plugin = pluginClass.getConstructor().newInstance();
-                    plugin.initialize(this);
-                    window = plugin.getWindow(this);
-                    plugin.setParent(window, false);
-                    plugin.setDimensions(0, 0,
-                        plugin.getPreferredWidth(),
-                        plugin.getPreferredHeight());
-                    window.setDimensions(window.getX(), window.getY(),
-                        plugin.getWidth() + 2, plugin.getHeight() + 2);
-                    window.setResizable(plugin.isResizable());
-                } catch (Exception e) {
-                    // Show this exception to the user.
-                    new TExceptionDialog(this, e);
-                }
+                PluginWidget plugin = makePluginWidget(pluginClass);
+                getCurrentDesktop().addWindow(makePluginWindow(plugin));
             }
             return true;
         } else {
@@ -867,18 +859,6 @@ public class XTWMApplication extends TApplication {
         }
 
         return super.onCommand(command);
-    }
-
-    /**
-     * Method that TApplication subclasses can override to handle keystrokes.
-     *
-     * @param keypress keystroke event
-     * @return if true, this event was consumed
-     */
-    @Override
-    protected boolean onKeypress(final TKeypressEvent keypress) {
-        // Nothing to override yet.
-        return super.onKeypress(keypress);
     }
 
     // ------------------------------------------------------------------------
@@ -1081,47 +1061,6 @@ public class XTWMApplication extends TApplication {
         addMenus();
     }
 
-    /**
-     * Setup the virtual desktops.
-     */
-    private void addDesktops() {
-        // We have two desktops by default:
-        // 0 - The screensaver desktop.  No windows are created on it.
-        // 1 - The first normal desktop.
-        desktops.add(new VirtualDesktop(this));
-        desktopIndex = 1;
-
-        // Set a different color for each desktop.  Eventually expose these
-        // colors.
-        for (int i = 1; i <= desktopCount; i++) {
-            VirtualDesktop desktop = new VirtualDesktop(this);
-            desktops.add(desktop);
-
-            desktop.getDesktop().setFocusFollowsMouse(getOption(
-                "panel.focusFollowsMouse", "true").equals("true"));
-
-            CellAttributes desktopAttr = new CellAttributes();
-            switch ((i - 1) % 4) {
-            case 0:
-                desktopAttr.setForeColor(Color.BLUE);
-                break;
-            case 1:
-                desktopAttr.setForeColor(Color.CYAN);
-                break;
-            case 2:
-                desktopAttr.setForeColor(Color.MAGENTA);
-                break;
-            case 3:
-                desktopAttr.setForeColor(Color.RED);
-                break;
-            }
-            desktopAttr.setBackColor(Color.WHITE);
-            desktopAttr.setBold(false);
-            desktop.getDesktop().setAttributes(desktopAttr);
-        }
-        setDesktop(getCurrentDesktop().getDesktop(), true);
-    }
-
     // ------------------------------------------------------------------------
     // Options support --------------------------------------------------------
     // ------------------------------------------------------------------------
@@ -1283,6 +1222,7 @@ public class XTWMApplication extends TApplication {
         setOption("xtwm.hideTextMouse", "swing");
         setOption("xtwm.lockScreenPassword", "");
         setOption("xtwm.maximizeOnSwing", "true");
+        setOption("xtwm.screensaver", "");
         setOption("xtwm.simpleBoxGlyphs", "false");
 
         // Colors
@@ -1417,10 +1357,26 @@ public class XTWMApplication extends TApplication {
             // SQUASH
         }
         screensaverLock = getOption("screensaver.lock").equals("true");
+        setScreensaverClass(getOption("xtwm.screensaver", ""));
 
         if (getCurrentDesktop() != null) {
             getCurrentDesktop().getDesktop().setFocusFollowsMouse(getOption(
                 "panel.focusFollowsMouse", "true").equals("true"));
+        }
+
+        int desktopCount = desktops.size() - 1;
+        try {
+            desktopCount = Integer.parseInt(getOption("desktop.count"));
+            if (desktopCount > 0) {
+                while (desktops.size() - 1 > desktopCount) {
+                    removeDesktop();
+                }
+                while (desktops.size() - 1 < desktopCount) {
+                    addDesktop();
+                }
+            }
+        } catch (NumberFormatException e) {
+            // SQUASH
         }
 
         // Display options
@@ -1554,6 +1510,77 @@ public class XTWMApplication extends TApplication {
     }
 
     // Desktop management -----------------------------------------------------
+
+    /**
+     * Setup the virtual desktops.
+     */
+    private void addDesktops() {
+        // We have two desktops by default:
+        // 0 - The screensaver desktop.  No windows are created on it.
+        // 1 - The first normal desktop.
+        desktopIndex = 1;
+        setDesktop(getCurrentDesktop().getDesktop(), true);
+    }
+
+    /**
+     * Add one desktop to the end of the list.
+     */
+    public void addDesktop() {
+        VirtualDesktop desktop = new VirtualDesktop(this);
+        desktops.add(desktop);
+
+        desktop.getDesktop().setFocusFollowsMouse(getOption(
+            "panel.focusFollowsMouse", "true").equals("true"));
+
+        // Set a different color for each desktop.  Eventually expose these
+        // colors.
+        CellAttributes desktopAttr = new CellAttributes();
+        switch ((desktops.size() + 2) % 4) {
+        case 0:
+            desktopAttr.setForeColor(Color.BLUE);
+            break;
+        case 1:
+            desktopAttr.setForeColor(Color.CYAN);
+            break;
+        case 2:
+            desktopAttr.setForeColor(Color.MAGENTA);
+            break;
+        case 3:
+            desktopAttr.setForeColor(Color.RED);
+            break;
+        }
+        desktopAttr.setBackColor(Color.WHITE);
+        desktopAttr.setBold(false);
+        desktop.getDesktop().setAttributes(desktopAttr);
+
+        if (desktopPager != null) {
+            desktopPager.refreshDesktops();
+        }
+    }
+
+    /**
+     * Remove the last desktop.
+     */
+    public void removeDesktop() {
+        if (desktops.size() <= 2) {
+            return;
+        }
+
+        if (desktopIndex == desktops.size() - 1) {
+            switchToPreviousDesktop();
+        }
+        VirtualDesktop desktop = desktops.get(desktops.size() - 1);
+        List<TWindow> windows = desktop.getWindows();
+        desktops.remove(desktops.size() - 1);
+        desktop = desktops.get(desktops.size() - 1);
+        for (TWindow window: windows) {
+            desktop.addWindow(window);
+        }
+
+        if (desktopPager != null) {
+            desktopPager.refreshDesktops();
+        }
+    }
 
     /**
      * Get the current desktop.
@@ -1692,9 +1719,10 @@ public class XTWMApplication extends TApplication {
                 widgetsMenu.addItem(menuId, widget.getMenuMnemonic());
                 pluginWidgetMenuIds.put(menuId, widget.getClass());
                 if (loadDesktopPager) {
-                    if (widget instanceof xtwm.plugins.DesktopPager) {
+                    if (widget instanceof DesktopPager) {
                         // Load the desktop pager automatically.
-                        postMenuEvent(new TMenuEvent(menuId));
+                        desktopPager = (DesktopPager) makePluginWidget(widget.getClass());
+                        makePluginWindow(desktopPager);
                     }
                 }
             }
@@ -1813,6 +1841,92 @@ public class XTWMApplication extends TApplication {
             if (screensaverClass == null) {
                 screensaverClass = screensaver;
             }
+        }
+    }
+
+    /**
+     * Set the system screensaver class.  If the plugin cannot be found, the
+     * blank screensaver is selected.
+     *
+     * @param name the plugin name
+     */
+    private void setScreensaverClass(final String name) {
+        screensaverClass = xtwm.plugins.BlankScreensaver.class;
+
+        if ((name == null) || (name.length() == 0)) {
+            return;
+        }
+
+        for (ScreensaverPlugin screensaver: getScreensavers()) {
+            if (screensaver.getPluginName().equals(name)) {
+                screensaverClass = screensaver.getClass();
+                return;
+            }
+        }
+    }
+
+    /**
+     * Get the list of available system screensavers.
+     *
+     * @return a list containing screensaver instances
+     */
+    public List<ScreensaverPlugin> getScreensavers() {
+        List<ScreensaverPlugin> result = new ArrayList<ScreensaverPlugin>();
+        for (Class<? extends ScreensaverPlugin> pluginClass: screensavers) {
+            result.add((ScreensaverPlugin) makePluginWidget(pluginClass));
+        }
+        return result;
+    }
+
+    /**
+     * Get the currently selected system screensaver.
+     *
+     * @return an instance of the system screensaver, or null if not set
+     */
+    public ScreensaverPlugin getSystemScreensaver() {
+        if (screensaverClass == null) {
+            return null;
+        }
+
+        return (ScreensaverPlugin) makePluginWidget(screensaverClass);
+    }
+
+    /**
+     * Instantiate the window for a plugin widget.
+     *
+     * @param plugin the plugin
+     * @return the window
+     */
+    private TWindow makePluginWindow(PluginWidget plugin) {
+        TWindow window = plugin.getWindow(this);
+        plugin.setParent(window, false);
+        plugin.setDimensions(0, 0, plugin.getPreferredWidth(),
+            plugin.getPreferredHeight());
+        window.setDimensions(window.getX(), window.getY(),
+            plugin.getWidth() + 2, plugin.getHeight() + 2);
+        window.setResizable(plugin.isResizable());
+        return window;
+    }
+
+    /**
+     * Instantiate a plugin widget.
+     *
+     * @param pluginClass the plugin class
+     * @return the plugin widget
+     */
+    private PluginWidget makePluginWidget(Class<? extends PluginWidget> pluginClass) {
+
+        assert (pluginClass != null);
+
+        PluginWidget plugin = null;
+        try {
+            plugin = pluginClass.getConstructor().newInstance();
+            plugin.initialize(this);
+            return plugin;
+        } catch (Exception e) {
+            // Show this exception to the user.
+            new TExceptionDialog(this, e);
+            return null;
         }
     }
 

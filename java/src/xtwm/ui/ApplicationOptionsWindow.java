@@ -40,6 +40,10 @@ import jexer.TComboBox;
 import jexer.TField;
 import jexer.TWindow;
 import jexer.bits.CellAttributes;
+import jexer.event.TKeypressEvent;
+import static jexer.TKeypress.*;
+
+import xtwm.plugins.ScreensaverPlugin;
 
 /**
  * This window is used to configure the overall XtermWM application
@@ -146,6 +150,16 @@ public class ApplicationOptionsWindow extends TWindow {
     private TCheckBox screensaverLock = null;
 
     /**
+     * The password required to unlock the screensaver.
+     */
+    private TField lockScreenPassword = null;
+
+    /**
+     * The selected system screensaver.
+     */
+    private TComboBox screensaver = null;
+
+    /**
      * Whether or not to convert box-drawing glyphs to simple lines.
      */
     private TCheckBox simpleBoxGlyphs = null;
@@ -183,7 +197,7 @@ public class ApplicationOptionsWindow extends TWindow {
         ptypipeOptions.add("auto");
         ptypipeOptions.add("true");
         ptypipeOptions.add("false");
-        ptypipe = addComboBox(22, 2, 10, ptypipeOptions, 0, 5,
+        ptypipe = addComboBox(23, 2, 10, ptypipeOptions, 0, 5,
             new TAction() {
                 public void DO() {
                     app.setOption("jexer.TTerminal.ptypipe",
@@ -200,7 +214,7 @@ public class ApplicationOptionsWindow extends TWindow {
                     scrollbackMax.activate();
                 }
             });
-        scrollbackMax = addField(22, 4, 6, false,
+        scrollbackMax = addField(27, 4, 6, false,
             app.getOption("jexer.TTerminal.scrollbackMax"));
 
         // Window / panel options
@@ -271,7 +285,7 @@ public class ApplicationOptionsWindow extends TWindow {
         hideTextMouseOptions.add("always");
         hideTextMouseOptions.add("never");
         hideTextMouseOptions.add("swing");
-        hideTextMouse = addComboBox(36, 13, 10, hideTextMouseOptions, 0, 5,
+        hideTextMouse = addComboBox(23, 13, 10, hideTextMouseOptions, 0, 5,
             new TAction() {
                 public void DO() {
                     app.setOption("xtwm.hideTextMouse",
@@ -288,27 +302,55 @@ public class ApplicationOptionsWindow extends TWindow {
                     menuTrayClockFormat.activate();
                 }
             });
-        menuTrayClockFormat = addField(36, 15, 10, false,
+        menuTrayClockFormat = addField(23, 15, 10, false,
             app.getOption("menuTray.clock.format"));
 
         menuTrayDesktop = addCheckBox(3, 16, i18n.getString("menuTrayDesktop"),
             app.getOption("menuTray.desktop").equals("true"));
+        simpleBoxGlyphs = addCheckBox(3, 17, i18n.getString("simpleBoxGlyphs"),
+            app.getOption("xtwm.simpleBoxGlyphs").equals("true"));
 
-        addLabel(i18n.getString("screensaverTimeout"), 3, 17, "ttext", false,
+        // Screensaver options
+        addLabel(i18n.getString("screensaverTimeout"), 39, 10, "ttext", false,
             new TAction() {
                 public void DO() {
                     screensaverTimeout.activate();
                 }
             });
-        screensaverTimeout = addField(36, 17, 10, false,
+        screensaverTimeout = addField(66, 10, 5, false,
             app.getOption("screensaver.timeout"));
-        screensaverLock = addCheckBox(3, 18, i18n.getString("screensaverLock"),
+        screensaverLock = addCheckBox(39, 11, i18n.getString("screensaverLock"),
             app.getOption("screensaver.lock").equals("true"));
-        simpleBoxGlyphs = addCheckBox(3, 19, i18n.getString("simpleBoxGlyphs"),
-            app.getOption("xtwm.simpleBoxGlyphs").equals("true"));
+        addLabel(i18n.getString("lockScreenPassword"), 39, 12, "ttext", false,
+            new TAction() {
+                public void DO() {
+                    lockScreenPassword.activate();
+                }
+            });
+        lockScreenPassword = addField(61, 12, 10, false,
+            app.getOption("xtwm.lockScreenPassword"));
+
+        addLabel(i18n.getString("screensaverList"), 39, 13,
+            "tcheckbox.inactive", false,
+            new TAction() {
+                public void DO() {
+                    screensaver.activate();
+                }
+            });
+        List<String> screensaverList = new ArrayList<String>();
+        for (ScreensaverPlugin screensaver: app.getScreensavers()) {
+            screensaverList.add(screensaver.getPluginName());
+        }
+        screensaver = addComboBox(49, 13, 22, screensaverList, 0, 5,
+            new TAction() {
+                public void DO() {
+                    app.setOption("xtwm.screensaver", screensaver.getText());
+                }
+            });
+        screensaver.setText(app.getOption("xtwm.screensaver"), false);
 
         // Buttons
-        addButton(i18n.getString("saveButton"), getWidth() - buttonOffset, 9,
+        addButton(i18n.getString("saveButton"), 10, getHeight() - 4,
             new TAction() {
                 public void DO() {
                     // Copy values from window to properties, save and close
@@ -319,7 +361,7 @@ public class ApplicationOptionsWindow extends TWindow {
                 }
             });
 
-        addButton(i18n.getString("resetButton"), getWidth() - buttonOffset, 11,
+        addButton(i18n.getString("resetButton"), 25, getHeight() - 4,
             new TAction() {
                 public void DO() {
                     // Reset to defaults, copy values into window.
@@ -328,7 +370,7 @@ public class ApplicationOptionsWindow extends TWindow {
                 }
             });
 
-        addButton(i18n.getString("okButton"), getWidth() - buttonOffset, 13,
+        addButton(i18n.getString("okButton"), 40, getHeight() - 4,
             new TAction() {
                 public void DO() {
                     // Copy values from window to properties, close window.
@@ -338,7 +380,7 @@ public class ApplicationOptionsWindow extends TWindow {
             });
 
         TButton cancelButton = addButton(i18n.getString("cancelButton"),
-            getWidth() - buttonOffset, 15,
+            55, getHeight() - 4,
             new TAction() {
                 public void DO() {
                     // Don't copy anything, just close the window.
@@ -356,6 +398,23 @@ public class ApplicationOptionsWindow extends TWindow {
     // ------------------------------------------------------------------------
     // Event handlers ---------------------------------------------------------
     // ------------------------------------------------------------------------
+
+    /**
+     * Handle keystrokes.
+     *
+     * @param keypress keystroke event
+     */
+    @Override
+    public void onKeypress(final TKeypressEvent keypress) {
+        // Escape - behave like cancel
+        if (keypress.equals(kbEsc)) {
+            getApplication().closeWindow(this);
+            return;
+        }
+
+        // Pass to my parent
+        super.onKeypress(keypress);
+    }
 
     // ------------------------------------------------------------------------
     // TWindow ----------------------------------------------------------------
@@ -382,8 +441,13 @@ public class ApplicationOptionsWindow extends TWindow {
         putStringXY(column2 + 2, 2, i18n.getString("windowsTitle"), boxColor);
 
         // Application
-        drawBox(2, 10, 50, 22, boxColor, boxColor);
+        drawBox(2, 10, 36, 20, boxColor, boxColor);
         putStringXY(4, 10, i18n.getString("applicationTitle"), boxColor);
+
+        // Screensaver
+        drawBox(column2, 10, column2 + 36, 16, boxColor, boxColor);
+        putStringXY(column2 + 2, 10, i18n.getString("screensaverTitle"),
+            boxColor);
     }
 
     // ------------------------------------------------------------------------
@@ -442,13 +506,25 @@ public class ApplicationOptionsWindow extends TWindow {
         app.setOption("menuTray.desktop",
             (menuTrayDesktop.isChecked() ? "true" : "false"));
 
-        app.setOption("screensaver.timeout", screensaverTimeout.getText());
+        app.setOption("xtwm.simpleBoxGlyphs",
+            (simpleBoxGlyphs.isChecked() ? "true" : "false"));
+
+        try {
+            int timeout = Integer.parseInt(screensaverTimeout.getText());
+            if (timeout >= 0) {
+                app.setOption("screensaver.timeout", Integer.toString(timeout));
+            }
+        } catch (NumberFormatException e) {
+            // SQUASH
+        }
 
         app.setOption("screensaver.lock",
             (screensaverLock.isChecked() ? "true" : "false"));
 
-        app.setOption("xtwm.simpleBoxGlyphs",
-            (simpleBoxGlyphs.isChecked() ? "true" : "false"));
+        app.setOption("xtwm.lockScreenPassword", lockScreenPassword.getText());
+
+        app.setOption("xtwm.screensaver", screensaver.getText());
+
 
         // Make these options effective for the running session.
         app.resolveOptions();
@@ -508,11 +584,17 @@ public class ApplicationOptionsWindow extends TWindow {
         menuTrayDesktop.setChecked(app.getOption("menuTray.desktop").
             equals("true"));
 
+        simpleBoxGlyphs.setChecked(app.getOption("xtwm.simpleBoxGlyphs").
+            equals("true"));
+
         screensaverTimeout.setText(app.getOption("screensaver.timeout"));
 
         screensaverLock.setChecked(app.getOption("screensaver.lock").
             equals("true"));
 
+        lockScreenPassword.setText(app.getOption("xtwm.lockScreenPassword"));
+
+        screensaver.setText(app.getOption("xtwm.screensaver"));
     }
 
     /**

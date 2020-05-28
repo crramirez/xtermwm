@@ -503,6 +503,12 @@ public class TApplication implements Runnable {
                     // screen at the end.
                     application.repaint = true;
 
+                    if ((event instanceof TMouseEvent)
+                        || (event instanceof TKeypressEvent)
+                    ) {
+                        lastUserInputTime = event.getTime().getTime();
+                    }
+
                     if (primary) {
                         primaryHandleEvent(event);
                     } else {
@@ -1274,12 +1280,6 @@ public class TApplication implements Runnable {
         }
 
         // Special application-wide events -------------------------------
-
-        if ((event instanceof TMouseEvent)
-            || (event instanceof TKeypressEvent)
-        ) {
-            lastUserInputTime = event.getTime().getTime();
-        }
 
         // Abort everything
         if (event instanceof TCommandEvent) {

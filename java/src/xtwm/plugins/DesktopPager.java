@@ -28,6 +28,7 @@
  */
 package xtwm.plugins;
 
+import java.util.ArrayList;
 import java.util.ResourceBundle;
 
 import jexer.TDesktop;
@@ -248,13 +249,7 @@ public class DesktopPager extends PluginWidget {
     public void initialize(final XTWMApplication app) {
         super.initialize(app);
 
-        int i = 1;
-        for (VirtualDesktop desktop: app.getDesktops()) {
-            new PagerButton(this, desktop, i);
-            i++;
-        }
-
-        layoutButtons();
+        refreshDesktops();
     }
 
     /**
@@ -430,6 +425,32 @@ public class DesktopPager extends PluginWidget {
     // ------------------------------------------------------------------------
 
     /**
+     * Refresh the buttons to match the number of desktops.
+     */
+    public void refreshDesktops() {
+        ArrayList<TWidget> buttons = new ArrayList<TWidget>(getChildren());
+
+        for (TWidget button: buttons) {
+            if (button instanceof PagerButton) {
+                button.remove();
+            }
+        }
+
+        int i = 1;
+        for (VirtualDesktop desktop: app.getDesktops()) {
+            new PagerButton(this, desktop, i);
+            i++;
+        }
+
+        layoutButtons();
+        if (isWindowed()) {
+            TWindow window = (TWindow) getParent();
+            window.setWidth(window.getMinimumWindowWidth());
+            window.setHeight(window.getMinimumWindowHeight());
+        }
+    }
+
+    /**
      * Layout the desktop buttons to best fit the widget size.
      */
     private void layoutButtons() {
@@ -458,12 +479,16 @@ public class DesktopPager extends PluginWidget {
         }
 
         if (isWindowed()) {
-            ((TWindow) getParent()).setMinimumWindowHeight(minHeight + 2);
-            ((TWindow) getParent()).setMinimumWindowWidth(minWidth + 2);
+            TWindow window = (TWindow) getParent();
+            window.setMinimumWindowHeight(minHeight + 2);
+            window.setMinimumWindowWidth(minWidth + 2);
             if ((y > rows) && ((x - 1) * y >= n)) {
-                ((TWindow) getParent()).setMinimumWindowWidth(minWidth + 2 -
-                    BUTTON_WIDTH);
+                window.setMinimumWindowWidth(minWidth + 2 - BUTTON_WIDTH);
             }
+            window.setWidth(Math.max(window.getWidth(),
+                    window.getMinimumWindowWidth()));
+            window.setHeight(Math.max(window.getHeight(),
+                    window.getMinimumWindowHeight()));
         }
 
         for (int i = 0; i < n; i++) {
@@ -475,6 +500,5 @@ public class DesktopPager extends PluginWidget {
         }
 
     }
-
 
 }
