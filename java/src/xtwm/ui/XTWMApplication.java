@@ -675,8 +675,13 @@ public class XTWMApplication extends TApplication {
 
         case MENU_APPLICATION_DETACH:
             try {
-                Runtime.getRuntime().exec("tmux detach-client -s " +
-                    System.getProperty("xtwm.tmuxSessionName"));
+                String sessionName = System.getProperty("xtwm.tmuxSessionName");
+                if (sessionName != null) {
+                    Runtime.getRuntime().exec("tmux detach-client -s " +
+                        System.getProperty("xtwm.tmuxSessionName"));
+                } else {
+                    Runtime.getRuntime().exec("tmux detach-client");
+                }
             } catch (IOException e) {
                 new TExceptionDialog(this, e);
             }
@@ -946,7 +951,10 @@ public class XTWMApplication extends TApplication {
         applicationMenu.addItem(MENU_APPLICATION_RUN,
             i18n.getString("applicationRun"), kbCtrlR);
         applicationMenu.addSeparator();
-        if (System.getProperty("xtwm.insideTmux", "false").equals("true")) {
+        if (System.getProperty("xtwm.insideTmux", "false").equals("true")
+            || ((getScreen() instanceof ECMA48Terminal)
+                && (System.getenv().get("TMUX") != null))
+        ) {
             applicationMenu.addItem(MENU_APPLICATION_DETACH,
                 i18n.getString("applicationDetach"));
             applicationMenu.addSeparator();
