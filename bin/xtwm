@@ -54,6 +54,8 @@ display_help ()
     echo "  -t                   Use existing text terminal"
     echo "  -w                   Open in a new Swing window"
     echo
+    echo "  --tmux               Open in new detachable tmux session"
+    echo
     echo "  --version            Display program version and license information and exit"
     echo "  -h, --help, -?       Print this usage and exit"
     exit 1;
@@ -76,6 +78,7 @@ if [ -z $XTWM_JAR ]; then
     echo "Error: xtwm.jar not found.  Looked in: $JAR_PATHS"
     return 1
 fi
+
 JAVA=java
 UI=xtwm.Main
 OPTS=
@@ -118,6 +121,12 @@ case "$1" in
         OPTS="-Djexer.Swing=true -Djexer.Swing.tripleBuffer=true"
         shift
         ;;
+    --tmux)
+        # Spawn inside tmux, which also requires EMCA48/Xterm UI.
+        OPTS="-Djexer.Swing=false -Dxtwm.insideTmux=true -Dxtwm.tmuxSessionName=xtwm-$$"
+        JAVA="tmux new-session -s xtwm-$$ $JAVA"
+        shift
+        ;;
     -?)
         display_help
         ;;
@@ -129,5 +138,5 @@ esac
 OPTS="$OPTS -ea"
 CMDLINE="$JAVA -cp $XTWM_JAR $OPTS $UI $XTWMARGS $*"
 
-# echo "Executing: $CMDLINE"
+echo "Executing: $CMDLINE"
 $CMDLINE

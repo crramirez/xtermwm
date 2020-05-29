@@ -50,6 +50,7 @@
   <target name="compile">
     <mkdir dir="${classes.dir}"/>
     <javac srcdir="${src.dir}" destdir="${classes.dir}"
+           encoding="UTF-8"
            includeantruntime="true"
            classpathref="project.classpath"
            debug="on"

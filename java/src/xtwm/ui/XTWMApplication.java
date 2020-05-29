@@ -126,6 +126,7 @@ public class XTWMApplication extends TApplication {
     private static final int MENU_APPLICATION_SETTINGS_LOAD             = 2036;
     private static final int MENU_APPLICATION_RUN                       = 2091;
     private static final int MENU_APPLICATION_LOCK_SCREEN               = 2092;
+    private static final int MENU_APPLICATION_DETACH                    = 2093;
     private static final int MENU_APPLICATION_EXIT                      = 2099;
 
     // Package private values are handled by InternalEditor.
@@ -672,6 +673,15 @@ public class XTWMApplication extends TApplication {
             lockScreen();
             return true;
 
+        case MENU_APPLICATION_DETACH:
+            try {
+                Runtime.getRuntime().exec("tmux detach-client -s " +
+                    System.getProperty("xtwm.tmuxSessionName"));
+            } catch (IOException e) {
+                new TExceptionDialog(this, e);
+            }
+            return true;
+
         case MENU_APPLICATION_EXIT:
             // Post a quit command
             postMenuEvent(new TCommandEvent(cmExit));
@@ -935,6 +945,12 @@ public class XTWMApplication extends TApplication {
         applicationMenu.addSeparator();
         applicationMenu.addItem(MENU_APPLICATION_RUN,
             i18n.getString("applicationRun"), kbCtrlR);
+        applicationMenu.addSeparator();
+        if (System.getProperty("xtwm.insideTmux", "false").equals("true")) {
+            applicationMenu.addItem(MENU_APPLICATION_DETACH,
+                i18n.getString("applicationDetach"));
+            applicationMenu.addSeparator();
+        }
         applicationMenu.addItem(MENU_APPLICATION_LOCK_SCREEN,
             i18n.getString("applicationLockScreen"));
         applicationMenu.addItem(MENU_APPLICATION_EXIT,
