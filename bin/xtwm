@@ -138,5 +138,5 @@ esac
 OPTS="$OPTS -ea"
 CMDLINE="$JAVA -cp $XTWM_JAR $OPTS $UI $XTWMARGS $*"
 
-echo "Executing: $CMDLINE"
+# echo "Executing: $CMDLINE"
 $CMDLINE

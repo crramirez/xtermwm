@@ -85,8 +85,10 @@ public class TiledTerminal extends TTerminalWidget {
                         ((Desktop) desktop).removePanel(source);
                     }
                     if (source.getParent() instanceof TSplitPane) {
-                        ((TSplitPane) source.getParent()).removeSplit(source,
-                            true);
+                        if (source.getParent().hasChild(source)) {
+                            ((TSplitPane) source.getParent()).removeSplit(source,
+                                true);
+                        }
                         return;
                     }
                     if (source.getParent() instanceof Desktop) {
@@ -235,7 +237,9 @@ public class TiledTerminal extends TTerminalWidget {
         }
 
         if (getParent() instanceof TSplitPane) {
-            ((TSplitPane) getParent()).removeSplit(this, true);
+            if (getParent().hasChild(this)) {
+                ((TSplitPane) getParent()).removeSplit(this, true);
+            }
         }
         if (getParent() instanceof Desktop) {
             // This is the top-level terminal, clear the shortcuts for the

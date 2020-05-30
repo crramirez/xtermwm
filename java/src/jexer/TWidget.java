@@ -271,7 +271,7 @@ public abstract class TWidget implements Comparable<TWidget> {
      * Subclasses should override this method to cleanup resources.  This is
      * called by TWindow.onClose().
      */
-    protected void close() {
+    public void close() {
         // Default: call close() on children.
         while (getChildren().size() > 0) {
             TWidget w = getChildren().get(0);
@@ -782,6 +782,16 @@ public abstract class TWidget implements Comparable<TWidget> {
             activeChild = null;
         }
         resetTabOrder();
+    }
+
+    /**
+     * See if a widget is a child of this widget.
+     *
+     * @param child the child widget
+     * @return true if child is one of this widget's children
+     */
+    public boolean hasChild(final TWidget child) {
+        return children.contains(child);
     }
 
     /**

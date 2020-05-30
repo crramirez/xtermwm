@@ -10,7 +10,7 @@ Package: xtermwm
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}, default-jdk
 Recommends: ant
-Suggests: xterm, xfonts-terminus, lcxterm, gpm
+Suggests: xterm, xfonts-terminus, lcxterm, gpm, tmux
 Description: Xterm Window Manager
  Xterm Window Manager is a desktop environment / window manager for
  the console.  Major features include:

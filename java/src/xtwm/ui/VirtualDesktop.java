@@ -81,16 +81,12 @@ public class VirtualDesktop {
     // ------------------------------------------------------------------------
 
     /**
-     * Hide all windows on this desktop.
+     * Sync windows with application.  Note package private access.
      */
-    public void hide() {
+    void sync() {
         for (int i = 0; i < windows.size(); i++) {
             TWindow window = windows.get(i);
-            if (application.hasWindow(window)) {
-                if (window.isShown()) {
-                    application.hideWindow(window);
-                }
-            } else {
+            if (!application.hasWindow(window)) {
                 // Application doesn't have the window, remove it from this
                 // desktop.
                 windows.remove(i);
@@ -100,20 +96,27 @@ public class VirtualDesktop {
     }
 
     /**
+     * Hide all windows on this desktop.
+     */
+    public void hide() {
+        sync();
+        for (int i = 0; i < windows.size(); i++) {
+            TWindow window = windows.get(i);
+            if (window.isShown()) {
+                application.hideWindow(window);
+            }
+        }
+    }
+
+    /**
      * Show all windows on this desktop.
      */
     public void show() {
+        sync();
         for (int i = 0; i < windows.size(); i++) {
             TWindow window = windows.get(i);
-            if (application.hasWindow(window)) {
-                if (window.isHidden()) {
-                    application.showWindow(window);
-                }
-            } else {
-                // Application doesn't have the window, remove it from this
-                // desktop.
-                windows.remove(i);
-                i--;
+            if (window.isHidden()) {
+                application.showWindow(window);
             }
         }
     }

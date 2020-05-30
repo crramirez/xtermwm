@@ -30,13 +30,17 @@ package xtwm.plugins;
 
 import java.io.File;
 
+import jexer.TDesktop;
 import jexer.TWidget;
 import jexer.TWindow;
 import jexer.TPanel;
+import jexer.TSplitPane;
 import jexer.event.TMenuEvent;
 import jexer.event.TResizeEvent;
 import jexer.menu.TMenu;
 
+import xtwm.ui.Desktop;
+import xtwm.ui.TiledTerminal;
 import xtwm.ui.XTWMApplication;
 
 /**
@@ -74,6 +78,49 @@ public abstract class PluginWidget extends TWidget {
     // ------------------------------------------------------------------------
     // Event handlers ---------------------------------------------------------
     // ------------------------------------------------------------------------
+
+    /**
+     * Process menu events.
+     */
+    @Override
+    public void onMenu(TMenuEvent event) {
+        assert (getParent() != null);
+        TSplitPane pane;
+        TDesktop desktop;
+
+        switch (event.getId()) {
+
+        case XTWMApplication.MENU_TERMINAL_HORIZONTAL_SPLIT:
+            pane = splitHorizontal(false, new TiledTerminal(getParent()));
+            desktop = getApplication().getDesktop();
+            if (desktop instanceof Desktop) {
+                pane.setFocusFollowsMouse(((Desktop) desktop).
+                    getFocusFollowsMouse());
+            }
+            getParent().setEchoKeystrokes(isEchoKeystrokes(), true);
+            return;
+
+        case XTWMApplication.MENU_TERMINAL_VERTICAL_SPLIT:
+            pane = splitVertical(false, new TiledTerminal(getParent()));
+            desktop = getApplication().getDesktop();
+            if (desktop instanceof Desktop) {
+                pane.setFocusFollowsMouse(((Desktop) desktop).
+                    getFocusFollowsMouse());
+            }
+            getParent().setEchoKeystrokes(isEchoKeystrokes(), true);
+            return;
+
+        case XTWMApplication.MENU_TERMINAL_CLOSE:
+            closeFromMenu();
+            return;
+
+        default:
+            break;
+        }
+
+        // I didn't take it, pass it on.
+        super.onMenu(event);
+    }
 
     // ------------------------------------------------------------------------
     // TWidget ----------------------------------------------------------------
@@ -288,6 +335,28 @@ public abstract class PluginWidget extends TWidget {
                 "XTWMApplication");
         }
         return new File(app.getPluginDataDir(), pathname);
+    }
+
+    /**
+     * Called when the user selects Terminal | Close from the menu.  The
+     * default implementation behaves like a TiledTerminal close.
+     */
+    public void closeFromMenu() {
+        close();
+
+        TDesktop desktop = getApplication().getDesktop();
+        if (desktop instanceof Desktop) {
+            ((Desktop) desktop).removePanel(this);
+        }
+
+        if (getParent() instanceof TSplitPane) {
+            if (getParent().hasChild(this)) {
+                ((TSplitPane) getParent()).removeSplit(this, true);
+            }
+        }
+        if (getParent() instanceof TDesktop) {
+            remove();
+        }
     }
 
 }

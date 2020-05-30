@@ -34,6 +34,8 @@ import jexer.TAction;
 import jexer.TCalendar;
 import jexer.TWidget;
 
+import xtwm.ui.XTWMApplication;
+
 /**
  * Calendar is a simple calendar view.
  */
@@ -68,12 +70,6 @@ public class Calendar extends PluginWidget {
      */
     public Calendar(final TWidget parent) {
         super(parent);
-
-        calendar = addCalendar(0, 0, new TAction() {
-            public void DO() {
-                // Nothing yet, just display the calendar.
-            }
-        });
     }
 
     /**
@@ -95,6 +91,26 @@ public class Calendar extends PluginWidget {
     // ------------------------------------------------------------------------
     // PluginWidget -----------------------------------------------------------
     // ------------------------------------------------------------------------
+
+    /**
+     * Initialize the plugin.  Since plugins are required to have a
+     * no-argument constructor, this method is called to provide a hook for
+     * the plugin to perform initialization.  Subclasses that override
+     * initialize should call super.initialize() to set the XTWMApplication
+     * reference.
+     *
+     * @param app the application that will be using this plugin
+     */
+    @Override
+    public void initialize(final XTWMApplication app) {
+        super.initialize(app);
+
+        calendar = addCalendar(0, 0, new TAction() {
+            public void DO() {
+                // Nothing yet, just display the calendar.
+            }
+        });
+    }
 
     /**
      * Get the translated menu label for this plugin.

@@ -134,16 +134,30 @@ public class XTWMApplication extends TApplication {
             static final int MENU_EDIT_SAVE                             = 2101;
             static final int MENU_EDIT_SAVE_AS                          = 2102;
 
-    // Package private values are handled by TiledTerminal.
+    // Public values are handled by PluginWidget.  Package private values are
+    // handled by TiledTerminal.
     private static final int MENU_TERMINAL_NEW_WINDOW                   = 2200;
-            static final int MENU_TERMINAL_HORIZONTAL_SPLIT             = 2201;
-            static final int MENU_TERMINAL_VERTICAL_SPLIT               = 2202;
+
+    /**
+     * Terminal | Horizontal split menu item.
+     */
+     public static final int MENU_TERMINAL_HORIZONTAL_SPLIT             = 2201;
+
+    /**
+     * Terminal | Vertical split menu item.
+     */
+     public static final int MENU_TERMINAL_VERTICAL_SPLIT               = 2202;
+
     private static final int MENU_TERMINAL_SEND_KEYS_TO_ALL             = 2203;
             static final int MENU_TERMINAL_SESSION_SAVE_HTML            = 2204;
             static final int MENU_TERMINAL_SESSION_SAVE_TEXT            = 2205;
             static final int MENU_TERMINAL_SESSION_SEND_SIGTERM         = 2206;
             static final int MENU_TERMINAL_SESSION_SEND_OTHER_SIGNAL    = 2207;
-            static final int MENU_TERMINAL_CLOSE                        = 2208;
+
+    /**
+     * Terminal | Close menu item.
+     */
+     public static final int MENU_TERMINAL_CLOSE                        = 2208;
 
     private static final int MENU_PANEL_SWITCH_TO                       = 2301;
     private static final int MENU_PANEL_NEXT                            = 2302;
@@ -309,6 +323,11 @@ public class XTWMApplication extends TApplication {
      */
     private ScreensaverPlugin screensaver = null;
 
+    /**
+     * The list of widget classes.
+     */
+    private List<Class<? extends PluginWidget>> widgets = new ArrayList<Class<? extends PluginWidget>>();
+
     // ------------------------------------------------------------------------
     // Constructors -----------------------------------------------------------
     // ------------------------------------------------------------------------
@@ -407,6 +426,8 @@ public class XTWMApplication extends TApplication {
      */
     @Override
     protected void onPreDraw() {
+        getCurrentDesktop().sync();
+
         long now = System.currentTimeMillis();
 
         if ((screensaverTimeout > 0) && (desktopIndex != 0)) {
@@ -696,7 +717,7 @@ public class XTWMApplication extends TApplication {
             try {
                 String filename = fileOpenBox(".");
                 if (filename != null) {
-                    openEditor(filename);
+                    getCurrentDesktop().addWindow(openEditor(filename));
                 }
             } catch (IOException e) {
                 // Show this exception to the user.
@@ -735,7 +756,7 @@ public class XTWMApplication extends TApplication {
             return true;
 
         case MENU_PANEL_SWITCH_TO:
-            // TODO
+            menuPanelSwitchTo();
             return true;
 
         case MENU_PANEL_NEXT:
@@ -1743,6 +1764,9 @@ public class XTWMApplication extends TApplication {
             }
 
             if (widget.isWidget()) {
+                if (!widgets.contains(widget.getClass())) {
+                    widgets.add(widget.getClass());
+                }
                 int menuId = pluginWidgetMenuIds.size() + WIDGET_MENU_ID_MIN;
                 widgetsMenu.addItem(menuId, widget.getMenuMnemonic());
                 pluginWidgetMenuIds.put(menuId, widget.getClass());
@@ -1920,6 +1944,19 @@ public class XTWMApplication extends TApplication {
     }
 
     /**
+     * Get the list of available widgets.
+     *
+     * @return a list containing widget instances
+     */
+    public List<PluginWidget> getWidgets() {
+        List<PluginWidget> result = new ArrayList<PluginWidget>();
+        for (Class<? extends PluginWidget> pluginClass: widgets) {
+            result.add(makePluginWidget(pluginClass));
+        }
+        return result;
+    }
+
+    /**
      * Instantiate the window for a plugin widget.
      *
      * @param plugin the plugin
@@ -1937,12 +1974,12 @@ public class XTWMApplication extends TApplication {
     }
 
     /**
-     * Instantiate a plugin widget.
+     * Instantiate a plugin widget.  Note package private access.
      *
      * @param pluginClass the plugin class
      * @return the plugin widget
      */
-    private PluginWidget makePluginWidget(Class<? extends PluginWidget> pluginClass) {
+    PluginWidget makePluginWidget(Class<? extends PluginWidget> pluginClass) {
 
         assert (pluginClass != null);
 
@@ -2206,17 +2243,43 @@ public class XTWMApplication extends TApplication {
     }
 
     /**
+     * Handle the Panel | Switch To menu item.
+     */
+    private void menuPanelSwitchTo() {
+        Desktop desktop = getCurrentDesktop().getDesktop();
+
+        // System.err.println(desktop.toPrettyString());
+
+        if (desktop.getChildren().size() == 0) {
+            return;
+        }
+
+        // Grab the active child, and then drill up to the next TSplitPane.
+        TWidget widget = desktop.getActiveChild();
+        while ((widget.getParent() != desktop)
+            && !(widget.getParent() instanceof TSplitPane)
+        ) {
+            widget = widget.getParent();
+        }
+        if ((widget instanceof PluginWidget)
+            || (widget instanceof TiledTerminal)
+        ) {
+            getCurrentDesktop().addWindow(new SwitchWidgetWindow(this));
+        }
+    }
+
+    /**
      * Handle the Edit | Find menu item.
      */
     private void menuSearchFind() {
-        new SearchInputWindow(this, false);
+        getCurrentDesktop().addWindow(new SearchInputWindow(this, false));
     }
 
     /**
      * Handle the Edit | Replace menu item.
      */
     private void menuSearchReplace() {
-        new SearchInputWindow(this, true);
+        getCurrentDesktop().addWindow(new SearchInputWindow(this, true));
     }
 
     /**
