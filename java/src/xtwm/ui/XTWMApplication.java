@@ -787,12 +787,17 @@ public class XTWMApplication extends TApplication {
             return true;
 
         case MENU_WINDOW_TO_DESKTOP:
-            // TODO
+            menuWindowToDesktop();
             return true;
 
         case MENU_WINDOW_ON_ALL_DESKTOPS:
             window = getActiveWindow();
             if (window != null) {
+                if ((desktopPager != null)
+                    && (desktopPager.getWindow() == window)
+                ) {
+                    return true;
+                }
                 if (getCurrentDesktop().hasWindow(window)) {
                     for (int i = 0; i < desktops.size(); i++) {
                         desktops.get(i).removeWindow(window);
@@ -2266,6 +2271,50 @@ public class XTWMApplication extends TApplication {
         ) {
             getCurrentDesktop().addWindow(new SwitchWidgetWindow(this));
         }
+    }
+
+    /**
+     * Handle the Window | To Desktop menu item.
+     */
+    private void menuWindowToDesktop() {
+        TWindow window = getActiveWindow();
+        if (window == null) {
+            return;
+        }
+        if ((desktopPager != null) && (desktopPager.getWindow() == window)) {
+            return;
+        }
+
+        TInputBox inputBox = inputBox(i18n.
+            getString("windowToDesktopInputBoxTitle"),
+            i18n.getString("windowToDesktopInputBoxCaption"), "",
+            TInputBox.Type.OKCANCEL);
+
+        if (!inputBox.isOk()) {
+            return;
+        }
+
+        if (inputBox.getText().trim().length() == 0) {
+            return;
+        }
+
+        int desktopNumber = desktopIndex;
+        try {
+            desktopNumber = Integer.parseInt(inputBox.getText().trim());
+        } catch (NumberFormatException e) {
+            // SQUASH
+        }
+        if ((desktopNumber < 1)
+            || (desktopNumber > desktops.size() - 1)
+            || (desktopNumber == desktopIndex)
+        ) {
+            return;
+        }
+
+        // We are moving the window.
+        window.hide();
+        getCurrentDesktop().removeWindow(window);
+        desktops.get(desktopNumber).addWindow(window);
     }
 
     /**
