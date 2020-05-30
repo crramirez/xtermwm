@@ -370,7 +370,8 @@ public abstract class TWidget implements Comparable<TWidget> {
                         == Character.toLowerCase(keypress.getKey().getChar()))
                 ) {
 
-                    widget.onKeypress(new TKeypressEvent(kbEnter));
+                    widget.onKeypress(new TKeypressEvent(keypress.getBackend(),
+                            kbEnter));
                     return;
                 }
             }
@@ -407,7 +408,8 @@ public abstract class TWidget implements Comparable<TWidget> {
                         == Character.toLowerCase(keypress.getKey().getChar()))
                 ) {
                     activate(widget);
-                    widget.onKeypress(new TKeypressEvent(kbSpace));
+                    widget.onKeypress(new TKeypressEvent(keypress.getBackend(),
+                            kbSpace));
                     return;
                 }
             }
@@ -424,7 +426,8 @@ public abstract class TWidget implements Comparable<TWidget> {
                         ) {
                             activate(widget);
                             widget.activate(child);
-                            child.onKeypress(new TKeypressEvent(kbSpace));
+                            child.onKeypress(new TKeypressEvent(
+                                keypress.getBackend(), kbSpace));
                             return;
                         }
                     }
@@ -598,8 +601,8 @@ public abstract class TWidget implements Comparable<TWidget> {
             height = resize.getHeight();
             if (layout != null) {
                 if (this instanceof TWindow) {
-                    layout.onResize(new TResizeEvent(TResizeEvent.Type.WIDGET,
-                            width - 2, height - 2));
+                    layout.onResize(new TResizeEvent(resize.getBackend(),
+                            TResizeEvent.Type.WIDGET, width - 2, height - 2));
                 } else {
                     layout.onResize(resize);
                 }
@@ -928,7 +931,7 @@ public abstract class TWidget implements Comparable<TWidget> {
     public void setWidth(final int width) {
         this.width = width;
         if (layout != null) {
-            layout.onResize(new TResizeEvent(TResizeEvent.Type.WIDGET,
+            layout.onResize(new TResizeEvent(null, TResizeEvent.Type.WIDGET,
                     width, height));
         }
     }
@@ -950,7 +953,7 @@ public abstract class TWidget implements Comparable<TWidget> {
     public void setHeight(final int height) {
         this.height = height;
         if (layout != null) {
-            layout.onResize(new TResizeEvent(TResizeEvent.Type.WIDGET,
+            layout.onResize(new TResizeEvent(null, TResizeEvent.Type.WIDGET,
                     width, height));
         }
     }
@@ -972,7 +975,7 @@ public abstract class TWidget implements Comparable<TWidget> {
         setWidth(width);
         setHeight(height);
         if (layout != null) {
-            layout.onResize(new TResizeEvent(TResizeEvent.Type.WIDGET,
+            layout.onResize(new TResizeEvent(null, TResizeEvent.Type.WIDGET,
                     width, height));
         }
     }

@@ -558,15 +558,17 @@ public class TEditorWidget extends TWidget implements EditMenuUser {
                     int ch = text.codePointAt(i);
                     switch (ch) {
                     case '\n':
-                        onKeypress(new TKeypressEvent(kbEnter));
+                        onKeypress(new TKeypressEvent(command.getBackend(),
+                                kbEnter));
                         break;
                     case '\t':
-                        onKeypress(new TKeypressEvent(kbTab));
+                        onKeypress(new TKeypressEvent(command.getBackend(),
+                                kbTab));
                         break;
                     default:
                         if ((ch >= 0x20) && (ch != 0x7F)) {
-                            onKeypress(new TKeypressEvent(false, 0, ch,
-                                    false, false, false));
+                            onKeypress(new TKeypressEvent(command.getBackend(),
+                                    false, 0, ch, false, false, false));
                         }
                         break;
                     }
@@ -1284,14 +1286,14 @@ public class TEditorWidget extends TWidget implements EditMenuUser {
             int ch = text.codePointAt(i);
             switch (ch) {
             case '\n':
-                onKeypress(new TKeypressEvent(kbEnter));
+                onKeypress(new TKeypressEvent(null, kbEnter));
                 break;
             case '\t':
-                onKeypress(new TKeypressEvent(kbTab));
+                onKeypress(new TKeypressEvent(null, kbTab));
                 break;
             default:
                 if ((ch >= 0x20) && (ch != 0x7F)) {
-                    onKeypress(new TKeypressEvent(false, 0, ch,
+                    onKeypress(new TKeypressEvent(null, false, 0, ch,
                             false, false, false));
                 }
                 break;

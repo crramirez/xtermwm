@@ -128,7 +128,8 @@ public abstract class GenericBackend implements Backend {
                 if (event instanceof TCommandEvent) {
                     TCommandEvent command = (TCommandEvent) event;
                     if (command.equals(cmBackendDisconnect)) {
-                        queue.add(new TCommandEvent(cmAbort));
+                        queue.add(new TCommandEvent(event.getBackend(),
+                                cmAbort));
                     }
                 }
             }

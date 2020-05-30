@@ -168,7 +168,7 @@ public class MultiBackend implements Backend {
             }
         }
         if (backends.size() == 0) {
-            queue.add(new TCommandEvent(cmAbort));
+            queue.add(new TCommandEvent(null, cmAbort));
         }
     }
 

@@ -719,7 +719,7 @@ public class XTWMApplication extends TApplication {
 
         case MENU_APPLICATION_EXIT:
             // Post a quit command
-            postMenuEvent(new TCommandEvent(cmExit));
+            postMenuEvent(new TCommandEvent(menu.getBackend(), cmExit));
             return true;
 
         case MENU_EDIT_OPEN:

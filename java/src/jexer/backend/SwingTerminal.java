@@ -154,6 +154,11 @@ public class SwingTerminal extends LogicalScreen
     private static boolean dosColors = false;
 
     /**
+     * The backend that is reading from this terminal.
+     */
+    private Backend backend;
+
+    /**
      * The Swing component or frame to draw to.
      */
     private SwingComponent swing;
@@ -322,6 +327,7 @@ public class SwingTerminal extends LogicalScreen
     /**
      * Public constructor creates a new JFrame to render to.
      *
+     * @param backend the backend that will read from this terminal
      * @param windowWidth the number of text columns to start with
      * @param windowHeight the number of text rows to start with
      * @param fontSize the size in points.  Good values to pick are: 16, 20,
@@ -329,9 +335,10 @@ public class SwingTerminal extends LogicalScreen
      * @param listener the object this backend needs to wake up when new
      * input comes in
      */
-    public SwingTerminal(final int windowWidth, final int windowHeight,
-        final int fontSize, final Object listener) {
+    public SwingTerminal(final Backend backend, final int windowWidth,
+        final int windowHeight, final int fontSize, final Object listener) {
 
+        this.backend = backend;
         this.fontSize = fontSize;
 
         reloadOptions();
@@ -444,6 +451,7 @@ public class SwingTerminal extends LogicalScreen
     /**
      * Public constructor renders to an existing JComponent.
      *
+     * @param backend the backend that will read from this terminal
      * @param component the Swing component to render to
      * @param windowWidth the number of text columns to start with
      * @param windowHeight the number of text rows to start with
@@ -452,9 +460,11 @@ public class SwingTerminal extends LogicalScreen
      * @param listener the object this backend needs to wake up when new
      * input comes in
      */
-    public SwingTerminal(final JComponent component, final int windowWidth,
-        final int windowHeight, final int fontSize, final Object listener) {
+    public SwingTerminal(final Backend backend, final JComponent component,
+        final int windowWidth, final int windowHeight, final int fontSize,
+        final Object listener) {
 
+        this.backend = backend;
         this.fontSize = fontSize;
 
         reloadOptions();
@@ -2052,7 +2062,7 @@ public class SwingTerminal extends LogicalScreen
 
         // Save it and we are done.
         synchronized (eventQueue) {
-            eventQueue.add(new TKeypressEvent(keypress));
+            eventQueue.add(new TKeypressEvent(backend, keypress));
             resetBlinkTimer();
         }
         if (listener != null) {
@@ -2095,7 +2105,7 @@ public class SwingTerminal extends LogicalScreen
     public void windowClosing(final WindowEvent event) {
         // Drop a cmBackendDisconnect and walk away
         synchronized (eventQueue) {
-            eventQueue.add(new TCommandEvent(cmBackendDisconnect));
+            eventQueue.add(new TCommandEvent(backend, cmBackendDisconnect));
             resetBlinkTimer();
         }
         if (listener != null) {
@@ -2194,7 +2204,8 @@ public class SwingTerminal extends LogicalScreen
         // Drop a new TResizeEvent into the queue
         sessionInfo.queryWindowSize();
         synchronized (eventQueue) {
-            TResizeEvent windowResize = new TResizeEvent(TResizeEvent.Type.SCREEN,
+            TResizeEvent windowResize = new TResizeEvent(backend,
+                TResizeEvent.Type.SCREEN,
                 sessionInfo.getWindowWidth(), sessionInfo.getWindowHeight());
             eventQueue.add(windowResize);
             resetBlinkTimer();
@@ -2253,7 +2264,8 @@ public class SwingTerminal extends LogicalScreen
         int x = textColumn(mouse.getX());
         int y = textRow(mouse.getY());
 
-        TMouseEvent mouseEvent = new TMouseEvent(TMouseEvent.Type.MOUSE_MOTION,
+        TMouseEvent mouseEvent = new TMouseEvent(backend,
+            TMouseEvent.Type.MOUSE_MOTION,
             x, y, x, y, mouse1, mouse2, mouse3, false, false,
             eventAlt, eventCtrl, eventShift);
 
@@ -2298,7 +2310,8 @@ public class SwingTerminal extends LogicalScreen
             eventShift = true;
         }
 
-        TMouseEvent mouseEvent = new TMouseEvent(TMouseEvent.Type.MOUSE_MOTION,
+        TMouseEvent mouseEvent = new TMouseEvent(backend,
+            TMouseEvent.Type.MOUSE_MOTION,
             x, y, x, y, mouse1, mouse2, mouse3, false, false,
             eventAlt, eventCtrl, eventShift);
 
@@ -2383,7 +2396,8 @@ public class SwingTerminal extends LogicalScreen
         int x = textColumn(mouse.getX());
         int y = textRow(mouse.getY());
 
-        TMouseEvent mouseEvent = new TMouseEvent(TMouseEvent.Type.MOUSE_DOWN,
+        TMouseEvent mouseEvent = new TMouseEvent(backend,
+            TMouseEvent.Type.MOUSE_DOWN,
             x, y, x, y, mouse1, mouse2, mouse3, false, false,
             eventAlt, eventCtrl, eventShift);
 
@@ -2446,7 +2460,8 @@ public class SwingTerminal extends LogicalScreen
         int x = textColumn(mouse.getX());
         int y = textRow(mouse.getY());
 
-        TMouseEvent mouseEvent = new TMouseEvent(TMouseEvent.Type.MOUSE_UP,
+        TMouseEvent mouseEvent = new TMouseEvent(backend,
+            TMouseEvent.Type.MOUSE_UP,
             x, y, x, y, eventMouse1, eventMouse2, eventMouse3, false, false,
             eventAlt, eventCtrl, eventShift);
 
@@ -2512,7 +2527,8 @@ public class SwingTerminal extends LogicalScreen
             mouseWheelUp = true;
         }
 
-        TMouseEvent mouseEvent = new TMouseEvent(TMouseEvent.Type.MOUSE_DOWN,
+        TMouseEvent mouseEvent = new TMouseEvent(backend,
+            TMouseEvent.Type.MOUSE_DOWN,
             x, y, x, y, mouse1, mouse2, mouse3, mouseWheelUp, mouseWheelDown,
             eventAlt, eventCtrl, eventShift);
 

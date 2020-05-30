@@ -81,8 +81,8 @@ public class ECMA48Backend extends GenericBackend {
         throws UnsupportedEncodingException {
 
         // Create a terminal and explicitly set stdin into raw mode
-        terminal = new ECMA48Terminal(listener, input, output, windowWidth,
-            windowHeight);
+        terminal = new ECMA48Terminal(this, listener, input, output,
+            windowWidth, windowHeight);
 
         // Keep the terminal's sessionInfo so that TApplication can see it
         sessionInfo = ((ECMA48Terminal) terminal).getSessionInfo();
@@ -110,7 +110,7 @@ public class ECMA48Backend extends GenericBackend {
         final OutputStream output) throws UnsupportedEncodingException {
 
         // Create a terminal and explicitly set stdin into raw mode
-        terminal = new ECMA48Terminal(listener, input, output);
+        terminal = new ECMA48Terminal(this, listener, input, output);
 
         // Keep the terminal's sessionInfo so that TApplication can see it
         sessionInfo = ((ECMA48Terminal) terminal).getSessionInfo();
@@ -138,7 +138,7 @@ public class ECMA48Backend extends GenericBackend {
         final boolean setRawMode) {
 
         // Create a terminal and explicitly set stdin into raw mode
-        terminal = new ECMA48Terminal(listener, input, reader, writer,
+        terminal = new ECMA48Terminal(this, listener, input, reader, writer,
             setRawMode);
 
         // Keep the terminal's sessionInfo so that TApplication can see it

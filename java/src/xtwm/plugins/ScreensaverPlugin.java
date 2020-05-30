@@ -169,7 +169,7 @@ public abstract class ScreensaverPlugin extends PluginWidget {
                 if (resize.getType() == TResizeEvent.Type.WIDGET) {
                     if (getChildren().size() == 1) {
                         TWidget widget = getChildren().get(0);
-                        widget.onResize(new TResizeEvent(
+                        widget.onResize(new TResizeEvent(resize.getBackend(),
                             TResizeEvent.Type.WIDGET,
                             getWidth() - 2, getHeight() - 2));
                         return;

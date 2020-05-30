@@ -494,7 +494,8 @@ public class TTerminalWidget extends TScrollableWidget
                     && (System.getProperty("jexer.TTerminal.cmdHack",
                             "true").equals("true"))
                 ) {
-                    emulator.addUserEvent(new TKeypressEvent(kbCtrlJ));
+                    emulator.addUserEvent(new TKeypressEvent(
+                        keypress.getBackend(), kbCtrlJ));
                 }
             }
 
@@ -602,8 +603,9 @@ public class TTerminalWidget extends TScrollableWidget
             if (text != null) {
                 for (int i = 0; i < text.length(); ) {
                     int ch = text.codePointAt(i);
-                    emulator.addUserEvent(new TKeypressEvent(false, 0, ch,
-                            false, false, false));
+                    emulator.addUserEvent(new TKeypressEvent(
+                        command.getBackend(), false, 0, ch,
+                        false, false, false));
                     i += Character.charCount(ch);
                 }
             }
@@ -952,7 +954,7 @@ public class TTerminalWidget extends TScrollableWidget
         }
 
         // Setup the scroll bars
-        onResize(new TResizeEvent(TResizeEvent.Type.WIDGET, getWidth(),
+        onResize(new TResizeEvent(null, TResizeEvent.Type.WIDGET, getWidth(),
                 getHeight()));
 
         // Hide mouse when typing option
@@ -1373,7 +1375,7 @@ public class TTerminalWidget extends TScrollableWidget
         }
         TApplication app = getApplication();
         if (app != null) {
-            app.postEvent(new TMenuEvent(TMenu.MID_REPAINT));
+            app.postEvent(new TMenuEvent(null, TMenu.MID_REPAINT));
         }
     }
 

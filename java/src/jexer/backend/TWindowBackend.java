@@ -266,8 +266,8 @@ public class TWindowBackend extends TWindow implements Backend {
                 // I was resized, notify the screen I am watching to match my
                 // new size.
                 synchronized (eventQueue) {
-                    eventQueue.add(new TResizeEvent(TResizeEvent.Type.SCREEN,
-                            newWidth, newHeight));
+                    eventQueue.add(new TResizeEvent(this,
+                            TResizeEvent.Type.SCREEN, newWidth, newHeight));
                 }
                 synchronized (listener) {
                     listener.notifyAll();
@@ -431,7 +431,7 @@ public class TWindowBackend extends TWindow implements Backend {
     @Override
     public void onClose() {
         synchronized (eventQueue) {
-            eventQueue.add(new TCommandEvent(cmBackendDisconnect));
+            eventQueue.add(new TCommandEvent(this, cmBackendDisconnect));
         }
     }
 
