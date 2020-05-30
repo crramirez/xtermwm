@@ -99,7 +99,7 @@ public class XTWMApplication extends TApplication {
     /**
      * Release version.
      */
-    public static final String VERSION = "0.1.0";
+    public static final String VERSION = "0.2.0";
 
     /**
      * The menu ID marking the beginning of application plugins.
@@ -126,7 +126,8 @@ public class XTWMApplication extends TApplication {
     private static final int MENU_APPLICATION_SETTINGS_LOAD             = 2036;
     private static final int MENU_APPLICATION_RUN                       = 2091;
     private static final int MENU_APPLICATION_LOCK_SCREEN               = 2092;
-    private static final int MENU_APPLICATION_DETACH                    = 2093;
+    private static final int MENU_APPLICATION_DETACH_TMUX               = 2093;
+    private static final int MENU_APPLICATION_DETACH_SCREEN             = 2094;
     private static final int MENU_APPLICATION_EXIT                      = 2099;
 
     // Package private values are handled by InternalEditor.
@@ -694,7 +695,7 @@ public class XTWMApplication extends TApplication {
             lockScreen();
             return true;
 
-        case MENU_APPLICATION_DETACH:
+        case MENU_APPLICATION_DETACH_TMUX:
             try {
                 String sessionName = System.getProperty("xtwm.tmuxSessionName");
                 if (sessionName != null) {
@@ -703,6 +704,14 @@ public class XTWMApplication extends TApplication {
                 } else {
                     Runtime.getRuntime().exec("tmux detach-client");
                 }
+            } catch (IOException e) {
+                new TExceptionDialog(this, e);
+            }
+            return true;
+
+        case MENU_APPLICATION_DETACH_SCREEN:
+            try {
+                Runtime.getRuntime().exec("screen -d");
             } catch (IOException e) {
                 new TExceptionDialog(this, e);
             }
@@ -981,8 +990,15 @@ public class XTWMApplication extends TApplication {
             || ((getScreen() instanceof ECMA48Terminal)
                 && (System.getenv().get("TMUX") != null))
         ) {
-            applicationMenu.addItem(MENU_APPLICATION_DETACH,
-                i18n.getString("applicationDetach"));
+            applicationMenu.addItem(MENU_APPLICATION_DETACH_TMUX,
+                i18n.getString("applicationDetachTmux"));
+            applicationMenu.addSeparator();
+        }
+        if ((getScreen() instanceof ECMA48Terminal)
+            && (System.getenv().get("STY") != null)
+        ) {
+            applicationMenu.addItem(MENU_APPLICATION_DETACH_SCREEN,
+                i18n.getString("applicationDetachScreen"));
             applicationMenu.addSeparator();
         }
         applicationMenu.addItem(MENU_APPLICATION_LOCK_SCREEN,
