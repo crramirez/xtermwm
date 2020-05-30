@@ -229,7 +229,8 @@ public class DesktopPager extends PluginWidget {
     /**
      * Get the translated full description for this plugin.
      *
-     * @return a short name, e.g. "A simple calendar with TODO manager."
+     * @return a short name, e.g. "A desktop pager allowing one to change the
+     * active desktop by clicking."
      */
     @Override
     public String getPluginDescription() {
@@ -303,7 +304,7 @@ public class DesktopPager extends PluginWidget {
      */
     @Override
     public TWidget getPluginSettingsEditor(final TWidget parent) {
-        // TODO: Expose options like polling time, # cores, etc.
+        // TODO: Expose options like # desktops, button size.
         return super.getPluginSettingsEditor(parent);
     }
 

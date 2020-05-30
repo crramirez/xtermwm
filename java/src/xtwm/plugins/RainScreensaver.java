@@ -121,7 +121,7 @@ public class RainScreensaver extends ScreensaverPlugin {
     /**
      * Get the translated full description for this plugin.
      *
-     * @return a short name, e.g. "A simple calendar with TODO manager."
+     * @return a short name, e.g. "Watch the characters fall like rain."
      */
     @Override
     public String getPluginDescription() {

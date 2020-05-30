@@ -135,7 +135,7 @@ public class Calendar extends PluginWidget {
     /**
      * Get the translated full description for this plugin.
      *
-     * @return a short name, e.g. "A simple calendar with TODO manager."
+     * @return a short name, e.g. "A simple calendar."
      */
     @Override
     public String getPluginDescription() {

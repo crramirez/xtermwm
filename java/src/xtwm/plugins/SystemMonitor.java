@@ -161,7 +161,7 @@ public class SystemMonitor extends PluginWidget {
     /**
      * Get the translated full description for this plugin.
      *
-     * @return a short name, e.g. "A simple calendar with TODO manager."
+     * @return a short name, e.g. "A simple monitor for the JVM."
      */
     @Override
     public String getPluginDescription() {
