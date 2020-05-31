@@ -28,8 +28,19 @@
  */
 package xtwm;
 
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.net.InetAddress;
+import java.net.ServerSocket;
+import java.net.Socket;
+
 import jexer.TApplication;
 import jexer.TApplication.BackendType;
+import jexer.backend.ECMA48Backend;
+import jexer.backend.HeadlessBackend;
+import jexer.backend.MultiBackend;
+import jexer.net.TelnetServerSocket;
 import xtwm.ui.XTWMApplication;
 
 /**
@@ -43,6 +54,89 @@ public class Main {
     private static XTWMApplication app = null;
 
     /**
+     * The headless server socket.
+     */
+    private static ServerSocket server = null;
+
+    /**
+     * Run the application as a server.
+     *
+     * @param pid_filename the filename to write the server information to
+     */
+    private static void runServer(final String pid_filename) {
+        Runtime.getRuntime().addShutdownHook(new Thread() {
+            public void run() {
+                File pidFile = new File(pid_filename);
+                pidFile.delete();
+            }
+        });
+
+        try {
+            // Create a headless screen and use it to establish a
+            // MultiBackend.
+            HeadlessBackend headlessBackend = new HeadlessBackend();
+            MultiBackend multiBackend = new MultiBackend(headlessBackend);
+
+            // Create the XTWM application and spin it up.
+            XTWMApplication app = new XTWMApplication(multiBackend);
+            (new Thread(app)).start();
+            multiBackend.setListener(app);
+
+            // Fire up the telnet server and write its port to the PID file.
+            server = new TelnetServerSocket(0, 5,
+                InetAddress.getLoopbackAddress());
+            FileWriter pidFile = new FileWriter(pid_filename);
+            pidFile.write(String.format("%d", server.getLocalPort()));
+            pidFile.close();
+
+            // Accept connections as long as the application is running.
+            Thread serverThread = new Thread() {
+                public void run() {
+                    while (app.isRunning() && !server.isClosed()) {
+                        try {
+                            Socket socket = server.accept();
+                            ECMA48Backend ecmaBackend = new ECMA48Backend(app,
+                                socket.getInputStream(),
+                                socket.getOutputStream());
+                            multiBackend.addBackend(ecmaBackend);
+                        } catch (IOException e) {
+                            // SQUASH
+                        }
+                    }
+                }
+            };
+            serverThread.start();
+
+            // Poll for application exit.
+            while (app.isRunning()) {
+                try {
+                    Thread.sleep(250);
+                } catch (InterruptedException e) {
+                    // SQUASH
+                }
+            }
+
+            // When the application exits, kill all of the connections too.
+            multiBackend.shutdown();
+            server.close();
+        } catch (IOException e) {
+            if (app != null) {
+                app.restoreConsole();
+            }
+            e.printStackTrace();
+            System.exit(2);
+        } finally {
+            if (server != null) {
+                try {
+                    server.close();
+                } catch (Exception e) {
+                    // SQUASH
+                }
+            }
+        }
+    }
+
+    /**
      * Display usage string and exit.
      */
     private static void showUsage() {
@@ -50,9 +144,12 @@ public class Main {
         System.err.println();
         System.err.println("OPTIONS:");
         System.err.println();
+        System.err.println("   [ --width columns ] [ --height rows ]");
+        System.err.println();
+        System.err.println("   [ --server pid_filename ]");
+        System.err.println();
         System.err.println("   [ --help | -h | -? ]");
         System.err.println("   [ --version ]");
-        System.err.println("   [ --width columns ] [ --height rows ]");
 
         System.exit(1);
     }
@@ -101,9 +198,11 @@ public class Main {
              * --version
              * --width width
              * --height height
+             * --server pid_filename
              */
             int width = -1;
             int height = -1;
+            String pid_filename = null;
             for (int i = 0; i < args.length; i++) {
                 if (args[i].equals("--help")
                     || args[i].equals("-h")
@@ -143,10 +242,24 @@ public class Main {
                         version = XTWMApplication.VERSION;
                     }
                     System.out.println("Xterm Window Manager " + version);
+                    System.out.println("Copyright (c) 2020 Kevin Lamonte");
                     System.out.println();
                     System.out.println("Available to all under the MIT License.");
                     System.exit(1);
                 }
+                if (args[i].equals("--server")) {
+                    if (i == args.length - 1) {
+                        showUsage();
+                    }
+                    pid_filename = args[i + 1];
+                    i++;
+                    continue;
+                }
+            }
+
+            if (pid_filename != null) {
+                runServer(pid_filename);
+                return;
             }
 
             // We know we will be starting the application, so set it up.
@@ -154,21 +267,6 @@ public class Main {
                 app = new XTWMApplication(backendType, width, height, 20);
             } else {
                 app = new XTWMApplication(backendType);
-                if (backendType == TApplication.BackendType.SWING) {
-                    // Maximize the Swing window by default.
-                    app.invokeLater(new Runnable() {
-                        public void run() {
-                            jexer.backend.SwingTerminal terminal;
-                            terminal = (jexer.backend.SwingTerminal) app.getScreen();
-                            jexer.backend.SwingComponent component;
-                            component = terminal.getSwingComponent();
-                            javax.swing.JFrame frame = component.getFrame();
-                            if (frame != null) {
-                                frame.setExtendedState(java.awt.Frame.MAXIMIZED_BOTH);
-                            }
-                        }
-                    });
-                }
             }
 
             app.run();

@@ -58,6 +58,8 @@ display_help ()
     echo
     echo "  --gnu-screen         Open in new detachable GNU screen session"
     echo
+    echo "  --server             Open in new detachable sharable session"
+    echo
     echo "  --version            Display program version and license information and exit"
     echo "  -h, --help, -?       Print this usage and exit"
     exit 1;
@@ -135,6 +137,11 @@ case "$1" in
         JAVA="screen -S xtwm-$$ $JAVA"
         shift
         ;;
+    --server)
+        # Spawn inside a telnet server.
+        SERVER=yes
+        shift
+        ;;
     -?)
         display_help
         ;;
@@ -146,5 +153,17 @@ esac
 OPTS="$OPTS -ea"
 CMDLINE="$JAVA -cp $XTWM_JAR $OPTS $UI $XTWMARGS $*"
 
-# echo "Executing: $CMDLINE"
-$CMDLINE
+if [ x$SERVER = "xyes" ]; then
+    echo Start as server
+    PID_FILE=~/.xtwm/xtwm.$$
+    CMDLINE="$CMDLINE --server $PID_FILE"
+    # echo "Executing: $CMDLINE"
+    nohup $CMDLINE >/dev/null 2>>~/.xtwm/server-errors &
+    while [ ! -f $PID_FILE ]; do sleep 0.1; done
+    PORT=$(cat $PID_FILE)
+    # echo Server port is $PORT
+    exec telnet -e none localhost $PORT
+else
+    # echo "Executing: $CMDLINE"
+    $CMDLINE
+fi

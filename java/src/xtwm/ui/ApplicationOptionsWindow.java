@@ -164,6 +164,11 @@ public class ApplicationOptionsWindow extends TWindow {
      */
     private TCheckBox simpleBoxGlyphs = null;
 
+    /**
+     * Whether or not to maximize the window when run as a Swing GUI.
+     */
+    private TCheckBox maximizeOnSwing = null;
+
     // ------------------------------------------------------------------------
     // Constructors -----------------------------------------------------------
     // ------------------------------------------------------------------------
@@ -268,13 +273,13 @@ public class ApplicationOptionsWindow extends TWindow {
 
 
         // Application options
-        hideMenuBar = addCheckBox(3, 10, i18n.getString("hideMenuBar"),
+        hideMenuBar = addCheckBox(3, 8, i18n.getString("hideMenuBar"),
             app.getOption("xtwm.hideMenuBar").equals("true"));
-        hideStatusBar = addCheckBox(3, 11, i18n.getString("hideStatusBar"),
+        hideStatusBar = addCheckBox(3, 9, i18n.getString("hideStatusBar"),
             app.getOption("xtwm.hideStatusBar").equals("true"));
-        confirmOnExit = addCheckBox(3, 12, i18n.getString("confirmOnExit"),
+        confirmOnExit = addCheckBox(3, 10, i18n.getString("confirmOnExit"),
             app.getOption("xtwm.confirmOnExit").equals("true"));
-        addLabel(i18n.getString("hideTextMouse"), 3, 13, "tcheckbox.inactive",
+        addLabel(i18n.getString("hideTextMouse"), 3, 11, "tcheckbox.inactive",
             false,
             new TAction() {
                 public void DO() {
@@ -285,7 +290,7 @@ public class ApplicationOptionsWindow extends TWindow {
         hideTextMouseOptions.add("always");
         hideTextMouseOptions.add("never");
         hideTextMouseOptions.add("swing");
-        hideTextMouse = addComboBox(23, 13, 10, hideTextMouseOptions, 0, 5,
+        hideTextMouse = addComboBox(23, 11, 10, hideTextMouseOptions, 0, 5,
             new TAction() {
                 public void DO() {
                     app.setOption("xtwm.hideTextMouse",
@@ -293,22 +298,24 @@ public class ApplicationOptionsWindow extends TWindow {
                 }
             });
         hideTextMouse.setText(app.getOption("xtwm.hideTextMouse"), false);
-        menuTrayClock = addCheckBox(3, 14, i18n.getString("menuTrayClock"),
+        menuTrayClock = addCheckBox(3, 12, i18n.getString("menuTrayClock"),
             app.getOption("menuTray.clock").equals("true"));
 
-        addLabel(i18n.getString("menuTrayClockFormat"), 3, 15, "ttext", false,
+        addLabel(i18n.getString("menuTrayClockFormat"), 3, 13, "ttext", false,
             new TAction() {
                 public void DO() {
                     menuTrayClockFormat.activate();
                 }
             });
-        menuTrayClockFormat = addField(23, 15, 10, false,
+        menuTrayClockFormat = addField(23, 13, 10, false,
             app.getOption("menuTray.clock.format"));
 
-        menuTrayDesktop = addCheckBox(3, 16, i18n.getString("menuTrayDesktop"),
+        menuTrayDesktop = addCheckBox(3, 14, i18n.getString("menuTrayDesktop"),
             app.getOption("menuTray.desktop").equals("true"));
-        simpleBoxGlyphs = addCheckBox(3, 17, i18n.getString("simpleBoxGlyphs"),
+        simpleBoxGlyphs = addCheckBox(3, 15, i18n.getString("simpleBoxGlyphs"),
             app.getOption("xtwm.simpleBoxGlyphs").equals("true"));
+        maximizeOnSwing = addCheckBox(3, 16, i18n.getString("maximizeOnSwing"),
+            app.getOption("xtwm.maximizeOnSwing").equals("true"));
 
         // Screensaver options
         addLabel(i18n.getString("screensaverTimeout"), 39, 10, "ttext", false,
@@ -441,8 +448,8 @@ public class ApplicationOptionsWindow extends TWindow {
         putStringXY(column2 + 2, 2, i18n.getString("windowsTitle"), boxColor);
 
         // Application
-        drawBox(2, 10, 36, 20, boxColor, boxColor);
-        putStringXY(4, 10, i18n.getString("applicationTitle"), boxColor);
+        drawBox(2, 8, 36, 19, boxColor, boxColor);
+        putStringXY(4, 8, i18n.getString("applicationTitle"), boxColor);
 
         // Screensaver
         drawBox(column2, 10, column2 + 36, 16, boxColor, boxColor);
@@ -508,6 +515,9 @@ public class ApplicationOptionsWindow extends TWindow {
 
         app.setOption("xtwm.simpleBoxGlyphs",
             (simpleBoxGlyphs.isChecked() ? "true" : "false"));
+
+        app.setOption("xtwm.maximizeOnSwing",
+            (maximizeOnSwing.isChecked() ? "true" : "false"));
 
         try {
             int timeout = Integer.parseInt(screensaverTimeout.getText());
@@ -585,6 +595,9 @@ public class ApplicationOptionsWindow extends TWindow {
             equals("true"));
 
         simpleBoxGlyphs.setChecked(app.getOption("xtwm.simpleBoxGlyphs").
+            equals("true"));
+
+        maximizeOnSwing.setChecked(app.getOption("xtwm.maximizeOnSwing").
             equals("true"));
 
         screensaverTimeout.setText(app.getOption("screensaver.timeout"));

@@ -404,6 +404,24 @@ public class XTWMApplication extends TApplication {
             );
         }
 
+        if ((getBackend() instanceof jexer.backend.SwingBackend)
+            && (getOption("xtwm.maximizeOnSwing").equals("true"))
+        ) {
+            // Maximize the Swing window.
+            invokeLater(new Runnable() {
+                public void run() {
+                    SwingTerminal terminal;
+                    terminal = (SwingTerminal) getScreen();
+                    jexer.backend.SwingComponent component;
+                    component = terminal.getSwingComponent();
+                    javax.swing.JFrame frame = component.getFrame();
+                    if (frame != null) {
+                        frame.setExtendedState(java.awt.Frame.MAXIMIZED_BOTH);
+                    }
+                }
+            });
+        }
+
     }
 
     /**
