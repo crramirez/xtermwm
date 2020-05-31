@@ -441,7 +441,7 @@ public class XTWMApplication extends TApplication {
                 desktopIndex = 0;
                 getCurrentDesktop().show();
                 TDesktop desktop = getCurrentDesktop().getDesktop();
-                setDesktop(getCurrentDesktop().getDesktop(), true);
+                setDesktop(getCurrentDesktop().getDesktop(), false);
                 setHideMenuBar(true);
                 setHideStatusBar(true);
                 if (screensaverClass != null) {
@@ -477,10 +477,10 @@ public class XTWMApplication extends TApplication {
                     // The user successfully entered the password (or there
                     // is no password).
                     screensaver.endScreensaver();
+                    screensaver.remove(true);
                     screensaver = null;
 
                     // Switch the desktop back.
-                    getCurrentDesktop().getDesktop().getChildren().get(0).remove();
                     getCurrentDesktop().hide();
                     desktopIndex = screensaverLastDesktop;
                     getCurrentDesktop().show();
