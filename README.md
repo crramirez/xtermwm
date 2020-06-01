@@ -29,6 +29,9 @@ manager for the console.  Major features include:
     to the included [ptypipe](https://gitlab.com/klamonte/ptypipde)
     utility.
 
+  * Detachable sessions and share-able sessions with read-only client
+    support.
+
 
 
 Intended Audience
