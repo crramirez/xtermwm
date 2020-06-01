@@ -472,6 +472,15 @@ public class TelnetInputStream extends InputStream implements SessionInfo {
     // ------------------------------------------------------------------------
 
     /**
+     * Get the socket associated with this input steram.
+     *
+     * @return the socket
+     */
+    public TelnetSocket getSocket() {
+        return master;
+    }
+
+    /**
      * For debugging, return a descriptive string for this telnet option.
      * These are pulled from: http://www.iana.org/assignments/telnet-options
      *

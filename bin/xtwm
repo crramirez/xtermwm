@@ -194,7 +194,7 @@ if [ x$CONNECT = "xyes" ]; then
         echo
         echo "Telnet to localhost port $PORT to connect to XtermWM."
     else
-        exec telnet localhost $PORT
+        exec telnet -a localhost $PORT
     fi
 elif [ x$SERVER = "xyes" ]; then
     # echo Start as server
@@ -212,7 +212,7 @@ elif [ x$SERVER = "xyes" ]; then
     else
         # Disable telnet escape, as this client will always be
         # read-write.
-        exec telnet -e none localhost $PORT
+        exec telnet -a -e none localhost $PORT
     fi
 else
     # echo "Executing: $CMDLINE"

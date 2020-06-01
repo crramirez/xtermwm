@@ -774,7 +774,7 @@ public class XTWMApplication extends TApplication {
             return true;
 
         case MENU_APPLICATION_CLIENTS:
-            // TODO
+            getCurrentDesktop().addWindow(new ClientsWindow(this));
             return true;
 
         case MENU_APPLICATION_EXIT:
