@@ -61,6 +61,7 @@ import jexer.TWidget;
 import jexer.TWindow;
 import jexer.backend.Backend;
 import jexer.backend.ECMA48Terminal;
+import jexer.backend.MultiBackend;
 import jexer.backend.SwingTerminal;
 import jexer.bits.Cell;
 import jexer.bits.CellAttributes;
@@ -128,6 +129,8 @@ public class XTWMApplication extends TApplication {
     private static final int MENU_APPLICATION_LOCK_SCREEN               = 2092;
     private static final int MENU_APPLICATION_DETACH_TMUX               = 2093;
     private static final int MENU_APPLICATION_DETACH_SCREEN             = 2094;
+    private static final int MENU_APPLICATION_DISCONNECT                = 2095;
+    private static final int MENU_APPLICATION_CLIENTS                   = 2096;
     private static final int MENU_APPLICATION_EXIT                      = 2099;
 
     // Package private values are handled by InternalEditor.
@@ -522,6 +525,35 @@ public class XTWMApplication extends TApplication {
         if (menuTrayDesktop) {
             text += String.format("[%d]", desktopIndex);
         }
+        if (getBackend() instanceof MultiBackend) {
+            int readOnlyCount = 0;
+            List<Backend> backends = ((MultiBackend) getBackend()).getBackends();
+            for (Backend backend: backends) {
+                if (backend.isReadOnly()) {
+                    readOnlyCount++;
+                }
+            }
+            int readWriteCount = backends.size() - readOnlyCount;
+            if (readWriteCount >= 3) {
+                text += " " + (char) 0x263B;
+                text += "x" + Integer.toString(readWriteCount);
+            } else if (readWriteCount > 0) {
+                text += " ";
+                for (int i = 0; i < readWriteCount; i++) {
+                    text += (char) 0x263B;
+                }
+            }
+            if (readOnlyCount >= 3) {
+                text += " " + (char) 0x263A;
+                text += "x" + Integer.toString(readOnlyCount);
+            } else if (readOnlyCount > 0) {
+                text += " ";
+                for (int i = 0; i < readOnlyCount; i++) {
+                    text += (char) 0x263A;
+                }
+            }
+        }
+
         menuTrayText = text;
 
         List<TWindow> windows = getCurrentDesktop().getWindows();
@@ -735,6 +767,16 @@ public class XTWMApplication extends TApplication {
             }
             return true;
 
+        case MENU_APPLICATION_DISCONNECT:
+            assert (getBackend() instanceof MultiBackend);
+            assert (menu.getBackend() instanceof jexer.backend.ECMA48Backend);
+            menu.getBackend().shutdown();
+            return true;
+
+        case MENU_APPLICATION_CLIENTS:
+            // TODO
+            return true;
+
         case MENU_APPLICATION_EXIT:
             // Post a quit command
             postMenuEvent(new TCommandEvent(menu.getBackend(), cmExit));
@@ -916,7 +958,17 @@ public class XTWMApplication extends TApplication {
     protected boolean onCommand(final TCommandEvent command) {
         // Override cmExit to show a different dialog.
         if (command.equals(cmExit)) {
-            if (getOption("xtwm.confirmOnExit", "true").equals("true")) {
+            if (getBackend() instanceof MultiBackend) {
+                if (((MultiBackend) getBackend()).getBackends().size() > 1) {
+                    if (messageBox(i18n.getString("exitAllDialogTitle"),
+                            i18n.getString("exitAllDialogText"),
+                            TMessageBox.Type.YESNO).isYes()) {
+
+                        exit();
+                    }
+                    return true;
+                }
+            } else if (getOption("xtwm.confirmOnExit", "true").equals("true")) {
                 if (messageBox(i18n.getString("exitDialogTitle"),
                         i18n.getString("exitDialogText"),
                         TMessageBox.Type.YESNO).isYes()) {
@@ -1017,6 +1069,13 @@ public class XTWMApplication extends TApplication {
         ) {
             applicationMenu.addItem(MENU_APPLICATION_DETACH_SCREEN,
                 i18n.getString("applicationDetachScreen"));
+            applicationMenu.addSeparator();
+        }
+        if (getBackend() instanceof MultiBackend) {
+            applicationMenu.addItem(MENU_APPLICATION_DISCONNECT,
+                i18n.getString("applicationDisconnect"));
+            applicationMenu.addItem(MENU_APPLICATION_CLIENTS,
+                i18n.getString("applicationClients"));
             applicationMenu.addSeparator();
         }
         applicationMenu.addItem(MENU_APPLICATION_LOCK_SCREEN,
@@ -1311,6 +1370,7 @@ public class XTWMApplication extends TApplication {
         setOption("xtwm.lockScreenPassword", "");
         setOption("xtwm.maximizeOnSwing", "true");
         setOption("xtwm.screensaver", "");
+        setOption("xtwm.serverPassword", "elsa");
         setOption("xtwm.simpleBoxGlyphs", "false");
 
         // Colors

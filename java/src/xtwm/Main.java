@@ -28,9 +28,12 @@
  */
 package xtwm;
 
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileWriter;
+import java.io.InputStreamReader;
 import java.io.IOException;
+import java.io.OutputStreamWriter;
 import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
@@ -59,6 +62,30 @@ public class Main {
     private static ServerSocket server = null;
 
     /**
+     * Request a password on a new socket connection.
+     *
+     * @param socket the socket
+     * @return true if the password matches the xtwm.serverPassword value
+     */
+    private static boolean isPasswordOk(final Socket socket) throws IOException {
+
+        OutputStreamWriter writer = new OutputStreamWriter(socket.
+            getOutputStream(), "UTF-8");
+        BufferedReader reader = new BufferedReader(new InputStreamReader(socket.
+                getInputStream(), "UTF-8"));
+
+        String password = "";
+        do {
+            writer.write("Password: ");
+            writer.flush();
+            password = reader.readLine();
+        } while ((password == null) || (password.length() == 0));
+
+        return password.trim().equals(app.getOption("xtwm.serverPassword",
+                "ThePasswordToUseWhenNotDefinedInTheRCFile"));
+    }
+
+    /**
      * Run the application as a server.
      *
      * @param pid_filename the filename to write the server information to
@@ -78,7 +105,7 @@ public class Main {
             MultiBackend multiBackend = new MultiBackend(headlessBackend);
 
             // Create the XTWM application and spin it up.
-            XTWMApplication app = new XTWMApplication(multiBackend);
+            app = new XTWMApplication(multiBackend);
             (new Thread(app)).start();
             multiBackend.setListener(app);
 
@@ -93,14 +120,32 @@ public class Main {
             Thread serverThread = new Thread() {
                 public void run() {
                     while (app.isRunning() && !server.isClosed()) {
+                        Socket socket = null;
                         try {
-                            Socket socket = server.accept();
+                            socket = server.accept();
+
+                            // The first client can connect without a
+                            // password.  All other clients require one.
+                            if (multiBackend.getBackends().size() > 0) {
+                                if (!isPasswordOk(socket)) {
+                                    socket.close();
+                                    continue;
+                                }
+                            }
+
                             ECMA48Backend ecmaBackend = new ECMA48Backend(app,
                                 socket.getInputStream(),
-                                socket.getOutputStream());
-                            multiBackend.addBackend(ecmaBackend);
+                                socket.getOutputStream(), true);
+                            multiBackend.addBackend(ecmaBackend, true);
                         } catch (IOException e) {
-                            // SQUASH
+                            if (socket != null) {
+                                try {
+                                    socket.close();
+                                } catch (IOException e2) {
+                                    // SQUASH
+                                }
+                                socket = null;
+                            }
                         }
                     }
                 }

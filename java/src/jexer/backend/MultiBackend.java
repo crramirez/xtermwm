@@ -247,8 +247,9 @@ public class MultiBackend implements Backend {
 
         boolean allReadOnly = true;
         for (Backend b: backends) {
-            // If all of the read-write backends have been idle for too long,
-            // treat it like a read-only backend.
+            // If a read-write backend has been idle for too long, treat it
+            // like a read-only backend so that someone else can take over
+            // the session if needed.
             if (b.getSessionInfo().getIdleTime() > 600) {
                 continue;
             }
