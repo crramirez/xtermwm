@@ -1351,8 +1351,10 @@ public class ECMA48Terminal extends LogicalScreen
      */
     @Override
     public void setTitle(final String title) {
-        output.write(getSetTitleString(title));
-        flush();
+        if (output != null) {
+            output.write(getSetTitleString(title));
+            flush();
+        }
     }
 
     /**
@@ -1374,8 +1376,10 @@ public class ECMA48Terminal extends LogicalScreen
             sb.append(cursor(false));
             flushString(sb);
         }
-        output.write(sb.toString());
-        flush();
+        if (output != null) {
+            output.write(sb.toString());
+            flush();
+        }
     }
 
     /**
@@ -1383,12 +1387,18 @@ public class ECMA48Terminal extends LogicalScreen
      */
     @Override
     public void resizeToScreen() {
+        if (backend.isReadOnly()) {
+            return;
+        }
+
         // Send dtterm/xterm sequences, which will probably not work because
         // allowWindowOps is defaulted to false.
         String resizeString = String.format("\033[8;%d;%dt", getHeight(),
             getWidth());
-        this.output.write(resizeString);
-        this.output.flush();
+        if (output != null) {
+            this.output.write(resizeString);
+            this.output.flush();
+        }
     }
 
     // ------------------------------------------------------------------------
@@ -1648,9 +1658,11 @@ public class ECMA48Terminal extends LogicalScreen
                         events.clear();
                     }
 
-                    if (output.checkError()) {
-                        // This is EOF.
-                        done = true;
+                    if (output != null) {
+                        if (output.checkError()) {
+                            // This is EOF.
+                            done = true;
+                        }
                     }
 
                     // Wait 20 millis for more data
@@ -1796,7 +1808,9 @@ public class ECMA48Terminal extends LogicalScreen
      * Flush output.
      */
     public void flush() {
-        output.flush();
+        if (output != null) {
+            output.flush();
+        }
     }
 
     /**
@@ -2581,8 +2595,10 @@ public class ECMA48Terminal extends LogicalScreen
                         getTextWidth() + " x " + getTextHeight());
                 }
 
-                this.output.printf("%s", xtermReportPixelDimensions());
-                this.output.flush();
+                if (output != null) {
+                    output.printf("%s", xtermReportPixelDimensions());
+                    output.flush();
+                }
 
                 TResizeEvent event = new TResizeEvent(backend,
                     TResizeEvent.Type.SCREEN, newWidth, newHeight);

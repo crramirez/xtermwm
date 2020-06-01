@@ -48,20 +48,22 @@ display_help ()
     echo "Available options:"
     echo
     echo
-    echo "  --width COLUMNS      Size window to at least COLUMNS wide."
-    echo "  --height ROWS        Size window to at least ROWS tall."
+    echo "  --width COLUMNS          Size window to at least COLUMNS wide."
+    echo "  --height ROWS            Size window to at least ROWS tall."
     echo
-    echo "  -t                   Use existing text terminal"
-    echo "  -w                   Open in a new Swing window"
+    echo "  -t                       Use existing text terminal"
+    echo "  -w                       Open in a new Swing window"
     echo
-    echo "  --tmux               Open in new detachable tmux session"
+    echo "  --tmux                   Open in new detachable tmux session"
     echo
-    echo "  --gnu-screen         Open in new detachable GNU screen session"
+    echo "  --gnu-screen             Open in new detachable GNU screen session"
     echo
-    echo "  --server             Open in new detachable sharable session"
+    echo "  --server                 Open in new detachable sharable session"
+    echo "  --list                   List sessions"
+    echo "  --connect [ SESSION ]    Connect to session"
     echo
-    echo "  --version            Display program version and license information and exit"
-    echo "  -h, --help, -?       Print this usage and exit"
+    echo "  --version                Display version and license information and exit"
+    echo "  -h, --help, -?           Print this usage and exit"
     exit 1;
 }
 
@@ -142,6 +144,28 @@ case "$1" in
         SERVER=yes
         shift
         ;;
+    --list)
+        ls ~/.xtwm/xtwm.[0-9]* 1>/dev/null 2>/dev/null
+        rc=$?
+        if [ ! x$rc = "x0" ]; then
+            echo "No servers running."
+        else
+            echo "Available servers:"
+            echo
+            for file in `ls ~/.xtwm/xtwm.[0-9]*` ; do
+                echo $(basename $file)
+            done
+        fi
+        exit 1;
+        ;;
+    --connect)
+        CONNECT=yes
+        SESSION=$2
+        if [ ! -z $SESSION ]; then
+            shift
+        fi
+        shift
+        ;;
     -?)
         display_help
         ;;
@@ -153,16 +177,43 @@ esac
 OPTS="$OPTS -ea"
 CMDLINE="$JAVA -cp $XTWM_JAR $OPTS $UI $XTWMARGS $*"
 
-if [ x$SERVER = "xyes" ]; then
-    echo Start as server
+if [ x$CONNECT = "xyes" ]; then
+    if [ ! -z $SESSION ] ; then
+        PORT=$(cat ~/.xtwm/${SESSION})
+    else
+        ls ~/.xtwm/xtwm.[0-9]* 1>/dev/null 2>/dev/null
+        rc=$?
+        if [ ! x$rc = "x0" ]; then
+            echo "No servers to connect to."
+            exit 1;
+        fi
+        PORT=$(cat ~/.xtwm/xtwm.[0-9]*)
+    fi
+    if [ x$(which telnet) = x ]; then
+        echo "telnet not found."
+        echo
+        echo "Telnet to localhost port $PORT to connect to XtermWM."
+    else
+        exec telnet localhost $PORT
+    fi
+elif [ x$SERVER = "xyes" ]; then
+    # echo Start as server
     PID_FILE=~/.xtwm/xtwm.$$
     CMDLINE="$CMDLINE --server $PID_FILE"
     # echo "Executing: $CMDLINE"
     nohup $CMDLINE >/dev/null 2>>~/.xtwm/server-errors &
-    while [ ! -f $PID_FILE ]; do sleep 0.1; done
+
+    while [ ! -s $PID_FILE ]; do sleep 0.1; done
     PORT=$(cat $PID_FILE)
-    # echo Server port is $PORT
-    exec telnet -e none localhost $PORT
+    if [ x$(which telnet) = x ]; then
+        echo "telnet not found."
+        echo
+        echo "Telnet to localhost port $PORT to connect to XtermWM."
+    else
+        # Disable telnet escape, as this client will always be
+        # read-write.
+        exec telnet -e none localhost $PORT
+    fi
 else
     # echo "Executing: $CMDLINE"
     $CMDLINE

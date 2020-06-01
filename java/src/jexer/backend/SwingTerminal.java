@@ -1819,6 +1819,7 @@ public class SwingTerminal extends LogicalScreen
         boolean ctrl = false;
         char ch = ' ';
         boolean isKey = false;
+
         if (key.isActionKey()) {
             isKey = true;
         } else {

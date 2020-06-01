@@ -811,24 +811,31 @@ public class TApplication implements Runnable {
 
         // Special case: the Swing backend needs to have a timer to drive its
         // blink state.
-        if ((backend instanceof SwingBackend)
-            || (backend instanceof MultiBackend)
-        ) {
-            // Default to 500 millis, unless a SwingBackend has its own
-            // value.
-            long millis = 500;
-            if (backend instanceof SwingBackend) {
-                millis = ((SwingBackend) backend).getBlinkMillis();
-            }
-            if (millis > 0) {
-                addTimer(millis, true,
-                    new TAction() {
-                        public void DO() {
-                            TApplication.this.doRepaint();
-                        }
+        if (backend instanceof SwingBackend) {
+            long millis = ((SwingBackend) backend).getBlinkMillis();
+            addTimer(millis, true,
+                new TAction() {
+                    public void DO() {
+                        TApplication.this.doRepaint();
                     }
-                );
-            }
+                }
+            );
+        }
+
+        // Special case: the MultiBackend needs to have a timer to drive
+        // blink state and idle checks.
+        if (backend instanceof MultiBackend) {
+            // Default to 500 millis.
+            long millis = 500;
+            addTimer(millis, true,
+                new TAction() {
+                    public void DO() {
+                        TApplication.this.doRepaint();
+                        // Update idle checks.
+                        TApplication.this.getBackend().hasEvents();
+                    }
+                }
+            );
         }
 
         // Load the help system

@@ -109,6 +109,31 @@ public class ECMA48Backend extends GenericBackend {
     public ECMA48Backend(final Object listener, final InputStream input,
         final OutputStream output) throws UnsupportedEncodingException {
 
+        this(listener, input, output, false);
+    }
+
+    /**
+     * Public constructor.
+     *
+     * @param listener the object this backend needs to wake up when new
+     * input comes in
+     * @param input an InputStream connected to the remote user, or null for
+     * System.in.  If System.in is used, then on non-Windows systems it will
+     * be put in raw mode; shutdown() will (blindly!) put System.in in cooked
+     * mode.  input is always converted to a Reader with UTF-8 encoding.
+     * @param output an OutputStream connected to the remote user, or null
+     * for System.out.  output is always converted to a Writer with UTF-8
+     * encoding.
+     * @param readOnly if true, start this backend as read-only
+     * @throws UnsupportedEncodingException if an exception is thrown when
+     * creating the InputStreamReader
+     */
+    public ECMA48Backend(final Object listener, final InputStream input,
+        final OutputStream output,
+        final boolean readOnly) throws UnsupportedEncodingException {
+
+        this.readOnly = readOnly;
+
         // Create a terminal and explicitly set stdin into raw mode
         terminal = new ECMA48Terminal(this, listener, input, output);
 
