@@ -40,6 +40,8 @@ import jexer.TWindow;
 import jexer.backend.Backend;
 import jexer.backend.MultiBackend;
 import jexer.backend.SessionInfo;
+import jexer.bits.CellAttributes;
+import jexer.bits.GraphicsChars;
 import jexer.net.TelnetInputStream;
 import jexer.event.TKeypressEvent;
 import static jexer.TKeypress.*;
@@ -99,8 +101,8 @@ public class ClientsWindow extends TWindow {
         // Register with the TApplication
         super(application, i18n.getString("windowTitle"), 0, 0, 68, 18, MODAL);
 
-        clients = addList(new ArrayList<String>(), 1, 1,
-            getWidth() - 4, getHeight() - 6, null,
+        clients = addList(new ArrayList<String>(), 1, 3,
+            getWidth() - 4, getHeight() - 8, null,
             new TAction() {
                 // When the user navigates
                 public void DO() {
@@ -195,9 +197,45 @@ public class ClientsWindow extends TWindow {
         super.onKeypress(keypress);
     }
 
+    /**
+     * Method that subclasses can override to do processing when the UI is
+     * idle.  Note that repainting is NOT assumed.  To get a refresh after
+     * onIdle, call doRepaint().
+     */
+    @Override
+    public void onIdle() {
+        refreshClientsList();
+    }
+
     // ------------------------------------------------------------------------
     // TWindow ----------------------------------------------------------------
     // ------------------------------------------------------------------------
+
+    /**
+     * Draw the options panel.
+     */
+    @Override
+    public void draw() {
+        // Draw window and border.
+        super.draw();
+
+        CellAttributes color = getTheme().getColor("ttext");
+
+        hLineXY(2, 2, getWidth() - 4, ' ', color);
+        putStringXY(2, 2, String.format("%-12s %c %11s %c %9s %c %10s",
+                i18n.getString("username"),
+                GraphicsChars.VERTICAL_BAR,
+                i18n.getString("permissions"),
+                GraphicsChars.VERTICAL_BAR,
+                i18n.getString("connected"),
+                GraphicsChars.VERTICAL_BAR,
+                i18n.getString("idle")), color);
+
+        hLineXY(2, 3, getWidth() - 4, GraphicsChars.DOUBLE_BAR, color);
+        putCharXY(15, 3, 0x256A, color);
+        putCharXY(29, 3, 0x256A, color);
+        putCharXY(41, 3, 0x256A, color);
+    }
 
     // ------------------------------------------------------------------------
     // ClientsWindow ----------------------------------------------------------
@@ -211,9 +249,6 @@ public class ClientsWindow extends TWindow {
 
         clientsById = new HashMap<Integer, Backend>();
 
-        clientStrings.add("Username     | Permissions | Connected | Idle (secs)");
-        clientStrings.add("-------------------------------------------------------");
-
         long now = System.currentTimeMillis();
         XTWMApplication app = (XTWMApplication) getApplication();
         for (Backend backend: ((MultiBackend) app.getBackend()).getBackends()) {
@@ -223,10 +258,13 @@ public class ClientsWindow extends TWindow {
             int hours = (int)  (((now - connect) / 1000) / 3600);
             int mins  = (int) ((((now - connect) / 1000) % 3600) / 60);
             int secs  = (int)  (((now - connect) / 1000) % 60);
-            clientStrings.add(String.format("%-12s | %11s |  %02d:%02d:%02d | %10d",
+            clientStrings.add(String.format("%-12s %c %11s %c  %02d:%02d:%02d %c %10d",
                     sessionInfo.getUsername(),
+                    GraphicsChars.VERTICAL_BAR,
                     (backend.isReadOnly() ? "Read-Only" : "Read+Write"),
+                    GraphicsChars.VERTICAL_BAR,
                     hours, mins, secs,
+                    GraphicsChars.VERTICAL_BAR,
                     sessionInfo.getIdleTime()));
 
             clientsById.put(clientStrings.size() - 1, backend);
@@ -235,7 +273,7 @@ public class ClientsWindow extends TWindow {
         int oldIndex = clients.getSelectedIndex();
         clients.setList(clientStrings);
         clients.setSelectedIndex(Math.min(clients.getMaxSelectedIndex(),
-                Math.max(oldIndex, 2)));
+                Math.max(oldIndex, 0)));
 
         int index = clients.getSelectedIndex();
         Backend backend = clientsById.get(index);

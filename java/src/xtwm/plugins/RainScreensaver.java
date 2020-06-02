@@ -37,7 +37,7 @@ import jexer.backend.Screen;
 import jexer.bits.Cell;
 
 /**
- * RainScreensaver is a simple calendar view.
+ * RainScreensaver drops characters like they are raining from the bottom.
  */
 public class RainScreensaver extends ScreensaverPlugin {
 

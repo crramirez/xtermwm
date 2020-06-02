@@ -119,19 +119,22 @@ public class Main {
             // Accept connections as long as the application is running.
             Thread serverThread = new Thread() {
                 public void run() {
+                    boolean first = true;
+
                     while (app.isRunning() && !server.isClosed()) {
                         Socket socket = null;
                         try {
                             socket = server.accept();
 
                             // The first client can connect without a
-                            // password.  All other clients require one.
-                            if (multiBackend.getBackends().size() > 0) {
+                            // password.  All other clients must enter it.
+                            if (!first) {
                                 if (!isPasswordOk(socket)) {
                                     socket.close();
                                     continue;
                                 }
                             }
+                            first = false;
 
                             ECMA48Backend ecmaBackend = new ECMA48Backend(app,
                                 socket.getInputStream(),

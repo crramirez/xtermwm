@@ -28,6 +28,6 @@
  */
 
 /**
- * Plugins extend the function of the desktop.
+ * Plugins that extend the function of the desktop.
  */
 package xtwm.plugins;

@@ -44,8 +44,8 @@ import xtwm.ui.TiledTerminal;
 import xtwm.ui.XTWMApplication;
 
 /**
- * PluginWidget is a plugin.  Its interface can be instantiated in a separate
- * window or as part of a tiled panel.
+ * A PluginWidget is a plugin that can be optionally be instantiated in a
+ * separate window and/or as part of a tiled panel.
  */
 public abstract class PluginWidget extends TWidget {
 
