@@ -707,7 +707,7 @@ public class XTWMApplication extends TApplication {
             return true;
 
         case MENU_APPLICATION_SETTINGS_PLUGINS:
-            // TODO
+            getCurrentDesktop().addWindow(new PluginOptionsWindow(this));
             return true;
 
         case MENU_APPLICATION_SETTINGS_LOAD:
