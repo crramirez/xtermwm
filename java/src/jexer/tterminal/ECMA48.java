@@ -7620,21 +7620,22 @@ public class ECMA48 implements Runnable {
                 }
 
                 Cell cell = new Cell();
-                if ((width != textWidth) || (height != textHeight)) {
-                    BufferedImage newImage;
-                    newImage = new BufferedImage(textWidth, textHeight,
-                        BufferedImage.TYPE_INT_ARGB);
 
-                    Graphics gr = newImage.getGraphics();
-                    gr.drawImage(image.getSubimage(x * textWidth,
-                            y * textHeight, width, height),
-                        0, 0, null, null);
-                    gr.dispose();
-                    cell.setImage(newImage);
-                } else {
-                    cell.setImage(image.getSubimage(x * textWidth,
-                            y * textHeight, width, height));
-                }
+                // Always re-render the image against a black background, so
+                // that alpha in the image does not lead to bleed-through
+                // artifacts.
+                BufferedImage newImage;
+                newImage = new BufferedImage(textWidth, textHeight,
+                    BufferedImage.TYPE_INT_ARGB);
+
+                java.awt.Graphics gr = newImage.getGraphics();
+                gr.setColor(java.awt.Color.BLACK);
+                gr.fillRect(0, 0, textWidth, textHeight);
+                gr.drawImage(image.getSubimage(x * textWidth,
+                        y * textHeight, width, height),
+                    0, 0, null, null);
+                gr.dispose();
+                cell.setImage(newImage);
 
                 cells[x][y] = cell;
             }
