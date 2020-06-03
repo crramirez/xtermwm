@@ -130,7 +130,7 @@ public class TTerminalWidget extends TScrollableWidget
     /**
      * If true, the display has changed and needs updating.
      */
-    private volatile boolean dirty = true;
+    private List<String> dirtyQueue = new ArrayList<String>();
 
     /**
      * Time that the display was last updated.
@@ -454,7 +454,7 @@ public class TTerminalWidget extends TScrollableWidget
             || keypress.equals(kbAltHome)
         ) {
             toTop();
-            dirty = true;
+            setDirty();
             return;
         }
         if (keypress.equals(kbShiftEnd)
@@ -462,7 +462,7 @@ public class TTerminalWidget extends TScrollableWidget
             || keypress.equals(kbAltEnd)
         ) {
             toBottom();
-            dirty = true;
+            setDirty();
             return;
         }
         if (keypress.equals(kbShiftPgUp)
@@ -470,7 +470,7 @@ public class TTerminalWidget extends TScrollableWidget
             || keypress.equals(kbAltPgUp)
         ) {
             bigVerticalDecrement();
-            dirty = true;
+            setDirty();
             return;
         }
         if (keypress.equals(kbShiftPgDn)
@@ -478,7 +478,7 @@ public class TTerminalWidget extends TScrollableWidget
             || keypress.equals(kbAltPgDn)
         ) {
             bigVerticalIncrement();
-            dirty = true;
+            setDirty();
             return;
         }
 
@@ -524,12 +524,12 @@ public class TTerminalWidget extends TScrollableWidget
             if (emulator.getMouseProtocol() == ECMA48.MouseProtocol.OFF) {
                 if (mouse.isMouseWheelUp()) {
                     verticalDecrement();
-                    dirty = true;
+                    setDirty();
                     return;
                 }
                 if (mouse.isMouseWheelDown()) {
                     verticalIncrement();
-                    dirty = true;
+                    setDirty();
                     return;
                 }
             }
@@ -629,15 +629,23 @@ public class TTerminalWidget extends TScrollableWidget
         int width = getDisplayWidth();
 
         boolean syncEmulator = false;
-        if (System.currentTimeMillis() - lastUpdateTime >= 50) {
-            // Too much time has passed, draw it all.
-            syncEmulator = true;
-        } else if (emulator.isReading() && (dirty == false)) {
-            // Wait until the emulator has brought more data in.
-            syncEmulator = false;
-        } else if (!emulator.isReading() && (dirty == true)) {
-            // The emulator won't receive more data, update the display.
-            syncEmulator = true;
+        synchronized (dirtyQueue) {
+            /*
+            if (System.currentTimeMillis() - lastUpdateTime >= 250) {
+                // Too much time has passed, draw it all.
+                syncEmulator = true;
+            } else if (emulator.isReading() && (dirtyQueue.size() == 0)) {
+                // Wait until the emulator has brought more data in.
+                syncEmulator = false;
+            } else if (!emulator.isReading() && (dirtyQueue.size() > 0)) {
+                // The emulator won't receive more data, update the display.
+                syncEmulator = true;
+            }
+             */
+            if (dirtyQueue.size() > 0) {
+                dirtyQueue.remove(dirtyQueue.size() - 1);
+                syncEmulator = true;
+            }
         }
 
         if ((syncEmulator == true)
@@ -664,7 +672,6 @@ public class TTerminalWidget extends TScrollableWidget
                 }
                 width = emulator.getWidth();
             }
-            dirty = false;
         }
 
         // Now draw the emulator screen
@@ -720,7 +727,7 @@ public class TTerminalWidget extends TScrollableWidget
     @Override
     public void setVerticalValue(final int value) {
         super.setVerticalValue(value);
-        dirty = true;
+        setDirty();
     }
 
     /**
@@ -729,7 +736,7 @@ public class TTerminalWidget extends TScrollableWidget
     @Override
     public void verticalDecrement() {
         super.verticalDecrement();
-        dirty = true;
+        setDirty();
     }
 
     /**
@@ -738,7 +745,7 @@ public class TTerminalWidget extends TScrollableWidget
     @Override
     public void verticalIncrement() {
         super.verticalIncrement();
-        dirty = true;
+        setDirty();
     }
 
     /**
@@ -746,7 +753,7 @@ public class TTerminalWidget extends TScrollableWidget
      */
     public void bigVerticalDecrement() {
         super.bigVerticalDecrement();
-        dirty = true;
+        setDirty();
     }
 
     /**
@@ -754,7 +761,7 @@ public class TTerminalWidget extends TScrollableWidget
      */
     public void bigVerticalIncrement() {
         super.bigVerticalIncrement();
-        dirty = true;
+        setDirty();
     }
 
     /**
@@ -762,7 +769,7 @@ public class TTerminalWidget extends TScrollableWidget
      */
     public void toTop() {
         super.toTop();
-        dirty = true;
+        setDirty();
     }
 
     /**
@@ -770,7 +777,7 @@ public class TTerminalWidget extends TScrollableWidget
      */
     public void toBottom() {
         super.toBottom();
-        dirty = true;
+        setDirty();
     }
 
     /**
@@ -822,6 +829,15 @@ public class TTerminalWidget extends TScrollableWidget
     // ------------------------------------------------------------------------
     // TTerminalWidget --------------------------------------------------------
     // ------------------------------------------------------------------------
+
+    /**
+     * Set the dirty flag.
+     */
+    public void setDirty() {
+        synchronized (dirtyQueue) {
+            dirtyQueue.add("dirty");
+        }
+    }
 
     /**
      * Check for 'ptypipe' on the path.  If available, set ptypipeOnPath.
@@ -1368,10 +1384,10 @@ public class TTerminalWidget extends TScrollableWidget
             // dirty=false.  If these writes start interleaving, the display
             // stops getting updated.
             synchronized (emulator) {
-                dirty = true;
+                setDirty();
             }
         } else {
-            dirty = true;
+            setDirty();
         }
         TApplication app = getApplication();
         if (app != null) {

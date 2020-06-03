@@ -4214,6 +4214,14 @@ public class ECMA48 implements Runnable {
      * SGR - Select graphics rendition.
      */
     private void sgr() {
+        for (int i = 0; i < collectBuffer.length(); i++) {
+            if ((collectBuffer.charAt(i) == '>')
+                || (collectBuffer.charAt(i) == '>')
+            ) {
+                // Private-mode sequence, disregard.
+                return;
+            }
+        }
 
         if (csiParams.size() == 0) {
             currentState.attr.reset();

@@ -1835,6 +1835,14 @@ public class ECMA48Terminal extends LogicalScreen
         int textEnd = 0;
         for (int x = 0; x < width; x++) {
             Cell lCell = logical[x][y];
+            if (lCell.isImage()) {
+                // TODO: Figure out why image cells followed by blanks to the
+                // edge of the screen lead to showing only the first column
+                // of the image.  For now, just force any image row to draw
+                // the entire row.
+                textEnd = width;
+                break;
+            }
             if (!lCell.isBlank()) {
                 textEnd = x;
             }
