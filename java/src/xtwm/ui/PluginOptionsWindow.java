@@ -127,6 +127,8 @@ public class PluginOptionsWindow extends TWindow {
                     plugin.setPluginEnabled(true);
                     enableButton.setEnabled(false);
                     disableButton.setEnabled(true);
+                    XTWMApplication app = (XTWMApplication) source.getApplication();
+                    app.savePluginProperties(plugin);
                 }
             }
         );
@@ -142,6 +144,8 @@ public class PluginOptionsWindow extends TWindow {
                     plugin.setPluginEnabled(false);
                     enableButton.setEnabled(true);
                     disableButton.setEnabled(false);
+                    XTWMApplication app = (XTWMApplication) source.getApplication();
+                    app.savePluginProperties(plugin);
                 }
             }
         );
@@ -277,12 +281,19 @@ public class PluginOptionsWindow extends TWindow {
         int index = plugins.getSelectedIndex();
         PluginWidget plugin = pluginsById.get(index);
         assert (plugin != null);
+
+        // Switching the buttons around will cause focus to move to the list.
+        // Let's try to keep focus on the button that was active.
+        TWidget active = getParent().getActiveChild();
         if (plugin.isPluginEnabled()) {
             enableButton.setEnabled(false);
             disableButton.setEnabled(true);
         } else {
             enableButton.setEnabled(true);
             disableButton.setEnabled(false);
+        }
+        if (active.isEnabled()) {
+            getParent().activate(active);
         }
     }
 
@@ -322,7 +333,7 @@ public class PluginOptionsWindow extends TWindow {
             window.getWidth() - 40, window.getHeight() - 4,
             new TAction() {
                 public void DO() {
-                    // TODO: save plugin settings
+                    app.savePluginProperties(plugin);
                     getApplication().closeWindow(window);
                 }
             }

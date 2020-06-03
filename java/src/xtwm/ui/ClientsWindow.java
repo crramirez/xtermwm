@@ -36,6 +36,7 @@ import java.util.ResourceBundle;
 import jexer.TAction;
 import jexer.TButton;
 import jexer.TList;
+import jexer.TWidget;
 import jexer.TWindow;
 import jexer.backend.Backend;
 import jexer.backend.MultiBackend;
@@ -277,6 +278,10 @@ public class ClientsWindow extends TWindow {
 
         int index = clients.getSelectedIndex();
         Backend backend = clientsById.get(index);
+
+        // Switching the buttons around will cause focus to move to the list.
+        // Let's try to keep focus on the button that was active.
+        TWidget active = getParent().getActiveChild();
         if (backend == null) {
             readOnlyButton.setEnabled(false);
             readWriteButton.setEnabled(false);
@@ -290,6 +295,9 @@ public class ClientsWindow extends TWindow {
                 readOnlyButton.setEnabled(true);
                 readWriteButton.setEnabled(false);
             }
+        }
+        if (active.isEnabled()) {
+            getParent().activate(active);
         }
     }
 

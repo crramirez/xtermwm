@@ -630,18 +630,6 @@ public class TTerminalWidget extends TScrollableWidget
 
         boolean syncEmulator = false;
         synchronized (dirtyQueue) {
-            /*
-            if (System.currentTimeMillis() - lastUpdateTime >= 250) {
-                // Too much time has passed, draw it all.
-                syncEmulator = true;
-            } else if (emulator.isReading() && (dirtyQueue.size() == 0)) {
-                // Wait until the emulator has brought more data in.
-                syncEmulator = false;
-            } else if (!emulator.isReading() && (dirtyQueue.size() > 0)) {
-                // The emulator won't receive more data, update the display.
-                syncEmulator = true;
-            }
-             */
             if (dirtyQueue.size() > 0) {
                 dirtyQueue.remove(dirtyQueue.size() - 1);
                 syncEmulator = true;

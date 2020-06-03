@@ -217,6 +217,7 @@ public abstract class PluginWidget extends TWidget {
      */
     public void initialize(final XTWMApplication app) {
         this.app = app;
+        pluginEnabled = getOption("enabled", "true").equals("true");
     }
 
     /**

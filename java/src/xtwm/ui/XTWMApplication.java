@@ -1852,12 +1852,17 @@ public class XTWMApplication extends TApplication {
             PluginWidget widget = (PluginWidget) plugin.getDeclaredConstructor().newInstance();
             String pluginName = widget.getPluginName();
             loadPluginProperties(pluginName);
+            widget.initialize(this);
 
-            if (widget instanceof ScreensaverPlugin) {
+            if ((widget instanceof ScreensaverPlugin)
+                && (widget.isPluginEnabled())
+            ) {
                 addScreensaver(((ScreensaverPlugin) widget).getClass());
             }
 
-            if (widget.isApplication()) {
+            if (widget.isApplication()
+                && (widget.isPluginEnabled())
+            ) {
                 int menuId = pluginAppMenuIds.size() + APP_MENU_ID_MIN;
                 programsMenu.addItem(menuId, widget.getMenuMnemonic());
                 pluginAppMenuIds.put(menuId, widget.getClass());
@@ -1867,14 +1872,16 @@ public class XTWMApplication extends TApplication {
                 if (!widgets.contains(widget.getClass())) {
                     widgets.add(widget.getClass());
                 }
-                int menuId = pluginWidgetMenuIds.size() + WIDGET_MENU_ID_MIN;
-                widgetsMenu.addItem(menuId, widget.getMenuMnemonic());
-                pluginWidgetMenuIds.put(menuId, widget.getClass());
-                if (loadDesktopPager) {
-                    if (widget instanceof DesktopPager) {
-                        // Load the desktop pager automatically.
-                        desktopPager = (DesktopPager) makePluginWidget(widget.getClass());
-                        makePluginWindow(desktopPager);
+                if (widget.isPluginEnabled()) {
+                    int menuId = pluginWidgetMenuIds.size() + WIDGET_MENU_ID_MIN;
+                    widgetsMenu.addItem(menuId, widget.getMenuMnemonic());
+                    pluginWidgetMenuIds.put(menuId, widget.getClass());
+                    if (loadDesktopPager) {
+                        if (widget instanceof DesktopPager) {
+                            // Load the desktop pager automatically.
+                            desktopPager = (DesktopPager) makePluginWidget(widget.getClass());
+                            makePluginWindow(desktopPager);
+                        }
                     }
                 }
             }
@@ -1918,6 +1925,31 @@ public class XTWMApplication extends TApplication {
         }
 
         pluginOptions.put(pluginName, props);
+    }
+
+    /**
+     * Save the properties for a plugin.
+     *
+     * @param plugin an instance of the plugin
+     */
+    public void savePluginProperties(final PluginWidget plugin) {
+        String pluginName = plugin.getPluginName();
+        Properties pluginProps = pluginOptions.get(pluginName);
+        if (pluginProps == null) {
+            pluginProps = new Properties();
+        }
+
+        pluginProps.setProperty("enabled",
+            (plugin.isPluginEnabled() ? "true" : "false"));
+
+        File propsFile = new File(pluginDataDir, pluginName + ".properties");
+        try {
+            pluginProps.store(new FileWriter(propsFile),
+                "Properties for plugin: " + pluginName);
+        } catch (IOException e) {
+            // Show this exception to the user.
+            new TExceptionDialog(this, e);
+        }
     }
 
     /**
