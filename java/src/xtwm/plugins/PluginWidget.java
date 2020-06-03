@@ -62,6 +62,11 @@ public abstract class PluginWidget extends TWidget {
      */
     protected XTWMApplication app;
 
+    /**
+     * If true, this plugin will be enabled.
+     */
+    protected boolean pluginEnabled = true;
+
     // ------------------------------------------------------------------------
     // Constructors -----------------------------------------------------------
     // ------------------------------------------------------------------------
@@ -182,6 +187,24 @@ public abstract class PluginWidget extends TWidget {
      * title for its window.
      */
     public abstract String getWindowTitle();
+
+    /**
+     * See if this plugin is enabled.
+     *
+     * @return true if this plugin should be enabled
+     */
+    public boolean isPluginEnabled() {
+        return pluginEnabled;
+    }
+
+    /**
+     * Set plugin enabled.
+     *
+     * @param enabled if true, this plugin will be enabled
+     */
+    public void setPluginEnabled(final boolean pluginEnabled) {
+        this.pluginEnabled = pluginEnabled;
+    }
 
     /**
      * Initialize the plugin.  Since plugins are required to have a

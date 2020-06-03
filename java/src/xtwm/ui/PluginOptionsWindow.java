@@ -36,14 +36,18 @@ import java.util.ResourceBundle;
 import jexer.TAction;
 import jexer.TButton;
 import jexer.TList;
+import jexer.TWidget;
 import jexer.TWindow;
 import jexer.bits.CellAttributes;
 import jexer.bits.GraphicsChars;
+import jexer.bits.MnemonicString;
 import jexer.event.TKeypressEvent;
+import jexer.event.TResizeEvent;
 import static jexer.TKeypress.*;
 
 import xtwm.ui.XTWMApplication;
 import xtwm.plugins.PluginWidget;
+import xtwm.plugins.ScreensaverPlugin;
 
 /**
  * PluginOptionsWindow enables/disables and configures the available plugins.
@@ -84,6 +88,11 @@ public class PluginOptionsWindow extends TWindow {
      */
     private TButton settingsButton;
 
+    /**
+     * The plugins from the application.
+     */
+    private List<PluginWidget> widgets;
+
     // ------------------------------------------------------------------------
     // Constructors -----------------------------------------------------------
     // ------------------------------------------------------------------------
@@ -108,15 +117,16 @@ public class PluginOptionsWindow extends TWindow {
             });
 
         enableButton = addButton(i18n.getString("enableButton"),
-            getWidth() - 67, getHeight() - 4,
+            getWidth() - 62, getHeight() - 4,
 
             new TAction() {
                 public void DO() {
                     int index = plugins.getSelectedIndex();
                     PluginWidget plugin = pluginsById.get(index);
-                    if (plugin != null) {
-                        // TODO
-                    }
+                    assert (plugin != null);
+                    plugin.setPluginEnabled(true);
+                    enableButton.setEnabled(false);
+                    disableButton.setEnabled(true);
                 }
             }
         );
@@ -128,29 +138,29 @@ public class PluginOptionsWindow extends TWindow {
                 public void DO() {
                     int index = plugins.getSelectedIndex();
                     PluginWidget plugin = pluginsById.get(index);
-                    if (plugin != null) {
-                        // TODO
-                    }
+                    assert (plugin != null);
+                    plugin.setPluginEnabled(false);
+                    enableButton.setEnabled(true);
+                    disableButton.setEnabled(false);
                 }
             }
         );
 
         settingsButton = addButton(i18n.getString("settingsButton"),
-            getWidth() - 27, getHeight() - 4,
+            getWidth() - 32, getHeight() - 4,
 
             new TAction() {
                 public void DO() {
                     int index = plugins.getSelectedIndex();
                     PluginWidget plugin = pluginsById.get(index);
-                    if (plugin != null) {
-                        // TODO
-                    }
+                    assert (plugin != null);
+                    makePluginSettingsWindow(plugin);
                 }
             }
         );
 
         addButton(i18n.getString("closeButton"),
-            getWidth() - 11, getHeight() - 4,
+            getWidth() - 17, getHeight() - 4,
             new TAction() {
                 public void DO() {
                     getApplication().closeWindow(PluginOptionsWindow.this);
@@ -212,7 +222,7 @@ public class PluginOptionsWindow extends TWindow {
         CellAttributes color = getTheme().getColor("ttext");
 
         hLineXY(2, 2, getWidth() - 4, ' ', color);
-        putStringXY(2, 2, String.format("%-12s %c %12s %c %12s",
+        putStringXY(2, 2, String.format("%-16s %c %-8s %c %-12s",
                 i18n.getString("plugin"),
                 GraphicsChars.VERTICAL_BAR,
                 i18n.getString("enabled"),
@@ -220,9 +230,8 @@ public class PluginOptionsWindow extends TWindow {
                 i18n.getString("type")), color);
 
         hLineXY(2, 3, getWidth() - 4, GraphicsChars.DOUBLE_BAR, color);
-        putCharXY(15, 3, 0x256A, color);
-        putCharXY(29, 3, 0x256A, color);
-        putCharXY(41, 3, 0x256A, color);
+        putCharXY(19, 3, 0x256A, color);
+        putCharXY(30, 3, 0x256A, color);
     }
 
     // ------------------------------------------------------------------------
@@ -240,27 +249,25 @@ public class PluginOptionsWindow extends TWindow {
         long now = System.currentTimeMillis();
         XTWMApplication app = (XTWMApplication) getApplication();
 
-        // TODO
-        /*
-        for (PluginWidget plugin: ((MultiPluginWidget) app.getPluginWidget()).getPluginWidgets()) {
-            SessionInfo sessionInfo = plugin.getSessionInfo();
-            TelnetInputStream telnet = (TelnetInputStream) sessionInfo;
-            long connect = sessionInfo.getStartTime();
-            int hours = (int)  (((now - connect) / 1000) / 3600);
-            int mins  = (int) ((((now - connect) / 1000) % 3600) / 60);
-            int secs  = (int)  (((now - connect) / 1000) % 60);
-            pluginstrings.add(String.format("%-12s %c %11s %c  %02d:%02d:%02d %c %10d",
-                    sessionInfo.getUsername(),
+        if (widgets == null) {
+            widgets = app.getWidgets();
+        }
+
+        for (PluginWidget plugin: widgets) {
+            String pluginType = "plugin";
+            if (plugin instanceof ScreensaverPlugin) {
+                pluginType = "screensaver";
+            }
+            pluginstrings.add(String.format("%-16s %c %-8s %c %-12s",
+                    (new MnemonicString(plugin.getMenuMnemonic())).getRawLabel(),
                     GraphicsChars.VERTICAL_BAR,
-                    (plugin.isReadOnly() ? "Read-Only" : "Read+Write"),
+                    (plugin.isPluginEnabled() ? i18n.getString("enabled") :
+                        i18n.getString("disabled")),
                     GraphicsChars.VERTICAL_BAR,
-                    hours, mins, secs,
-                    GraphicsChars.VERTICAL_BAR,
-                    sessionInfo.getIdleTime()));
+                    pluginType));
 
             pluginsById.put(pluginstrings.size() - 1, plugin);
         }
-         */
 
         int oldIndex = plugins.getSelectedIndex();
         plugins.setList(pluginstrings);
@@ -269,11 +276,66 @@ public class PluginOptionsWindow extends TWindow {
 
         int index = plugins.getSelectedIndex();
         PluginWidget plugin = pluginsById.get(index);
-        if (plugin == null) {
-            // TODO
+        assert (plugin != null);
+        if (plugin.isPluginEnabled()) {
+            enableButton.setEnabled(false);
+            disableButton.setEnabled(true);
         } else {
-            // TODO
+            enableButton.setEnabled(true);
+            disableButton.setEnabled(false);
         }
+    }
+
+    /**
+     * Make the window that will be used for the plugin settings UI.
+     *
+     * @param application the application
+     * @return the window
+     */
+    private void makePluginSettingsWindow(final PluginWidget plugin) {
+        XTWMApplication app = (XTWMApplication) getApplication();
+
+        TWindow window = new TWindow(app, String.format("%s - %s",
+                i18n.getString("settingsWindowTitle"),
+                (new MnemonicString(plugin.getMenuMnemonic())).getRawLabel()),
+            60, 20, TWindow.MODAL) {
+
+            public void onResize(final TResizeEvent resize) {
+                if (resize.getType() == TResizeEvent.Type.WIDGET) {
+                    if (getChildren().size() == 1) {
+                        TWidget widget = getChildren().get(0);
+                        widget.onResize(new TResizeEvent(resize.getBackend(),
+                            TResizeEvent.Type.WIDGET,
+                            getWidth() - 2, getHeight() - 2));
+                        return;
+                    }
+                }
+                super.onResize(resize);
+            }
+        };
+        app.getCurrentDesktop().addWindow(window);
+
+        TWidget panel = plugin.getPluginSettingsEditor(window);
+        panel.setHeight(window.getHeight() - 6);
+
+        window.addButton(i18n.getString("saveButton"),
+            window.getWidth() - 40, window.getHeight() - 4,
+            new TAction() {
+                public void DO() {
+                    // TODO: save plugin settings
+                    getApplication().closeWindow(window);
+                }
+            }
+        );
+
+        window.addButton(i18n.getString("closeButton"),
+            window.getWidth() - 30, window.getHeight() - 4,
+            new TAction() {
+                public void DO() {
+                    getApplication().closeWindow(window);
+                }
+            }
+        );
     }
 
 }
