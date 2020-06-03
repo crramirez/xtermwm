@@ -256,6 +256,12 @@ public class ECMA48Terminal extends LogicalScreen
     private boolean setRawMode = false;
 
     /**
+     * If true, the DA response has been seen and options that it affects
+     * should not be reset in reloadOption().
+     */
+    private boolean daResponseSeen = false;
+
+    /**
      * If true, then we will set modifyOtherKeys.
      */
     private boolean modifyOtherKeys = false;
@@ -1556,25 +1562,27 @@ public class ECMA48Terminal extends LogicalScreen
             sixelSharedPalette = true;
         }
 
-        // Default to not supporting iTerm2 images.
-        if (System.getProperty("jexer.ECMA48.iTerm2Images",
-                "false").equals("true")) {
-            iterm2Images = true;
-        } else {
-            iterm2Images = false;
-        }
+        if (!daResponseSeen) {
+            // Default to not supporting iTerm2 images.
+            if (System.getProperty("jexer.ECMA48.iTerm2Images",
+                    "false").equals("true")) {
+                iterm2Images = true;
+            } else {
+                iterm2Images = false;
+            }
 
-        // Default to using JPG Jexer images if terminal supports it.
-        String jexerImageStr = System.getProperty("jexer.ECMA48.jexerImages",
-            "jpg").toLowerCase();
-        if (jexerImageStr.equals("false")) {
-            jexerImageOption = JexerImageOption.DISABLED;
-        } else if (jexerImageStr.equals("jpg")) {
-            jexerImageOption = JexerImageOption.JPG;
-        } else if (jexerImageStr.equals("png")) {
-            jexerImageOption = JexerImageOption.PNG;
-        } else if (jexerImageStr.equals("rgb")) {
-            jexerImageOption = JexerImageOption.RGB;
+            // Default to using JPG Jexer images if terminal supports it.
+            String jexerImageStr = System.getProperty("jexer.ECMA48.jexerImages",
+                "jpg").toLowerCase();
+            if (jexerImageStr.equals("false")) {
+                jexerImageOption = JexerImageOption.DISABLED;
+            } else if (jexerImageStr.equals("jpg")) {
+                jexerImageOption = JexerImageOption.JPG;
+            } else if (jexerImageStr.equals("png")) {
+                jexerImageOption = JexerImageOption.PNG;
+            } else if (jexerImageStr.equals("rgb")) {
+                jexerImageOption = JexerImageOption.RGB;
+            }
         }
 
         // Set custom colors
@@ -2150,6 +2158,10 @@ public class ECMA48Terminal extends LogicalScreen
                     physical[x + i][y].setTo(lCell);
                 }
                 if (cellsToDraw.size() > 0) {
+                    if (debugToStderr) {
+                        System.err.println("images to render: iTerm2: " +
+                            iterm2Images + " Jexer: " + jexerImageOption);
+                    }
                     if (iterm2Images) {
                         sb.append(toIterm2Image(x, y, cellsToDraw));
                     } else if (jexerImageOption != JexerImageOption.DISABLED) {
@@ -2972,6 +2984,8 @@ public class ECMA48Terminal extends LogicalScreen
                     if (decPrivateModeFlag == false) {
                         break;
                     }
+                    daResponseSeen = true;
+
                     boolean reportsJexerImages = false;
                     boolean reportsIterm2Images = false;
                     for (String x: params) {
@@ -3000,11 +3014,17 @@ public class ECMA48Terminal extends LogicalScreen
                         // Terminal does not support Jexer images, disable
                         // them.
                         jexerImageOption = JexerImageOption.DISABLED;
+                        if (debugToStderr) {
+                            System.err.println("Device Attributes: Disable Jexer images");
+                        }
                     }
                     if (reportsIterm2Images == false) {
                         // Terminal does not support iTerm2 images, disable
                         // them.
                         iterm2Images = false;
+                        if (debugToStderr) {
+                            System.err.println("Device Attributes: Disable iTerm2 images");
+                        }
                     }
                     resetParser();
                     return;

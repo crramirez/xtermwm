@@ -1342,6 +1342,7 @@ public class XTWMApplication extends TApplication {
         setOption("editor.useExternal", "false");
         setOption("jexer.ECMA48.rgbColor", "false");
         setOption("jexer.ECMA48.sixel", "true");
+        setOption("jexer.ECMA48.sixelSharedPalette", "true");
         setOption("jexer.ECMA48.wideCharImages", "true");
         setOption("jexer.Swing.cursorStyle", "underline");
         setOption("jexer.Swing.mouseStyle", "default");
