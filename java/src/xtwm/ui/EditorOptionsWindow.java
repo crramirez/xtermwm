@@ -75,6 +75,11 @@ public class EditorOptionsWindow extends TWindow {
     private TCheckBox backspaceUnindents;
 
     /**
+     * The margin to highlight.
+     */
+    private TField margin;
+
+    /**
      * If true, highlight Java keywords in text files.
      */
     private TCheckBox highlightKeywords;
@@ -146,36 +151,44 @@ public class EditorOptionsWindow extends TWindow {
         indentLevel = addField(22, 4, 25, false,
             app.getOption("editor.internal.indentLevel"));
 
-        backspaceUnindents = addCheckBox(3, 6,
+        addLabel(i18n.getString("margin"), 3, 5, "ttext", false,
+            new TAction() {
+                public void DO() {
+                    margin.activate();
+                }
+            });
+        margin = addField(22, 5, 25, false,
+            app.getOption("editor.internal.margin"));
+
+        backspaceUnindents = addCheckBox(3, 7,
             i18n.getString("backspaceUnindents"),
             (app.getOption("editor.internal.backspaceUnindents",
                 "true").equals("true") ? true : false));
-
-        highlightKeywords = addCheckBox(3, 7,
+        highlightKeywords = addCheckBox(3, 8,
             i18n.getString("highlightKeywords"),
             (app.getOption("editor.internal.highlightKeywords",
                 "true").equals("true") ? true : false));
 
-        saveWithTabs = addCheckBox(3, 8,
+        saveWithTabs = addCheckBox(3, 9,
             i18n.getString("saveWithTabs"),
             (app.getOption("editor.internal.saveWithTabs",
                 "true").equals("true") ? true : false));
 
-        trimWhitespace = addCheckBox(3, 9,
+        trimWhitespace = addCheckBox(3, 10,
             i18n.getString("trimWhitespace"),
             (app.getOption("editor.internal.trimWhitespace",
                 "true").equals("true") ? true : false));
 
         // Use external editor
-        externalEditor = addCheckBox(3, 15, i18n.getString("useExternalEditor"),
+        externalEditor = addCheckBox(3, 16, i18n.getString("useExternalEditor"),
             app.getOption("editor.useExternal").equals("true"));
 
         // External editor
-        addLabel(i18n.getString("externalEditorNew"), 5, 16, "ttext", false);
+        addLabel(i18n.getString("externalEditorNew"), 5, 17, "ttext", false);
         externalEditorNew = addField(22, 16, 25, false,
             app.getOption("editor.external.new"));
-        addLabel(i18n.getString("externalEditorOpen"), 5, 17, "ttext", false);
-        externalEditorOpen = addField(22, 17, 25, false,
+        addLabel(i18n.getString("externalEditorOpen"), 5, 18, "ttext", false);
+        externalEditorOpen = addField(22, 18, 25, false,
             app.getOption("editor.external.open"));
 
         // Buttons
@@ -248,12 +261,12 @@ public class EditorOptionsWindow extends TWindow {
         CellAttributes boxColor = getTheme().getColor("ttext");
 
         // Internal editor options
-        drawBox(2, 2, 50, 13, boxColor, boxColor);
+        drawBox(2, 2, 50, 14, boxColor, boxColor);
         putStringXY(4, 2, i18n.getString("internalEditorTitle"), boxColor);
 
         // External editor options
-        drawBox(2, 14, 50, 21, boxColor, boxColor);
-        putStringXY(4, 14, i18n.getString("externalEditorTitle"), boxColor);
+        drawBox(2, 15, 50, 22, boxColor, boxColor);
+        putStringXY(4, 15, i18n.getString("externalEditorTitle"), boxColor);
 
     }
 
@@ -272,6 +285,8 @@ public class EditorOptionsWindow extends TWindow {
             indentLevel.getText());
         app.setOption("editor.internal.backspaceUnindents",
             backspaceUnindents.isChecked() ? "true" : "false");
+        app.setOption("editor.internal.margin",
+            margin.getText());
         app.setOption("editor.internal.highlightKeywords",
             highlightKeywords.isChecked() ? "true" : "false");
         app.setOption("editor.internal.saveWithTabs",

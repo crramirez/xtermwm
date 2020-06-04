@@ -363,11 +363,17 @@ public class TEditorWindow extends TScrollableWindow {
         switch (menu.getId()) {
         case TMenu.MID_UNDO:
             editField.undo();
-            break;
+            return;
+
         case TMenu.MID_REDO:
             editField.redo();
+            return;
+
+        default:
             break;
         }
+
+        super.onMenu(menu);
     }
 
     // ------------------------------------------------------------------------
@@ -439,6 +445,16 @@ public class TEditorWindow extends TScrollableWindow {
                 "true").equals("false")) {
 
             hideMouseWhenTyping = false;
+        }
+
+        String marginString = System.getProperty("jexer.TEditor.margin");
+        if (marginString != null) {
+            try {
+                int margin = Integer.parseInt(marginString);
+                editField.setMargin(margin);
+            } catch (NumberFormatException e) {
+                // SQUASH
+            }
         }
     }
 

@@ -1348,6 +1348,7 @@ public class XTWMApplication extends TApplication {
         setOption("editor.external.open", "$VISUAL {0}");
         setOption("editor.internal.backspaceUnindents", "true");
         setOption("editor.internal.indentLevel", "4");
+        setOption("editor.internal.margin", "0");
         setOption("editor.internal.saveWithTabs", "false");
         setOption("editor.internal.trimWhitespace", "true");
         setOption("editor.internal.undoLevel", "50");

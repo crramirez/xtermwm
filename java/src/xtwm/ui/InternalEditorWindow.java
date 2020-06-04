@@ -137,6 +137,13 @@ public class InternalEditorWindow extends TScrollableWindow {
                 // SQUASH
             }
 
+            try {
+                setMargin(Integer.parseInt(app.getOption(
+                        "editor.internal.margin", "0")));
+            } catch (NumberFormatException e) {
+                // SQUASH
+            }
+
             setHighlighting(app.getOption(
                 "editor.internal.highlightKeywords", "true").equals("true") ?
                 true : false);
