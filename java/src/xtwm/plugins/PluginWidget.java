@@ -205,7 +205,7 @@ public abstract class PluginWidget extends TWidget {
     /**
      * Set plugin enabled.
      *
-     * @param enabled if true, this plugin will be enabled
+     * @param pluginEnabled if true, this plugin will be enabled
      */
     public void setPluginEnabled(final boolean pluginEnabled) {
         this.pluginEnabled = pluginEnabled;

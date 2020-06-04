@@ -28,26 +28,21 @@
  */
 package xtwm.plugins;
 
-import java.lang.management.ManagementFactory;
-import java.lang.management.OperatingSystemMXBean;
 import java.util.ResourceBundle;
 
 import jexer.TWidget;
-import jexer.bits.CellAttributes;
 
 import xtwm.ui.XTWMApplication;
 
 /**
- * SystemMonitor is a simple real-time performance monitor that shows the
- * CPU, memory, and disk usage exposed to the JVM through the Java management
- * interfaces (java.lang.management).
+ * Plugin to put 'htop' on the Application | Programs menu.
  */
-public class SystemMonitor extends PluginWidget {
+public class HtopPlugin extends PluginWidget {
 
     /**
      * Translated strings.
      */
-    private static ResourceBundle i18n = ResourceBundle.getBundle(SystemMonitor.class.getName());
+    private static ResourceBundle i18n = ResourceBundle.getBundle(HtopPlugin.class.getName());
 
     // ------------------------------------------------------------------------
     // Constants --------------------------------------------------------------
@@ -66,7 +61,7 @@ public class SystemMonitor extends PluginWidget {
      *
      * @param parent parent widget
      */
-    public SystemMonitor(final TWidget parent) {
+    public HtopPlugin(final TWidget parent) {
         super(parent);
     }
 
@@ -74,7 +69,7 @@ public class SystemMonitor extends PluginWidget {
      * No-argument constructor that is intended only for use by
      * XTWMApplication.loadPlugin().
      */
-    public SystemMonitor() {
+    public HtopPlugin() {
         super(null);
     }
 
@@ -85,36 +80,6 @@ public class SystemMonitor extends PluginWidget {
     // ------------------------------------------------------------------------
     // TWidget ----------------------------------------------------------------
     // ------------------------------------------------------------------------
-
-    /**
-     * Draw the values obtained from the Java management interfaces.
-     */
-    @Override
-    public void draw() {
-        CellAttributes textColor;
-        CellAttributes valueColor;
-
-        textColor = getTheme().getColor("plugins.calendar.text");
-        valueColor = getTheme().getColor("plugins.calendar.value");
-
-        putAll(' ', textColor);
-
-        // CPU count
-        putStringXY(1, 0, i18n.getString("numCpu"), textColor);
-        String cpuCount = Integer.toString(Runtime.getRuntime().
-            availableProcessors());
-        putStringXY(getWidth() - cpuCount.length() - 1, 0, cpuCount,
-            valueColor);
-
-        // Load average
-        OperatingSystemMXBean osBean = ManagementFactory.getOperatingSystemMXBean();
-        putStringXY(1, 1, i18n.getString("loadAverage"), textColor);
-        String loadAverage = String.format("%.2f",
-            osBean.getSystemLoadAverage());
-        putStringXY(getWidth() - loadAverage.length() - 1, 1, loadAverage,
-            valueColor);
-
-    }
 
     // ------------------------------------------------------------------------
     // PluginWidget -----------------------------------------------------------
@@ -129,16 +94,12 @@ public class SystemMonitor extends PluginWidget {
      *
      * @param app the application that will be using this plugin
      */
+    /*
     @Override
     public void initialize(final XTWMApplication app) {
         super.initialize(app);
-
-        // Set the colors to use.
-        app.getTheme().setColorFromString("plugins.calendar.text",
-            "white on blue");
-        app.getTheme().setColorFromString("plugins.calendar.value",
-            "bold yellow on blue");
     }
+     */
 
     /**
      * Get the translated menu label for this plugin.
@@ -153,7 +114,7 @@ public class SystemMonitor extends PluginWidget {
     /**
      * Get the translated short name for this plugin.
      *
-     * @return a short name, e.g. "SystemMonitor"
+     * @return a short name, e.g. "HtopPlugin"
      */
     @Override
     public String getPluginName() {
@@ -178,7 +139,7 @@ public class SystemMonitor extends PluginWidget {
      */
     @Override
     public boolean isApplication() {
-        return false;
+        return true;
     }
 
     /**
@@ -188,7 +149,7 @@ public class SystemMonitor extends PluginWidget {
      */
     @Override
     public String getApplicationCommand() {
-        return null;
+        return "htop";
     }
 
     /**
@@ -199,7 +160,7 @@ public class SystemMonitor extends PluginWidget {
      */
     @Override
     public boolean isWidget() {
-        return true;
+        return false;
     }
 
     /**
@@ -211,29 +172,6 @@ public class SystemMonitor extends PluginWidget {
      */
     public String getWindowTitle() {
         return i18n.getString("windowTitle");
-    }
-
-    /**
-     * Whether or not this plugin should be on all desktops when loaded as a
-     * widget at startup.
-     *
-     * @return true if this plugin should be on all desktops
-     */
-    @Override
-    public boolean isOnAllDesktops() {
-        return true;
-    }
-
-    /**
-     * Get an interface for editing the plugin settings.
-     *
-     * @param parent parent widget
-     * @return a widget that has settings
-     */
-    @Override
-    public TWidget getPluginSettingsEditor(final TWidget parent) {
-        // TODO: Expose options like polling time, # cores, etc.
-        return super.getPluginSettingsEditor(parent);
     }
 
     /**
@@ -256,18 +194,8 @@ public class SystemMonitor extends PluginWidget {
         return 10;
     }
 
-    /**
-     * Check if widget should be in a resizable window.
-     *
-     * @return true if the widget should be resizable when in a window
-     */
-    @Override
-    public boolean isResizable() {
-        return true;
-    }
-
     // ------------------------------------------------------------------------
-    // SystemMonitor ----------------------------------------------------------
+    // HtopPlugin -------------------------------------------------------------
     // ------------------------------------------------------------------------
 
 }

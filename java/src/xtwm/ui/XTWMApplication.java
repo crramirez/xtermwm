@@ -928,8 +928,16 @@ public class XTWMApplication extends TApplication {
         if ((menu.getId() >= APP_MENU_ID_MIN)
             && (menu.getId() < WIDGET_MENU_ID_MIN)
         ) {
-            // TODO: spawn the application for the plugin
+            Class<? extends PluginWidget> pluginClass = null;
+            pluginClass = pluginAppMenuIds.get(menu.getId());
 
+            if (pluginClass != null) {
+                PluginWidget plugin = makePluginWidget(pluginClass);
+                String cmdline = plugin.getApplicationCommand();
+                jexer.TTerminalWindow terminal = openTerminal(0, 0, cmdline);
+                terminal.setTitle(plugin.getWindowTitle(), true);
+                getCurrentDesktop().addWindow(terminal);
+            }
             return true;
         } else if (menu.getId() >= WIDGET_MENU_ID_MIN) {
             // Add the widget to a new window.
@@ -1864,12 +1872,15 @@ public class XTWMApplication extends TApplication {
                 addScreensaver(((ScreensaverPlugin) widget).getClass());
             }
 
-            if (widget.isApplication()
-                && (widget.isPluginEnabled())
-            ) {
-                int menuId = pluginAppMenuIds.size() + APP_MENU_ID_MIN;
-                programsMenu.addItem(menuId, widget.getMenuMnemonic());
-                pluginAppMenuIds.put(menuId, widget.getClass());
+            if (widget.isApplication()) {
+                if (!widgets.contains(widget.getClass())) {
+                    widgets.add(widget.getClass());
+                }
+                if (widget.isPluginEnabled()) {
+                    int menuId = pluginAppMenuIds.size() + APP_MENU_ID_MIN;
+                    programsMenu.addItem(menuId, widget.getMenuMnemonic());
+                    pluginAppMenuIds.put(menuId, widget.getClass());
+                }
             }
 
             if (widget.isWidget()) {
