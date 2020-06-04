@@ -68,6 +68,7 @@ public class SystemMonitor extends PluginWidget {
      */
     public SystemMonitor(final TWidget parent) {
         super(parent);
+        loadOnStartup = true;
     }
 
     /**
@@ -96,6 +97,8 @@ public class SystemMonitor extends PluginWidget {
 
         textColor = getTheme().getColor("plugins.calendar.text");
         valueColor = getTheme().getColor("plugins.calendar.value");
+
+        putAll(' ', textColor);
 
         // CPU count
         putStringXY(1, 0, i18n.getString("numCpu"), textColor);
@@ -209,6 +212,17 @@ public class SystemMonitor extends PluginWidget {
      */
     public String getWindowTitle() {
         return i18n.getString("windowTitle");
+    }
+
+    /**
+     * Whether or not this plugin should be on all desktops when loaded as a
+     * widget at startup.
+     *
+     * @return true if this plugin should be on all desktops
+     */
+    @Override
+    public boolean isOnAllDesktops() {
+        return true;
     }
 
     /**

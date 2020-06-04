@@ -938,7 +938,11 @@ public class XTWMApplication extends TApplication {
 
             if (pluginClass != null) {
                 PluginWidget plugin = makePluginWidget(pluginClass);
-                getCurrentDesktop().addWindow(makePluginWindow(plugin));
+                if (plugin.isOnAllDesktops()) {
+                    makePluginWindow(plugin);
+                } else {
+                    getCurrentDesktop().addWindow(makePluginWindow(plugin));
+                }
             }
             return true;
         } else {
@@ -1876,12 +1880,17 @@ public class XTWMApplication extends TApplication {
                     int menuId = pluginWidgetMenuIds.size() + WIDGET_MENU_ID_MIN;
                     widgetsMenu.addItem(menuId, widget.getMenuMnemonic());
                     pluginWidgetMenuIds.put(menuId, widget.getClass());
-                    if (loadDesktopPager) {
-                        if (widget instanceof DesktopPager) {
-                            // Load the desktop pager automatically.
-                            desktopPager = (DesktopPager) makePluginWidget(widget.getClass());
-                            makePluginWindow(desktopPager);
-                        }
+                    if ((loadDesktopPager == true)
+                        && (widget instanceof DesktopPager)
+                    ) {
+                        // Load the desktop pager automatically.
+                        desktopPager = (DesktopPager) makePluginWidget(widget.getClass());
+                        makePluginWindow(desktopPager);
+                    } else if (widget.isLoadOnStartup()) {
+                        // Load the widget automatically.  Any widgets loaded
+                        // on startup will also be on all desktops.
+                        PluginWidget newWidget = makePluginWidget(widget.getClass());
+                        makePluginWindow(newWidget);
                     }
                 }
             }
@@ -1941,6 +1950,8 @@ public class XTWMApplication extends TApplication {
 
         pluginProps.setProperty("enabled",
             (plugin.isPluginEnabled() ? "true" : "false"));
+        pluginProps.setProperty("loadOnStartup",
+            (plugin.isLoadOnStartup() ? "true" : "false"));
 
         File propsFile = new File(pluginDataDir, pluginName + ".properties");
         try {

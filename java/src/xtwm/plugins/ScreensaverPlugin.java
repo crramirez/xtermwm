@@ -120,6 +120,34 @@ public abstract class ScreensaverPlugin extends PluginWidget {
     // ------------------------------------------------------------------------
 
     /**
+     * See if this plugin will load on startup.
+     *
+     * @return true if this plugin will load on startup
+     */
+    public final boolean isLoadOnStartup() {
+        return false;
+    }
+
+    /**
+     * Set plugin load on startup.
+     *
+     * @param loadOnStartup if true, this plugin will load on startup
+     */
+    public final void setLoadOnStartup(final boolean loadOnStartup) {
+        this.loadOnStartup = false;
+    }
+
+    /**
+     * Whether or not this plugin should be on all desktops when loaded as a
+     * widget at startup.
+     *
+     * @return true if this plugin should be on all desktops
+     */
+    public final boolean isOnAllDesktops() {
+        return false;
+    }
+
+    /**
      * Get the desired width when rendering this plugin.
      *
      * @return the width

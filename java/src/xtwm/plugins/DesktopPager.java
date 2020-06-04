@@ -29,9 +29,12 @@
 package xtwm.plugins;
 
 import java.util.ArrayList;
+import java.util.List;
 import java.util.ResourceBundle;
 
 import jexer.TAction;
+import jexer.TApplication;
+import jexer.TComboBox;
 import jexer.TDesktop;
 import jexer.TField;
 import jexer.TPanel;
@@ -75,6 +78,11 @@ public class DesktopPager extends PluginWidget {
      * For the setting window, the columns field.
      */
     private TField initialColumns = null;
+
+    /**
+     * For the setting window, the startup location.
+     */
+    private TComboBox startupLocation = null;
 
     // ------------------------------------------------------------------------
     // Constants --------------------------------------------------------------
@@ -272,9 +280,24 @@ public class DesktopPager extends PluginWidget {
         try {
             BUTTON_WIDTH = Integer.parseInt(getOption("buttonWidth", "5"));
             BUTTON_HEIGHT = Integer.parseInt(getOption("buttonHeight", "3"));
-            columns = Integer.parseInt(getOption("columns", "1"));
+            columns = Integer.parseInt(getOption("initialColumns", "1"));
         } catch (NumberFormatException e) {
             // SQUASH
+        }
+        if (BUTTON_WIDTH < 3) {
+            BUTTON_WIDTH = 3;
+        }
+        if (BUTTON_WIDTH > 10) {
+            BUTTON_WIDTH = 10;
+        }
+        if (BUTTON_HEIGHT < 3) {
+            BUTTON_HEIGHT = 3;
+        }
+        if (BUTTON_HEIGHT > 10) {
+            BUTTON_HEIGHT = 10;
+        }
+        if (columns < 1) {
+            columns = 1;
         }
         setWidth(BUTTON_WIDTH * columns);
 
@@ -325,6 +348,17 @@ public class DesktopPager extends PluginWidget {
     }
 
     /**
+     * Whether or not this plugin should be on all desktops when loaded as a
+     * widget at startup.
+     *
+     * @return true if this plugin should be on all desktops
+     */
+    @Override
+    public boolean isOnAllDesktops() {
+        return true;
+    }
+
+    /**
      * Get an interface for editing the plugin settings.
      *
      * @param parent parent widget
@@ -370,6 +404,57 @@ public class DesktopPager extends PluginWidget {
                     setOption("buttonHeight", buttonHeight.getText());
                 }
             });
+        parent.addLabel(i18n.getString("buttonHeight"), 3, 4, "ttext", false,
+            new TAction() {
+                public void DO() {
+                    buttonHeight.activate();
+                }
+            });
+
+        parent.addLabel(i18n.getString("initialColumns"), 3, 5, "ttext", false,
+            new TAction() {
+                public void DO() {
+                    initialColumns.activate();
+                }
+            });
+        initialColumns = parent.addField(20, 5, 5, false,
+            getOption("initialColumns"),
+            new TAction() {
+                public void DO() {
+                    setOption("initialColumns", initialColumns.getText());
+                }
+            },
+            new TAction() {
+                public void DO() {
+                    setOption("initialColumns", initialColumns.getText());
+                }
+            });
+
+        parent.addLabel(i18n.getString("startupLocation"), 3, 6,
+            "tcheckbox.inactive", false,
+            new TAction() {
+                public void DO() {
+                    startupLocation.activate();
+                }
+            });
+        List<String> startupLocationOptions = new ArrayList<String>();
+        startupLocationOptions.add("top-right");
+        startupLocationOptions.add("right");
+        startupLocationOptions.add("bottom-right");
+        startupLocationOptions.add("bottom");
+        startupLocationOptions.add("bottom-left");
+        startupLocationOptions.add("left");
+        startupLocationOptions.add("top-left");
+        startupLocationOptions.add("top");
+        startupLocation = parent.addComboBox(20, 6, 20, startupLocationOptions,
+            0, 5,
+            new TAction() {
+                public void DO() {
+                    setOption("startupLocation", startupLocation.getText());
+                }
+            });
+        startupLocation.setText(getOption("startupLocation", "top-right"),
+            false);
 
         return parent;
     }
@@ -456,8 +541,22 @@ public class DesktopPager extends PluginWidget {
                 }
 
                 if (resize.getType() == TResizeEvent.Type.SCREEN) {
-                    setX(getScreen().getWidth() - getWidth());
-                    setY(getApplication().getDesktopTop());
+                    while (getX() + getWidth() > getScreen().getWidth()) {
+                        setX(getX() - 1);
+                    }
+                    while (getY() + getHeight() > getApplication().
+                        getDesktopBottom()
+                    ) {
+                        setY(getY() - 1);
+                    }
+                    if ((getX() + getWidth() < getScreen().getWidth())
+                        || (getY() + getHeight() < getApplication().
+                            getDesktopBottom())
+                    ) {
+                        // The pager is in the middle somewhere, restore it
+                        // to its startup location.
+                        setStartupLocation(this, DesktopPager.this);
+                    }
                     return;
                 }
 
@@ -482,14 +581,56 @@ public class DesktopPager extends PluginWidget {
         window.setCloseBox(false);
         window.setZoomBox(false);
         application.putOnAllDesktops(window);
-        window.setX(application.getScreen().getWidth() - (getWidth() + 2));
         window.addShortcutKeypress(kbCtrlW);
+        setStartupLocation(window, this);
+
         return window;
     }
 
     // ------------------------------------------------------------------------
     // DesktopPager -----------------------------------------------------------
     // ------------------------------------------------------------------------
+
+    /**
+     * Set the location of the desktop pager window to match the startupLocation
+     * option.
+     *
+     * @param window the window containing the desktop pager
+     * @param pager the desktop pager
+     */
+    private void setStartupLocation(final TWindow window,
+        final DesktopPager pager) {
+
+        TApplication app = window.getApplication();
+
+        int startupX = 0;
+        int startupY = app.getDesktopTop();
+        String location = pager.getOption("startupLocation", "top-right");
+        if (location.equals("top-right")
+            || location.equals("right")
+            || location.equals("bottom-right")
+        ) {
+            startupX = app.getScreen().getWidth() - (getWidth() + 2);
+        } else if (location.equals("top")
+            || location.equals("bottom")
+        ) {
+            startupX = app.getScreen().getWidth() - (getWidth() + 2);
+            startupX /= 2;
+        }
+        if (location.equals("bottom-left")
+            || location.equals("bottom")
+            || location.equals("bottom-right")
+        ) {
+            startupY = app.getDesktopBottom() - (getHeight() + 2);
+        } else if (location.equals("left")
+            || location.equals("right")
+        ) {
+            startupY = app.getDesktopBottom() - (getHeight() + 2);
+            startupY /= 2;
+        }
+        window.setX(startupX);
+        window.setY(startupY);
+    }
 
     /**
      * Refresh the buttons to match the number of desktops.

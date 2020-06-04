@@ -67,6 +67,11 @@ public abstract class PluginWidget extends TWidget {
      */
     protected boolean pluginEnabled = true;
 
+    /**
+     * If true, this plugin will load on startup.
+     */
+    protected boolean loadOnStartup = false;
+
     // ------------------------------------------------------------------------
     // Constructors -----------------------------------------------------------
     // ------------------------------------------------------------------------
@@ -207,6 +212,34 @@ public abstract class PluginWidget extends TWidget {
     }
 
     /**
+     * See if this plugin will load on startup.
+     *
+     * @return true if this plugin will load on startup
+     */
+    public boolean isLoadOnStartup() {
+        return loadOnStartup;
+    }
+
+    /**
+     * Set plugin load on startup.
+     *
+     * @param loadOnStartup if true, this plugin will load on startup
+     */
+    public void setLoadOnStartup(final boolean loadOnStartup) {
+        this.loadOnStartup = loadOnStartup;
+    }
+
+    /**
+     * Whether or not this plugin should be on all desktops when loaded as a
+     * widget at startup.
+     *
+     * @return true if this plugin should be on all desktops
+     */
+    public boolean isOnAllDesktops() {
+        return false;
+    }
+
+    /**
      * Initialize the plugin.  Since plugins are required to have a
      * no-argument constructor, this method is called to provide a hook for
      * the plugin to perform initialization.  Subclasses that override
@@ -218,6 +251,7 @@ public abstract class PluginWidget extends TWidget {
     public void initialize(final XTWMApplication app) {
         this.app = app;
         pluginEnabled = getOption("enabled", "true").equals("true");
+        loadOnStartup = getOption("loadOnStartup", "false").equals("true");
     }
 
     /**
