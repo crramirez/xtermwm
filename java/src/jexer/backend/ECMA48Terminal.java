@@ -2997,6 +2997,9 @@ public class ECMA48Terminal extends LogicalScreen
                     boolean reportsJexerImages = false;
                     boolean reportsIterm2Images = false;
                     for (String x: params) {
+                        if (debugToStderr) {
+                            System.err.println("Device Attributes: x = " + x);
+                        }
                         if (x.equals("4")) {
                             // Terminal reports sixel support
                             if (debugToStderr) {
@@ -3798,7 +3801,34 @@ public class ECMA48Terminal extends LogicalScreen
          *
          */
 
-        // File contents can be several image formats.  We will use PNG.
+        // File contents can be several image formats.  We will use JPG.
+        ByteArrayOutputStream jpgOutputStream = new ByteArrayOutputStream(1024);
+
+        // Convert from ARGB to RGB, otherwise the JPG encode will fail.
+        BufferedImage jpgImage = new BufferedImage(image.getWidth(),
+            image.getHeight(), BufferedImage.TYPE_INT_RGB);
+        int [] pixels = new int[image.getWidth() * image.getHeight()];
+        image.getRGB(0, 0, image.getWidth(), image.getHeight(), pixels,
+            0, image.getWidth());
+        jpgImage.setRGB(0, 0, image.getWidth(), image.getHeight(), pixels,
+            0, image.getWidth());
+
+        try {
+            if (!ImageIO.write(jpgImage.getSubimage(0, 0,
+                        jpgImage.getWidth(),
+                        Math.min(jpgImage.getHeight(), fullHeight)),
+                    "JPG", jpgOutputStream)
+            ) {
+                // We failed to render image, bail out.
+                return "";
+            }
+        } catch (IOException e) {
+            // We failed to render image, bail out.
+            return "";
+        }
+
+        // Logic for PNG encode is below.  Leaving it in for reference.
+        /*
         ByteArrayOutputStream pngOutputStream = new ByteArrayOutputStream(1024);
         try {
             if (!ImageIO.write(image.getSubimage(0, 0, image.getWidth(),
@@ -3812,19 +3842,21 @@ public class ECMA48Terminal extends LogicalScreen
             // We failed to render image, bail out.
             return "";
         }
+        */
 
-        sb.append("\033]1337;File=");
-        /*
-        sb.append(String.format("width=$d;height=1;preserveAspectRatio=1;",
-                cells.size()));
-         */
-        /*
-        sb.append(String.format("width=$dpx;height=%dpx;preserveAspectRatio=1;",
+        sb.append("\033]1337;File=name=");
+        sb.append(StringUtils.toBase64("jexer".getBytes()));
+        sb.append(";inline=1;");
+        sb.append(String.format("width=%dpx;height=%dpx;preserveAspectRatio=1:",
                 image.getWidth(), Math.min(image.getHeight(),
                     getTextHeight())));
-         */
-        sb.append("inline=1:");
-        sb.append(StringUtils.toBase64(pngOutputStream.toByteArray()));
+
+        // mintty has a bug where it displays all of the iTerm2 sequence to
+        // screen if it sees CR or LF.  Strip those out.
+        String bytes = StringUtils.toBase64(jpgOutputStream.toByteArray());
+        bytes = bytes.replaceAll("[\n\r]", "");
+        sb.append(bytes);
+
         sb.append("\007");
 
         if (saveInCache) {
