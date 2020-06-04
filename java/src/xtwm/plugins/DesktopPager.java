@@ -31,7 +31,10 @@ package xtwm.plugins;
 import java.util.ArrayList;
 import java.util.ResourceBundle;
 
+import jexer.TAction;
 import jexer.TDesktop;
+import jexer.TField;
+import jexer.TPanel;
 import jexer.TWidget;
 import jexer.TWindow;
 import jexer.bits.CellAttributes;
@@ -58,19 +61,34 @@ public class DesktopPager extends PluginWidget {
      */
     private static ResourceBundle i18n = ResourceBundle.getBundle(DesktopPager.class.getName());
 
+    /**
+     * For the setting window, the button width field.
+     */
+    private TField buttonWidth = null;
+
+    /**
+     * For the setting window, the button height field.
+     */
+    private TField buttonHeight = null;
+
+    /**
+     * For the setting window, the columns field.
+     */
+    private TField initialColumns = null;
+
     // ------------------------------------------------------------------------
     // Constants --------------------------------------------------------------
     // ------------------------------------------------------------------------
 
     /**
-     * The standard width of a button.
+     * The width of a button.
      */
-    private static final int BUTTON_WIDTH = 5;
+    private int BUTTON_WIDTH = 5;
 
     /**
-     * The standard height of a button.
+     * The height of a button.
      */
-    private static final int BUTTON_HEIGHT = 3;
+    private int BUTTON_HEIGHT = 3;
 
     // ------------------------------------------------------------------------
     // Variables --------------------------------------------------------------
@@ -250,6 +268,16 @@ public class DesktopPager extends PluginWidget {
     public void initialize(final XTWMApplication app) {
         super.initialize(app);
 
+        int columns = 1;
+        try {
+            BUTTON_WIDTH = Integer.parseInt(getOption("buttonWidth", "5"));
+            BUTTON_HEIGHT = Integer.parseInt(getOption("buttonHeight", "3"));
+            columns = Integer.parseInt(getOption("columns", "1"));
+        } catch (NumberFormatException e) {
+            // SQUASH
+        }
+        setWidth(BUTTON_WIDTH * columns);
+
         refreshDesktops();
     }
 
@@ -304,8 +332,46 @@ public class DesktopPager extends PluginWidget {
      */
     @Override
     public TWidget getPluginSettingsEditor(final TWidget parent) {
-        // TODO: Expose options like # desktops, button size.
-        return super.getPluginSettingsEditor(parent);
+
+        parent.addLabel(i18n.getString("buttonWidth"), 3, 3, "ttext", false,
+            new TAction() {
+                public void DO() {
+                    buttonWidth.activate();
+                }
+            });
+        buttonWidth = parent.addField(20, 3, 5, false,
+            Integer.toString(BUTTON_WIDTH),
+            new TAction() {
+                public void DO() {
+                    setOption("buttonWidth", buttonWidth.getText());
+                }
+            },
+            new TAction() {
+                public void DO() {
+                    setOption("buttonWidth", buttonWidth.getText());
+                }
+            });
+
+        parent.addLabel(i18n.getString("buttonHeight"), 3, 4, "ttext", false,
+            new TAction() {
+                public void DO() {
+                    buttonHeight.activate();
+                }
+            });
+        buttonHeight = parent.addField(20, 4, 5, false,
+            Integer.toString(BUTTON_HEIGHT),
+            new TAction() {
+                public void DO() {
+                    setOption("buttonHeight", buttonHeight.getText());
+                }
+            },
+            new TAction() {
+                public void DO() {
+                    setOption("buttonHeight", buttonHeight.getText());
+                }
+            });
+
+        return parent;
     }
 
     /**

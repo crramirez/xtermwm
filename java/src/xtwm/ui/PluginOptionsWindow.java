@@ -311,6 +311,16 @@ public class PluginOptionsWindow extends TWindow {
                 (new MnemonicString(plugin.getMenuMnemonic())).getRawLabel()),
             60, 20, TWindow.MODAL) {
 
+            @Override
+            public void draw() {
+                super.draw();
+
+                CellAttributes color = getTheme().getColor("ttext");
+                drawBox(2, 2, getWidth() - 2, getHeight() - 4, color, color,
+                    1, false);
+            }
+
+            @Override
             public void onResize(final TResizeEvent resize) {
                 if (resize.getType() == TResizeEvent.Type.WIDGET) {
                     if (getChildren().size() == 1) {
@@ -326,8 +336,7 @@ public class PluginOptionsWindow extends TWindow {
         };
         app.getCurrentDesktop().addWindow(window);
 
-        TWidget panel = plugin.getPluginSettingsEditor(window);
-        panel.setHeight(window.getHeight() - 6);
+        plugin.getPluginSettingsEditor(window);
 
         window.addButton(i18n.getString("saveButton"),
             window.getWidth() - 40, window.getHeight() - 4,
