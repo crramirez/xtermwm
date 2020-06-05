@@ -340,7 +340,10 @@ public class Main {
                     public void run() {
                         try {
                             ApplicationLayout.loadFromXml(app, layoutFilename);
-                        } catch (IOException e) {
+                        } catch (Exception e) {
+                            if (e instanceof RuntimeException) {
+                                throw (RuntimeException) e;
+                            }
                             new TExceptionDialog(app, e);
                         }
                     }

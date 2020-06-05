@@ -853,7 +853,10 @@ public class XTWMApplication extends TApplication {
                 if (filename != null) {
                     ApplicationLayout.saveToXml(this, filename);
                 }
-            } catch (IOException e) {
+            } catch (Exception e) {
+                if (e instanceof RuntimeException) {
+                    throw (RuntimeException) e;
+                }
                 // Show this exception to the user.
                 new TExceptionDialog(this, e);
             }
@@ -865,7 +868,10 @@ public class XTWMApplication extends TApplication {
                 if (filename != null) {
                     ApplicationLayout.loadFromXml(this, filename);
                 }
-            } catch (IOException e) {
+            } catch (Exception e) {
+                if (e instanceof RuntimeException) {
+                    throw (RuntimeException) e;
+                }
                 // Show this exception to the user.
                 new TExceptionDialog(this, e);
             }
