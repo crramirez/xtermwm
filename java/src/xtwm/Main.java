@@ -40,10 +40,12 @@ import java.net.Socket;
 
 import jexer.TApplication;
 import jexer.TApplication.BackendType;
+import jexer.TExceptionDialog;
 import jexer.backend.ECMA48Backend;
 import jexer.backend.HeadlessBackend;
 import jexer.backend.MultiBackend;
 import jexer.net.TelnetServerSocket;
+import xtwm.ui.ApplicationLayout;
 import xtwm.ui.XTWMApplication;
 
 /**
@@ -60,6 +62,11 @@ public class Main {
      * The headless server socket.
      */
     private static ServerSocket server = null;
+
+    /**
+     * --layout filename argument.
+     */
+    private static String layoutFilename = null;
 
     /**
      * Request a password on a new socket connection.
@@ -196,6 +203,8 @@ public class Main {
         System.err.println();
         System.err.println("   [ --server pid_filename ]");
         System.err.println();
+        System.err.println("   [ --layout filename ]");
+        System.err.println();
         System.err.println("   [ --help | -h | -? ]");
         System.err.println("   [ --version ]");
 
@@ -247,6 +256,7 @@ public class Main {
              * --width width
              * --height height
              * --server pid_filename
+             * --layout layoutFilename
              */
             int width = -1;
             int height = -1;
@@ -303,6 +313,14 @@ public class Main {
                     i++;
                     continue;
                 }
+                if (args[i].equals("--layout")) {
+                    if (i == args.length - 1) {
+                        showUsage();
+                    }
+                    layoutFilename = args[i + 1];
+                    i++;
+                    continue;
+                }
             }
 
             if (pid_filename != null) {
@@ -315,6 +333,18 @@ public class Main {
                 app = new XTWMApplication(backendType, width, height, 20);
             } else {
                 app = new XTWMApplication(backendType);
+            }
+
+            if (layoutFilename != null) {
+                app.invokeLater(new Runnable() {
+                    public void run() {
+                        try {
+                            ApplicationLayout.loadFromXml(app, layoutFilename);
+                        } catch (IOException e) {
+                            new TExceptionDialog(app, e);
+                        }
+                    }
+                });
             }
 
             app.run();

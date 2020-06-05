@@ -32,6 +32,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 import jexer.TApplication;
+import jexer.TSplitPane;
+import jexer.TWidget;
 import jexer.TWindow;
 
 /**
@@ -169,6 +171,22 @@ public class VirtualDesktop {
      */
     public final Desktop getDesktop() {
         return desktop;
+    }
+
+    /**
+     * Obtain the active panel for this desktop.
+     *
+     * @return the panel, or the desktop itself if it has no panels
+     */
+    public TWidget getActivePanel() {
+        // Grab the active child, and then drill up to the next TSplitPane.
+        TWidget widget = desktop.getActiveChild();
+        while ((widget.getParent() != desktop)
+            && !(widget.getParent() instanceof TSplitPane)
+        ) {
+            widget = widget.getParent();
+        }
+        return widget;
     }
 
 }

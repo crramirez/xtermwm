@@ -848,11 +848,27 @@ public class XTWMApplication extends TApplication {
             return true;
 
         case MENU_PANEL_SAVE_LAYOUT:
-            // TODO
+            try {
+                String filename = fileSaveBox(".");
+                if (filename != null) {
+                    ApplicationLayout.saveToXml(this, filename);
+                }
+            } catch (IOException e) {
+                // Show this exception to the user.
+                new TExceptionDialog(this, e);
+            }
             return true;
 
         case MENU_PANEL_LOAD_LAYOUT:
-            // TODO
+            try {
+                String filename = fileOpenBox(".");
+                if (filename != null) {
+                    ApplicationLayout.loadFromXml(this, filename);
+                }
+            } catch (IOException e) {
+                // Show this exception to the user.
+                new TExceptionDialog(this, e);
+            }
             return true;
 
         case MENU_WINDOW_TO_DESKTOP:
@@ -2409,13 +2425,7 @@ public class XTWMApplication extends TApplication {
             return;
         }
 
-        // Grab the active child, and then drill up to the next TSplitPane.
-        TWidget widget = desktop.getActiveChild();
-        while ((widget.getParent() != desktop)
-            && !(widget.getParent() instanceof TSplitPane)
-        ) {
-            widget = widget.getParent();
-        }
+        TWidget widget = getCurrentDesktop().getActivePanel();
         if ((widget instanceof PluginWidget)
             || (widget instanceof TiledTerminal)
         ) {

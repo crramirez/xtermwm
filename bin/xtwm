@@ -51,19 +51,21 @@ display_help ()
     echo "  --width COLUMNS          Size window to at least COLUMNS wide."
     echo "  --height ROWS            Size window to at least ROWS tall."
     echo
-    echo "  -t                       Use existing text terminal"
-    echo "  -w                       Open in a new Swing window"
+    echo "  -t                       Use existing text terminal."
+    echo "  -w                       Open in a new Swing window."
     echo
-    echo "  --tmux                   Open in new detachable tmux session"
+    echo "  --tmux                   Open in new detachable tmux session."
     echo
-    echo "  --gnu-screen             Open in new detachable GNU screen session"
+    echo "  --gnu-screen             Open in new detachable GNU screen session."
     echo
-    echo "  --server                 Open in new detachable sharable session"
-    echo "  --list                   List sessions"
-    echo "  --connect [ SESSION ]    Connect to session"
+    echo "  --server                 Open in new detachable sharable session."
+    echo "  --list                   List sessions."
+    echo "  --connect [ SESSION ]    Connect to session."
     echo
-    echo "  --version                Display version and license information and exit"
-    echo "  -h, --help, -?           Print this usage and exit"
+    echo "  --layout FILENAME        Load window/panel layout from FILENAME."
+    echo
+    echo "  --version                Display version and license information and exit."
+    echo "  -h, --help, -?           Print this usage and exit."
     exit 1;
 }
 
@@ -73,7 +75,7 @@ display_help ()
 
 # Start with bin and shared directories, add $(dirname $0) too.
 JAR_PATHS="bin /usr/share/java /usr/local/share/java $(dirname $(which $0))"
-JAR_PATHS="$JAR_PATHS java/build/jar"
+JAR_PATHS="$JAR_PATHS java/build/jar build/jar"
 
 for i in $JAR_PATHS ; do
     if [ -f $i/xtwm.jar ]; then
@@ -125,6 +127,11 @@ case "$1" in
         # Swing UI, triple-buffered output.  This may take longer to
         # start, but has less screen tearing.
         OPTS="-Djexer.Swing=true -Djexer.Swing.tripleBuffer=true"
+        shift
+        ;;
+    --layout)
+        XTWMARGS="$XTWMARGS $1 $2"
+        shift
         shift
         ;;
     --tmux)

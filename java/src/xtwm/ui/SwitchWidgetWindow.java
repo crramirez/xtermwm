@@ -94,6 +94,9 @@ public class SwitchWidgetWindow extends TWindow {
         widgetsById = new HashMap<Integer, PluginWidget>();
 
         for (PluginWidget widget: application.getWidgets()) {
+            if (!widget.isWidget()) {
+                continue;
+            }
             String name = new MnemonicString(widget.
                 getMenuMnemonic()).getRawLabel();
 
