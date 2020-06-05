@@ -295,7 +295,10 @@ int main(int argc, char **argv) {
              */
             rc = read(child_tty_fd, buffer, sizeof(buffer) - buffer_n);
             if (rc < 0) {
-                if (errno == EIO) {
+                if ((errno == EIO)
+                    || (errno == EBADF)
+                    || (errno == EINVAL)
+                ) {
                     /*
                      * This is EOF.  Exit with the child's status.
                      */
@@ -352,7 +355,10 @@ int main(int argc, char **argv) {
             fprintf(stderr, "read() rc = %d\n", rc);
 #endif
             if (rc < 0) {
-                if (errno == EIO) {
+                if ((errno == EIO)
+                    || (errno == EBADF)
+                    || (errno == EINVAL)
+                ) {
                     /*
                      * This is EOF.  Kill the child with SIGHUP.
                      */
@@ -560,6 +566,17 @@ write_child:
                     fprintf(stderr, "write() n = %d\n", n);
 #endif
                     if (n < 0) {
+                        if ((errno == EIO)
+                            || (errno == EBADF)
+                            || (errno == EINVAL)
+                            || (errno == EPIPE)
+                        ) {
+                            /*
+                             * This is EOF.  Kill the child with SIGHUP.
+                             */
+                            kill(child_pid, SIGHUP);
+                            do_exit(child_pid);
+                        }
                         perror("write()");
                     } else {
                         if (n < buffer_n) {
