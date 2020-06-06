@@ -138,6 +138,9 @@ public class VirtualDesktop {
      * @param window the window to add
      */
     public void addWindow(final TWindow window) {
+        if (window == null) {
+            return;
+        }
         if (!windows.contains(window)) {
             windows.add(window);
         }
@@ -149,6 +152,9 @@ public class VirtualDesktop {
      * @param window the window to remove
      */
     public void removeWindow(final TWindow window) {
+        if (window == null) {
+            return;
+        }
         if (windows.contains(window)) {
             windows.remove(window);
         }
@@ -161,6 +167,9 @@ public class VirtualDesktop {
      * @return true if this window is on this desktop
      */
     public boolean hasWindow(final TWindow window) {
+        if (window == null) {
+            return false;
+        }
         return windows.contains(window);
     }
 

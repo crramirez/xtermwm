@@ -541,14 +541,7 @@ public class DesktopPager extends PluginWidget {
                 }
 
                 if (resize.getType() == TResizeEvent.Type.SCREEN) {
-                    while (getX() + getWidth() > getScreen().getWidth()) {
-                        setX(getX() - 1);
-                    }
-                    while (getY() + getHeight() > getApplication().
-                        getDesktopBottom()
-                    ) {
-                        setY(getY() - 1);
-                    }
+                    ensureOnScreen();
                     if ((getX() + getWidth() < getScreen().getWidth())
                         || (getY() + getHeight() < getApplication().
                             getDesktopBottom())

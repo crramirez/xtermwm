@@ -624,6 +624,20 @@ public class XTWMApplication extends TApplication {
     }
 
     /**
+     * Method that TApplication subclasses can override to handle keystrokes.
+     *
+     * @param keypress keystroke event
+     * @return if true, this event was consumed
+     */
+    protected boolean onKeypress(final TKeypressEvent keypress) {
+        if (keypress.equals(kbShiftF10)) {
+            postEvent(new TCommandEvent(keypress.getBackend(), cmMenu));
+            return true;
+        }
+        return super.onKeypress(keypress);
+    }
+
+    /**
      * Handle menu events.
      *
      * @param menu menu event
@@ -646,10 +660,11 @@ public class XTWMApplication extends TApplication {
             return true;
 
         case MENU_APPLICATION_PROGRAMS_EDITOR:
-            if (getOption("editor.useExternal", "false").equals("true")) {
-                new ExternalEditorWindow(this);
-            } else {
-                new InternalEditorWindow(this);
+            try {
+                getCurrentDesktop().addWindow(openEditor(null));
+            } catch (IOException e) {
+                // Show this exception to the user.
+                new TExceptionDialog(this, e);
             }
             return true;
 
@@ -2381,21 +2396,27 @@ public class XTWMApplication extends TApplication {
      * Convenience function to open a file in an editor window and make it
      * active.
      *
-     * @param filename the file to open
+     * @param filename the file to open, or null for a new file
      * @return the editor window opened, either an ExternalTerminalWindow or
      * a InternalEditorWindow, or null if filename exists and is not a file
      * @throws IOException if a java.io operation throws
      */
     public TWindow openEditor(final String filename) throws IOException {
 
-        File file = new File(filename);
-        if (file.exists() && !file.isFile()) {
-            return null;
+        if (filename != null) {
+            File file = new File(filename);
+            if (file.exists() && !file.isFile()) {
+                return null;
+            }
         }
 
         if (getOption("editor.useExternal", "false").equals("true")) {
             ExternalEditorWindow editor;
-            editor = new ExternalEditorWindow(this, filename);
+            if (filename == null) {
+                editor = new ExternalEditorWindow(this);
+            } else {
+                editor = new ExternalEditorWindow(this, filename);
+            }
             return editor;
         } else {
             return openInternalEditor(filename);
@@ -2406,23 +2427,31 @@ public class XTWMApplication extends TApplication {
      * Convenience function to open a file in an internal editor window and
      * make it active.
      *
-     * @param filename the file to open
+     * @param filename the file to open, or null for a new file
      * @return the editor window, or null if filename exists and is not a
      * file
      * @throws IOException if a java.io operation throws
      */
     public InternalEditorWindow openInternalEditor(final String filename) throws IOException {
 
-        File file = new File(filename);
-        if (file.exists() && !file.isFile()) {
-            return null;
+        if (filename != null) {
+            File file = new File(filename);
+            if (file.exists() && !file.isFile()) {
+                return null;
+            }
         }
 
         InternalEditorWindow editor;
         try {
-            editor = new InternalEditorWindow(this, new File(filename),
-                0, 0, Math.min(82, getScreen().getWidth()),
-                Math.min(25, getDesktopBottom() - getDesktopTop()));
+            if (filename == null) {
+                editor = new InternalEditorWindow(this, null,
+                    0, 0, Math.min(82, getScreen().getWidth()),
+                    Math.min(26, getDesktopBottom() - getDesktopTop()));
+            } else {
+                editor = new InternalEditorWindow(this, new File(filename),
+                    0, 0, Math.min(82, getScreen().getWidth()),
+                    Math.min(26, getDesktopBottom() - getDesktopTop()));
+            }
         } catch (IOException e) {
             // Show this exception to the user.
             new TExceptionDialog(this, e);

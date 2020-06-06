@@ -48,6 +48,7 @@ import org.w3c.dom.ls.DOMImplementationLS;
 import org.w3c.dom.ls.LSOutput;
 import org.w3c.dom.ls.LSSerializer;
 
+import jexer.TExceptionDialog;
 import jexer.TSplitPane;
 import jexer.TTerminalWindow;
 import jexer.TWidget;
@@ -263,7 +264,8 @@ public class ApplicationLayout {
                 for (int j = 0; j < desktopNodes.getLength(); j++) {
                     Node desktop = desktopNodes.item(j);
                     if (desktop instanceof Element) {
-                        addDesktopFromXml(app, doc, (Element) desktop);
+                        addDesktopFromXml(app, scaleX, scaleY, doc,
+                            (Element) desktop);
                     }
                 }
             }
@@ -273,7 +275,8 @@ public class ApplicationLayout {
                 for (int j = 0; j < windowNodes.getLength(); j++) {
                     Node window = windowNodes.item(j);
                     if (window instanceof Element) {
-                        addWindowFromXml(app, doc, (Element) window);
+                        addWindowFromXml(app, scaleX, scaleY, doc,
+                            (Element) window);
                     }
                 }
             }
@@ -285,11 +288,14 @@ public class ApplicationLayout {
      * Add a window to the application based on a DOM element.
      *
      * @param app the application
+     * @param scaleX the ratio of layout width to current application width
+     * @param scaleY the ratio of layout height to current application height
      * @param doc the document
      * @param elem the element
      */
     private static void addWindowFromXml(final XTWMApplication app,
-        final Document doc, final Element elem) {
+        final double scaleX, final double scaleY, final Document doc,
+        final Element elem) {
 
         int x = 0;
         int y = 0;
@@ -372,18 +378,70 @@ public class ApplicationLayout {
                 }
             }
 
-            TTerminalWindow terminal = app.openTerminal(x,
-                y - app.getDesktopTop(), TWindow.RESIZABLE,
+            TTerminalWindow terminal = app.openTerminal(0, 0, TWindow.RESIZABLE,
                 commandLine.toArray(new String[0]));
+            terminal.setX((int) (x * scaleX));
+            terminal.setY((int) (y * scaleY));
             terminal.setWidth(width);
             terminal.setHeight(height);
+            terminal.ensureOnScreen();
             if (desktop > 0) {
-                app.getDesktops().get(desktop).addWindow(terminal);
+                app.getDesktops().get(desktop - 1).addWindow(terminal);
             }
         } else if (type.equals("internalEditor")) {
-
+            String filename = "";
+            InternalEditorWindow editor;
+            NodeList childNodes = elem.getChildNodes();
+            for (int j = 0; j < childNodes.getLength(); j++) {
+                Node childNode = childNodes.item(j);
+                if (childNode.getNodeName().equals("filename")) {
+                    filename = childNode.getTextContent();
+                    break;
+                }
+            }
+            if (filename.length() > 0) {
+                try {
+                    editor = new InternalEditorWindow(app, new File(filename),
+                        0, 0, 82, 25);
+                } catch (IOException e) {
+                    new TExceptionDialog(app, e);
+                    return;
+                }
+            } else {
+                editor = new InternalEditorWindow(app);
+            }
+            editor.setX((int) (x * scaleX));
+            editor.setY((int) (y * scaleY));
+            editor.setWidth(width);
+            editor.setHeight(height);
+            editor.ensureOnScreen();
+            if (desktop > 0) {
+                app.getDesktops().get(desktop - 1).addWindow(editor);
+            }
         } else if (type.equals("externalEditor")) {
-
+            String filename = "";
+            ExternalEditorWindow editor;
+            NodeList childNodes = elem.getChildNodes();
+            for (int j = 0; j < childNodes.getLength(); j++) {
+                Node childNode = childNodes.item(j);
+                if (childNode.getNodeName().equals("filename")) {
+                    filename = childNode.getTextContent();
+                    break;
+                }
+            }
+            if (filename.length() > 0) {
+                editor = new ExternalEditorWindow(app, filename);
+            } else {
+                editor = new ExternalEditorWindow(app);
+            }
+            editor.setX((int) (x * scaleX));
+            editor.setY((int) (y * scaleY));
+            editor.setWidth(width);
+            editor.setHeight(height);
+            editor.ensureOnScreen();
+            if (desktop > 0) {
+                app.getDesktops().get(desktop - 1).addWindow(editor);
+            }
         }
     }
 
@@ -391,11 +449,14 @@ public class ApplicationLayout {
      * Add a desktop panel layout to the application based on a DOM element.
      *
      * @param app the application
+     * @param scaleX the ratio of layout width to current application width
+     * @param scaleY the ratio of layout height to current application height
      * @param doc the document
      * @param elem the element
      */
     private static void addDesktopFromXml(final XTWMApplication app,
-        final Document doc, final Element elem) {
+        final double scaleX, final double scaleY, final Document doc,
+        final Element elem) {
 
         // TODO
     }
@@ -423,7 +484,8 @@ public class ApplicationLayout {
             root.setAttribute("type", "internalEditor");
             InternalEditorWindow editor = (InternalEditorWindow) window;
             Element elem = doc.createElement("filename");
-            elem.appendChild(doc.createTextNode(editor.getFilename()));
+            elem.appendChild(doc.createTextNode(
+                editor.getFilename() == null ? "" : editor.getFilename()));
             root.appendChild(elem);
         } else if (window instanceof TTerminalWindow) {
             root.setAttribute("type", "terminal");

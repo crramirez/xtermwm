@@ -207,7 +207,7 @@ public class InternalEditorWindow extends TScrollableWindow {
      * Public constructor opens a file.
      *
      * @param parent the main application
-     * @param file the file to open
+     * @param file the file to open, or null for a new file
      * @param x column relative to parent
      * @param y row relative to parent
      * @param width width of window
@@ -218,18 +218,22 @@ public class InternalEditorWindow extends TScrollableWindow {
         final int x, final int y, final int width,
         final int height) throws IOException {
 
-        super(parent, file.getName(), x, y, width, height, RESIZABLE);
+        super(parent, (file == null ? "" : file.getName()), x, y,
+            width, height, RESIZABLE);
 
         this.file = file;
-        assert (file != null);
 
         String contents = "";
-        if ((file.exists()) && (file.isFile())) {
+        if ((file != null) && (file.exists()) && (file.isFile())) {
             contents = readFileData(file);
             isNewFile = false;
         } else {
-            setTitle(MessageFormat.format(i18n.getString("newFileTitle"),
-                    file.getName()));
+            if (file == null) {
+                setTitle(i18n.getString("newTextDocument"));
+            } else {
+                setTitle(MessageFormat.format(i18n.getString("newFileTitle"),
+                        file.getName()));
+            }
         }
         editField = new InternalEditorWidget(this, contents, 0, 0,
             getWidth() - 2, getHeight() - 2);
