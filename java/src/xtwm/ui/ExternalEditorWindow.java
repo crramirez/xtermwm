@@ -50,10 +50,14 @@ public class ExternalEditorWindow extends TTerminalWindow {
     // Constants --------------------------------------------------------------
     // ------------------------------------------------------------------------
 
-
     // ------------------------------------------------------------------------
     // Variables --------------------------------------------------------------
     // ------------------------------------------------------------------------
+
+    /**
+     * The file being edited.
+     */
+    private String filename;
 
     // ------------------------------------------------------------------------
     // Constructors -----------------------------------------------------------
@@ -83,6 +87,8 @@ public class ExternalEditorWindow extends TTerminalWindow {
 
         super(parent, 0, 0, getCommandLineOpen(parent, filename));
 
+        this.filename = filename;
+
         setTitle(MessageFormat.format(i18n.getString("editorTitleFilename"),
                 new File(filename).getName()), true);
         newStatusBar(i18n.getString("statusBarRunning"));
@@ -107,6 +113,15 @@ public class ExternalEditorWindow extends TTerminalWindow {
     // ------------------------------------------------------------------------
     // ExternalEditorWindow ---------------------------------------------------
     // ------------------------------------------------------------------------
+
+    /**
+     * Get the filename being edited.
+     *
+     * @return the filename
+     */
+    public String getFilename() {
+        return filename;
+    }
 
     /**
      * Replace $VISUAL and $EDITOR with environment options.

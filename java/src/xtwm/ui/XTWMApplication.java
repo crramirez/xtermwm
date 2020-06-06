@@ -612,6 +612,18 @@ public class XTWMApplication extends TApplication {
     // ------------------------------------------------------------------------
 
     /**
+     * Subclasses can use this hook to cleanup resources.  Called as the last
+     * step of TApplication.run().
+     */
+    public void onExit() {
+        for (VirtualDesktop desktop: desktops) {
+            while (desktop.getDesktop().getChildren().size() > 0) {
+                desktop.getActivePanel().close();
+            }
+        }
+    }
+
+    /**
      * Handle menu events.
      *
      * @param menu menu event

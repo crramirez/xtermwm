@@ -594,6 +594,19 @@ public class InternalEditorWindow extends TScrollableWindow {
     }
 
     /**
+     * Get the filename being edited.
+     *
+     * @return the filename, or null if this is a new file that has never
+     * been saved
+     */
+    public String getFilename() {
+        if (file == null) {
+            return null;
+        }
+        return file.toString();
+    }
+
+    /**
      * Ask to save the file if it is dirty.  If the user accepts, save the
      * file.
      */
