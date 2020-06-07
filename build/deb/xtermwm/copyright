@@ -1,5 +1,5 @@
 This package was debianized by Kevin Lamonte <kevin.lamonte@gmail.com> on
-Sat, 16 Nov 2020 12:00:00 -0600.
+Sun, 7 Jun 2020 12:00:00 -0600.
 
 It was downloaded from https://xtermwm.sourceforge.io
 
@@ -15,5 +15,5 @@ License:
 
     Available to all under the MIT license.
 
-The Debian packaging was written 2019 by Kevin Lamonte
+The Debian packaging was written 2020 by Kevin Lamonte
 <kevin.lamonte@gmail.com> and has been dedicated to the public domain.

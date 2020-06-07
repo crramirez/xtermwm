@@ -1,4 +1,4 @@
-.TH xtwm 1 "January 1, 2021"
+.TH xtwm 1 "June 7, 2020"
 
 .SH NAME
 xtwm \- Xterm Window Manager
@@ -6,7 +6,24 @@ xtwm \- Xterm Window Manager
 .SH SYNOPSIS
 .ll +8
 .B xtwm
+.RI "[ \-\-width COLUMNS ]"
+.br
+.in 12
+.RI "[ \-\-height ROWS ]"
+.br
 .RI "[ \-t | \-w ]"
+.br
+.RI "[ \-\-tmux ]"
+.br
+.RI "[ \-\-gnu\-screen ]"
+.br
+.RI "[ \-\-server ]"
+.br
+.RI "[ \-\-list ]"
+.br
+.RI "[ \-\-connect [ SERVER ] ]"
+.br
+.RI "[ \-\-layout FILENAME ]"
 .br
 .ll -8
 
@@ -21,27 +38,64 @@ xtwm \- Xterm Window Manager
 (XtermWM) is a desktop environment / window manager for the console.
 XtermWM's major features include:
 
-  * The ability to run in both Xterm-like environments (Unix command
-    line shells or over ssh) and as a Swing component for
-    X11/Windows/Mac, with the same behavior and look-and-feel.
+  * Tiled and windowed terminal shells with good Xterm/VT100 support,
+    including mouse.  Terminal shells will also resize correctly on
+    Linux/Mac due to the included 'ptypipe' utility.  (XtermWM can
+    even be run inside itself with full feature support.)
+
+  * Virtual desktops and desktop pager widget.
+
+  * Cascading/overlapping/floating windows with mouse-draggable move
+    and resizing.
+
+  * Tiled/paned windows with mouse selection and divider
+    mouse-draggable resizing.
+
+  * A plugin system for adding custom widgets, windows, screensavers,
+    and other functions.
+
+  * The ability to run in Xterm-like environments (Unix command line
+    shells or over ssh) and as a Swing component for X11/Windows/Mac,
+    with the same behavior and look-and-feel.  The mouse can also work
+    for the raw Linux console when GPM is installed and XtermWM is run
+    inside 'LCxterm'.
 
   * Image support, for both Swing and Xterm.  When running under
     Xterm, images are rendered as sixel graphic sequences.
 
-  * A text terminal window / shell with good Xterm/VT100 support,
-    including mouse.  Terminal windows will also resize correctly if
-    using 'ptypipe'.
-
-  * Support for the raw Linux console.  GPM mouse support will work
-    when run inside 'lcxterm' or 'qodem'.
+  * Shared sessions.  See additional notes below.
 
 .SH OPTIONS
 .TP
-.B \-t
+.B \-\-width COLUMNS
+Size window to at least COLUMNS wide.
+.TP
+.B \-\-height ROWS
+Size window to at least ROWS wide.
+.TP
+.BR \-\-tmux
+Open in a new detachable 'tmux' session.
+.TP
+.BR \-\-gnu\-screen
+Open in a new detachable 'screen' session.
+.TP
+.BR \-\-server
+Open in a new detachable shareable session.
+.TP
+.BR \-\-list
+List sessions.
+.TP
+.B \-\-connect [ SESSION ]
+Connect to session.
+.TP
+.BR \-t
 Use existing text-based terminal, such as Xterm or Linux console.
 .TP
-.B \-w
+.BR \-w
 Open in a new Swing window.
+.TP
+.B \-\-layout FILENAME
+Load window/panel layout from FILENAME.
 .TP
 .BR \-\-version
 Display program version and license information.
@@ -72,13 +126,56 @@ XtermWM requires the following characteristics of its shell/terminal:
 See https://gitlab.com/klamonte/jexer/wikis/terminals for a list of
 terminals tested against XtermWM's text backend.
 
+.SH SHARED SESSIONS
+
+A shared session XtermWM can be created by passing the \-\-server flag
+to xtwm.  The following happens:
+
+1. The XtermWM application is loaded, and spawns a telnet protocol
+   server listening localhost.  The port number used will be written
+   to ~/.xtwm/xtwm.{number} .
+
+2. Within 0.1 seconds of the xtwm.{number} file appearing, 'telnet \-a
+   \-e none' is spawned to connect to the server.
+
+3. After the first connection to the server, additional connections
+   will be accepted but each connection will be marked read\-only.
+   These connections can be made read\-write via the 'Application |
+   Clients...' dialog.
+
+4. On the next server connection, the new client is prompted for a
+   password.  The password must match the value of xtwm.serverPassword
+   in ~/.xtwm/xtwm.properties.  If the password is incorrect, the
+   connection is closed, otherwise it continues to step #5.
+
+5. If all connections are read\-only, or if all of the existing
+   read\-write connections have been idle more than 10 minutes, then
+   the new connection from step #4 will be read\-write.  This permits
+   recovery of a shared session that disconnected unexpectedly.
+
+The telnet server design introduces the following security concerns:
+
+* Any local user can connect to the server.  The telnet commands used
+  by the \-\-server and \-\-connect flags pass the username ('telnet
+  \-a') which can be seen in the 'Application | Clients...' menu.
+
+* There is a 0.1 second window in which the first connection to the
+  server could come from another local user, and that user would have
+  a read\-write connection enabling them to open a shell and do
+  terrible things.
+
+* If the XtermWM code is modified such that it listens on all
+  interfaces, or the network is misconfigured such that localhost is
+  remotely accessible, then when XtermWM is running as a shared server
+  it could also be a backdoor.
+
 .SH FILES
 .TP
 .B $HOME/.xtwm/xtwm.properties
 XtermWM options/configuration file.  Inline comments describe the options.
 
 .SH SEE ALSO
-.BR "ptypipe"(1), " lcxterm"(1), " qodem"(1)
+.BR "ptypipe"(1), " lcxterm"(1), " tmux"(1), " screen"(1)
 
 .SH BUGS
 .PP
