@@ -261,11 +261,15 @@ public class ApplicationLayout {
 
             if (name.equals("desktops")) {
                 NodeList desktopNodes = node.getChildNodes();
+                int desktopIdx = 0;
                 for (int j = 0; j < desktopNodes.getLength(); j++) {
                     Node desktop = desktopNodes.item(j);
-                    if (desktop instanceof Element) {
-                        addDesktopFromXml(app, scaleX, scaleY, doc,
+                    if ((desktop instanceof Element)
+                        && (desktop.getNodeName().equals("desktop"))
+                    ) {
+                        addDesktopFromXml(desktopIdx, app, scaleX, scaleY, doc,
                             (Element) desktop);
+                        desktopIdx++;
                     }
                 }
             }
@@ -448,17 +452,157 @@ public class ApplicationLayout {
     /**
      * Add a desktop panel layout to the application based on a DOM element.
      *
+     * @param idx the desktop number
      * @param app the application
      * @param scaleX the ratio of layout width to current application width
      * @param scaleY the ratio of layout height to current application height
      * @param doc the document
      * @param elem the element
      */
-    private static void addDesktopFromXml(final XTWMApplication app,
-        final double scaleX, final double scaleY, final Document doc,
-        final Element elem) {
+    private static void addDesktopFromXml(final int idx,
+        final XTWMApplication app, final double scaleX,
+        final double scaleY, final Document doc, final Element elem) {
 
-        // TODO
+        // System.err.println("addDesktop: " + idx);
+
+        if ((idx < 0) || (idx > app.getDesktops().size() - 1)) {
+            return;
+        }
+
+        Desktop desktop = app.getDesktops().get(idx).getDesktop();
+        NodeList childNodes = elem.getChildNodes();
+        for (int j = 0; j < childNodes.getLength(); j++) {
+            Node childNode = childNodes.item(j);
+            if ((childNode instanceof Element)
+                && (childNode.getNodeName().equals("splitPane")
+                    || childNode.getNodeName().equals("terminal")
+                    || childNode.getNodeName().equals("plugin"))
+            ) {
+                TWidget widget = getWidgetFromXml(app, desktop, scaleX, scaleY,
+                    doc, (Element) childNode);
+                if (widget != null) {
+                    // System.err.println("addDesktop(): widget = " + widget.toPrettyString());
+
+                    if (widget instanceof TSplitPane) {
+                        TSplitPane split = (TSplitPane) widget;
+                        if (split.isVertical()) {
+                            split.setSplit((int) (split.getSplit() * scaleX));
+                        } else {
+                            split.setSplit((int) (split.getSplit() * scaleY));
+                        }
+                    }
+                    // Only load the first widget, bail out now.
+                    return;
+                }
+            }
+        }
+    }
+
+    /**
+     * Create a desktop panel widget based on a DOM element.
+     *
+     * @param app the application
+     * @param parent the parent of the widget
+     * @param scaleX the ratio of layout width to current application width
+     * @param scaleY the ratio of layout height to current application height
+     * @param doc the document
+     * @param elem the element
+     * @return the widget
+     */
+    @SuppressWarnings({"unchecked"})
+    private static TWidget getWidgetFromXml(final XTWMApplication app,
+        final TWidget parent, final double scaleX, final double scaleY,
+        final Document doc, final Element elem) {
+
+        // System.err.println("getWidgetFromXml(): elem = " + elem);
+
+        String type = elem.getNodeName();
+        if (type.equals("terminal")) {
+            TiledTerminal terminal = new TiledTerminal(parent);
+            return terminal;
+        }
+        if (type.equals("plugin")) {
+            String className = elem.getAttribute("class");
+            try {
+                Class<? extends PluginWidget> pluginClass;
+                ClassLoader loader = Thread.currentThread().
+                        getContextClassLoader();
+                pluginClass = (Class<? extends PluginWidget>) loader.loadClass(className);
+                PluginWidget plugin = app.makePluginWidget(pluginClass);
+                if (plugin != null) {
+                    plugin.setParent(parent, false);
+                }
+                return plugin;
+            } catch (ClassNotFoundException e) {
+                return null;
+            }
+        }
+
+        if (type.equals("splitPane")) {
+            int split = Math.min(parent.getWidth(), parent.getHeight()) / 2;
+            boolean vertical = true;
+            String splitType = elem.getAttribute("type");
+            if (splitType.equals("vertical")) {
+                vertical = true;
+            } else if (splitType.equals("horizontal")) {
+                vertical = false;
+            } else {
+                return null;
+            }
+            String splitString = elem.getAttribute("split");
+            try {
+                split = Integer.parseInt(splitString);
+            } catch (NumberFormatException e) {
+                return null;
+            }
+            TSplitPane splitPane = new TSplitPane(parent, 0, 0,
+                parent.getWidth(), parent.getHeight(), vertical);
+
+            TWidget widget1 = null;
+            TWidget widget2 = null;
+            TWidget widget = null;
+            NodeList childNodes = elem.getChildNodes();
+            int widgetIdx = 0;
+            for (int j = 0; j < childNodes.getLength(); j++) {
+                Node childNode = childNodes.item(j);
+                if ((childNode instanceof Element)
+                    && (childNode.getNodeName().equals("splitPane")
+                        || childNode.getNodeName().equals("terminal")
+                        || childNode.getNodeName().equals("plugin"))
+                ) {
+                    widget = getWidgetFromXml(app, parent, scaleX, scaleY,
+                        doc, (Element) childNode);
+                    if (widget instanceof TSplitPane) {
+                        TSplitPane subSplit = (TSplitPane) widget;
+                        if (subSplit.isVertical()) {
+                            subSplit.setSplit((int) (subSplit.getSplit() * scaleX));
+                        } else {
+                            subSplit.setSplit((int) (subSplit.getSplit() * scaleY));
+                        }
+                    }
+                    if (widgetIdx == 0) {
+                        widget1 = widget;
+                    } else if (widgetIdx == 1) {
+                        widget2 = widget;
+                    }
+                    widgetIdx++;
+                    if (widgetIdx >= 2) {
+                        break;
+                    }
+                }
+            }
+            if (vertical) {
+                splitPane.setLeft(widget1);
+                splitPane.setRight(widget2);
+            } else {
+                splitPane.setTop(widget1);
+                splitPane.setBottom(widget2);
+            }
+            return splitPane;
+        }
+
+        // Not found.
+        return null;
     }
 
     /**
@@ -584,7 +728,7 @@ public class ApplicationLayout {
         } else {
             // No other types supported.
             root = doc.createElement("unknown");
-            System.err.println("Unknown: " + widget.toPrettyString());
+            // System.err.println("Unknown: " + widget.toPrettyString());
         }
         return root;
     }

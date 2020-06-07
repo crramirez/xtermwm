@@ -90,6 +90,13 @@ public class Desktop extends TDesktop {
     // ------------------------------------------------------------------------
 
     /**
+     * Close all open widgets on this desktop.
+     */
+    public void onClose() {
+        super.onClose();
+    }
+
+    /**
      * Handle mouse press events.
      *
      * @param mouse mouse button press event

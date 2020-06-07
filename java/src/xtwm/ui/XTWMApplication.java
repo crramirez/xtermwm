@@ -617,9 +617,7 @@ public class XTWMApplication extends TApplication {
      */
     public void onExit() {
         for (VirtualDesktop desktop: desktops) {
-            while (desktop.getDesktop().getChildren().size() > 0) {
-                desktop.getActivePanel().close();
-            }
+            desktop.getDesktop().onClose();
         }
     }
 
