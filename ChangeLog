@@ -1,5 +1,11 @@
-xtwm (0.0.1) unstable; urgency=low
+xtwm (0.3.0) unstable; urgency=low
+
+  * Bug fixes.
+
+ -- Kevin Lamonte <lamonte@users.sourceforge.net>  Sun, 7 Jun 2020 18:50:00 -0500
+
+xtwm (0.2.0) unstable; urgency=low
 
   * Initial release.
 
- -- Kevin Lamonte <lamonte@users.sourceforge.net>  Fri, 1 Jan 2021 18:50:00 -0500
+ -- Kevin Lamonte <lamonte@users.sourceforge.net>  Sun, 7 Jun 2020 18:50:00 -0500

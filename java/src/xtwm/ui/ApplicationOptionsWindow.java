@@ -38,6 +38,7 @@ import jexer.TButton;
 import jexer.TCheckBox;
 import jexer.TComboBox;
 import jexer.TField;
+import jexer.TPasswordField;
 import jexer.TWindow;
 import jexer.bits.CellAttributes;
 import jexer.event.TKeypressEvent;
@@ -152,7 +153,7 @@ public class ApplicationOptionsWindow extends TWindow {
     /**
      * The password required to unlock the screensaver.
      */
-    private TField lockScreenPassword = null;
+    private TPasswordField lockScreenPassword = null;
 
     /**
      * The selected system screensaver.
@@ -334,7 +335,7 @@ public class ApplicationOptionsWindow extends TWindow {
                     lockScreenPassword.activate();
                 }
             });
-        lockScreenPassword = addField(61, 12, 10, false,
+        lockScreenPassword = addPasswordField(61, 12, 10, false,
             app.getOption("xtwm.lockScreenPassword"));
 
         addLabel(i18n.getString("screensaverList"), 39, 13,
