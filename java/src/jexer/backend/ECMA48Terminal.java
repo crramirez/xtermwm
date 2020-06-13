@@ -1871,16 +1871,10 @@ public class ECMA48Terminal extends LogicalScreen
         int textEnd = 0;
         for (int x = 0; x < width; x++) {
             Cell lCell = logical[x][y];
-            if (lCell.isImage()) {
-                // TODO: Figure out why image cells followed by blanks to the
-                // edge of the screen lead to showing only the first column
-                // of the image.  For now, just force any image row to draw
-                // the entire row.
-                textEnd = width;
-                break;
-            }
             if (!lCell.isBlank()) {
                 textEnd = x;
+            } else {
+                assert (!lCell.isImage());
             }
         }
         // Push textEnd to first column beyond the text area
@@ -1900,7 +1894,8 @@ public class ECMA48Terminal extends LogicalScreen
 
                 if (debugToStderr && reallyDebug) {
                     System.err.printf("\n--\n");
-                    System.err.printf(" Y: %d X: %d\n", y, x);
+                    System.err.printf(" Y: %d X: %d lastX %d textEnd %d\n",
+                        y, x, lastX, textEnd);
                     System.err.printf("   lCell: %s\n", lCell);
                     System.err.printf("   pCell: %s\n", pCell);
                     System.err.printf("    ====    \n");
@@ -1913,8 +1908,14 @@ public class ECMA48Terminal extends LogicalScreen
 
                 // Place the cell
                 if ((lastX != (x - 1)) || (lastX == -1)) {
-                    // Advancing at least one cell, or the first gotoXY
-                    sb.append(gotoXY(x, y));
+                    if (!lCell.isImage()) {
+                        if (debugToStderr && reallyDebug) {
+                            System.err.println("1 gotoXY() " + x + " " + y +
+                                " lastX " + lastX);
+                        }
+                        // Advancing at least one cell, or the first gotoXY
+                        sb.append(gotoXY(x, y));
+                    }
                 }
 
                 assert (lastAttr != null);
@@ -1929,6 +1930,12 @@ public class ECMA48Terminal extends LogicalScreen
                     }
 
                     // Clear remaining line
+                    if (debugToStderr && reallyDebug) {
+                        System.err.println("2 gotoXY() " + x + " " + y +
+                            " lastX " + lastX);
+                        System.err.println("X: " + x + " clearRemainingLine()");
+                    }
+                    sb.append(gotoXY(x, y));
                     sb.append(clearRemainingLine());
                     lastAttr.reset();
                     return;
@@ -1963,8 +1970,13 @@ public class ECMA48Terminal extends LogicalScreen
 
                 if (hasImage) {
                     hasImage = false;
+                    if (debugToStderr && reallyDebug) {
+                        System.err.println("3 gotoXY() " + x + " " + y +
+                            " lastX " + lastX);
+                    }
                     sb.append(gotoXY(x, y));
                 }
+                assert (!lCell.isImage());
 
                 // Now emit only the modified attributes
                 if ((lCell.getForeColor() != lastAttr.getForeColor())
@@ -2749,7 +2761,9 @@ public class ECMA48Terminal extends LogicalScreen
         boolean alt = false;
         boolean shift = false;
 
-        // System.err.printf("state: %s ch %c\r\n", state, ch);
+        if (debugToStderr && false) {
+            System.err.printf("state: %s ch %c\r\n", state, ch);
+        }
 
         switch (state) {
         case GROUND:
@@ -3026,6 +3040,54 @@ public class ECMA48Terminal extends LogicalScreen
                     events.add(new TKeypressEvent(backend, kbEnd, alt, ctrl, shift));
                     resetParser();
                     return;
+                case 'S':
+                    // Report graphics property.
+                    if (decPrivateModeFlag == false) {
+                        break;
+                    }
+
+                    if ((params.size() > 2)
+                        && (!params.get(1).equals("0"))
+                    ) {
+                        if (debugToStderr) {
+                            System.err.printf("Graphics query error: " +
+                                params);
+                        }
+                        break;
+                    }
+
+                    if (params.size() > 2) {
+                        if (debugToStderr) {
+                            System.err.printf("Graphics result: " +
+                                "status %s Ps %s Pv %s\n", params.get(0),
+                                params.get(1), params.get(2));
+                        }
+                        if (params.get(0).equals("1")) {
+                            int registers = sixelPaletteSize;
+                            try {
+                                registers = Integer.parseInt(params.get(2));
+                                if (debugToStderr) {
+                                    System.err.println("Terminal reports " +
+                                        registers + " sixel colors, current " +
+                                        "size = " + sixelPaletteSize);
+                                }
+                                if ((registers >= 2)
+                                    && (registers < sixelPaletteSize)
+                                ) {
+                                    setSixelPaletteSize(Integer.highestOneBit(registers));
+                                    if (debugToStderr) {
+                                        System.err.println("New palette size: "
+                                            + sixelPaletteSize);
+                                    }
+                                }
+                            } catch (NumberFormatException e) {
+                                if (debugToStderr) {
+                                    e.printStackTrace();
+                                }
+                            }
+                        }
+                    }
+                    break;
                 case 'c':
                     // Device Attributes
                     if (decPrivateModeFlag == false) {
@@ -3052,7 +3114,7 @@ public class ECMA48Terminal extends LogicalScreen
                             }
                             reportsJexerImages = true;
                         }
-                        if (true) {
+                        if (iterm2Images) {
                             /*
                              * This check left in place so that I have a hook
                              * for later.  At the moment there is no way to
@@ -3178,9 +3240,9 @@ public class ECMA48Terminal extends LogicalScreen
      */
     private String xtermSetSixelSettings() {
         if (sixelSharedPalette == true) {
-            return "\033[?80h\033[?1070l";
+            return "\033[?80h\033[?1070l\033[?1;1;0S";
         } else {
-            return "\033[?80h\033[?1070h";
+            return "\033[?80h\033[?1070h\033[?1;1;0S";
         }
     }
 
@@ -3460,6 +3522,26 @@ public class ECMA48Terminal extends LogicalScreen
                 return sb.toString();
             }
             // System.err.println("CACHE MISS");
+        }
+
+        // If the final image would be larger than 1000 pixels wide, break it
+        // up into smaller images.
+        if (cells.size() * getTextWidth() > 1000) {
+            StringBuilder chunkSb = new StringBuilder();
+            int chunkStart = 0;
+            int chunkSize = 1000 / getTextWidth();
+            int remaining = cells.size();
+            int chunkX = x;
+            ArrayList<Cell> chunk;
+            while (remaining > 0) {
+                chunk = new ArrayList<Cell>(cells.subList(chunkStart,
+                        chunkStart + Math.min(chunkSize, remaining)));
+                chunkSb.append(toSixel(chunkX, y, chunk));
+                chunkStart += chunkSize;
+                remaining -= chunkSize;
+                chunkX += chunkSize;
+            }
+            return chunkSb.toString();
         }
 
         BufferedImage image = cellsToImage(cells);

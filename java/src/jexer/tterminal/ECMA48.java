@@ -5093,6 +5093,7 @@ public class ECMA48 implements Runnable {
             oscEnd = true;
         }
         if ((xtermChar == '\\')
+            && (collectBuffer.length() > 0)
             && (collectBuffer.charAt(collectBuffer.length() - 1) == '\033')
         ) {
             oscEnd = true;
@@ -5188,6 +5189,7 @@ public class ECMA48 implements Runnable {
         boolean pmEnd = false;
 
         if ((pmChar == '\\')
+            && (collectBuffer.length() > 0)
             && (collectBuffer.charAt(collectBuffer.length() - 1) == '\033')
         ) {
             pmEnd = true;
@@ -5267,7 +5269,9 @@ public class ECMA48 implements Runnable {
         switch (item) {
         case 1:
             if (action == 1) {
-                // Report number of color registers.
+                // Report number of color registers.  Though we can support
+                // effectively unlimited colors, report the same max as stock
+                // xterm (MAX_COLOR_REGISTERS).
                 writeRemote(String.format("\033[?%d;%d;%dS", item, 0, 1024));
                 return;
             }
@@ -6950,12 +6954,14 @@ public class ECMA48 implements Runnable {
                 case 'p':
                     if (((type == DeviceType.VT220)
                             || (type == DeviceType.XTERM))
+                        && (collectBuffer.length() > 0)
                         && (collectBuffer.charAt(collectBuffer.length() - 1) == '\"')
                     ) {
                         // DECSCL - compatibility level
                         decscl();
                     }
                     if ((type == DeviceType.XTERM)
+                        && (collectBuffer.length() > 0)
                         && (collectBuffer.charAt(collectBuffer.length() - 1) == '!')
                     ) {
                         // DECSTR - Soft terminal reset
@@ -6965,6 +6971,7 @@ public class ECMA48 implements Runnable {
                 case 'q':
                     if (((type == DeviceType.VT220)
                             || (type == DeviceType.XTERM))
+                        && (collectBuffer.length() > 0)
                         && (collectBuffer.charAt(collectBuffer.length() - 1) == '\"')
                     ) {
                         // DECSCA
@@ -7025,6 +7032,7 @@ public class ECMA48 implements Runnable {
             }
             if (ch == 0x5C) {
                 if ((collectBuffer.length() > 0)
+                    && (collectBuffer.length() > 0)
                     && (collectBuffer.charAt(collectBuffer.length() - 1) == 0x1B)
                 ) {
                     toGround();
@@ -7083,6 +7091,7 @@ public class ECMA48 implements Runnable {
             }
             if (ch == 0x5C) {
                 if ((collectBuffer.length() > 0)
+                    && (collectBuffer.length() > 0)
                     && (collectBuffer.charAt(collectBuffer.length() - 1) == 0x1B)
                 ) {
                     toGround();
@@ -7115,6 +7124,7 @@ public class ECMA48 implements Runnable {
             }
             if (ch == 0x5C) {
                 if ((collectBuffer.length() > 0)
+                    && (collectBuffer.length() > 0)
                     && (collectBuffer.charAt(collectBuffer.length() - 1) == 0x1B)
                 ) {
                     toGround();
@@ -7167,6 +7177,7 @@ public class ECMA48 implements Runnable {
             }
             if (ch == 0x5C) {
                 if ((collectBuffer.length() > 0)
+                    && (collectBuffer.length() > 0)
                     && (collectBuffer.charAt(collectBuffer.length() - 1) == 0x1B)
                 ) {
                     toGround();
@@ -7220,6 +7231,7 @@ public class ECMA48 implements Runnable {
             }
             if (ch == 0x5C) {
                 if ((collectBuffer.length() > 0)
+                    && (collectBuffer.length() > 0)
                     && (collectBuffer.charAt(collectBuffer.length() - 1) == 0x1B)
                 ) {
                     parseSixel();
