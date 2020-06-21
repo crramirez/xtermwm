@@ -2395,8 +2395,8 @@ public class XTWMApplication extends TApplication {
      * active.
      *
      * @param filename the file to open, or null for a new file
-     * @return the editor window opened, either an ExternalTerminalWindow or
-     * a InternalEditorWindow, or null if filename exists and is not a file
+     * @return the editor window opened, either an ExternalEditorWindow or an
+     * InternalEditorWindow, or null if filename exists and is not a file
      * @throws IOException if a java.io operation throws
      */
     public TWindow openEditor(final String filename) throws IOException {
