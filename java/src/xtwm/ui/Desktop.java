@@ -29,6 +29,7 @@
 package xtwm.ui;
 
 import java.util.LinkedList;
+import java.util.ResourceBundle;
 
 import jexer.TApplication;
 import jexer.TDesktop;
@@ -37,12 +38,18 @@ import jexer.TWidget;
 import jexer.bits.CellAttributes;
 import jexer.bits.GraphicsChars;
 import jexer.event.TMouseEvent;
+import static jexer.TCommand.*;
 import static jexer.TKeypress.*;
 
 /**
  * Desktop is a desktop background and tiled panels manager.
  */
 public class Desktop extends TDesktop {
+
+    /**
+     * Translated strings.
+     */
+    private static final ResourceBundle i18n = ResourceBundle.getBundle(Desktop.class.getName());
 
     // ------------------------------------------------------------------------
     // Constants --------------------------------------------------------------
@@ -83,6 +90,12 @@ public class Desktop extends TDesktop {
      */
     public Desktop(final TApplication parent) {
         super(parent);
+
+        statusBar = newStatusBar(i18n.getString("statusBar"));
+        statusBar.addShortcutKeypress(kbF1, cmHelp,
+            i18n.getString("statusBarHelp"));
+        statusBar.addShortcutKeypress(kbShiftF10, cmMenu,
+            i18n.getString("statusBarMenu"));
     }
 
     // ------------------------------------------------------------------------

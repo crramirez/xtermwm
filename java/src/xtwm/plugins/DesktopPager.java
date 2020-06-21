@@ -38,6 +38,7 @@ import jexer.TComboBox;
 import jexer.TDesktop;
 import jexer.TField;
 import jexer.TPanel;
+import jexer.TStatusBar;
 import jexer.TWidget;
 import jexer.TWindow;
 import jexer.bits.CellAttributes;
@@ -48,6 +49,7 @@ import jexer.event.TMenuEvent;
 import jexer.event.TMouseEvent;
 import jexer.event.TResizeEvent;
 import jexer.menu.TMenu;
+import static jexer.TCommand.*;
 import static jexer.TKeypress.*;
 
 import xtwm.ui.VirtualDesktop;
@@ -570,6 +572,12 @@ public class DesktopPager extends PluginWidget {
                 }
             }
         };
+
+        TStatusBar statusBar = window.newStatusBar(i18n.getString("statusBar"));
+        statusBar.addShortcutKeypress(kbF1, cmHelp,
+            i18n.getString("statusBarHelp"));
+        statusBar.addShortcutKeypress(kbShiftF10, cmMenu,
+            i18n.getString("statusBarMenu"));
 
         window.setCloseBox(false);
         window.setZoomBox(false);
