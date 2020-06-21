@@ -286,6 +286,13 @@ int main(int argc, char **argv) {
          */
         rc = select(select_fd_max, &readfds, &writefds, &exceptfds, NULL);
 
+        if (rc <= 0) {
+            /*
+             * Something went wrong, just bail out.
+             */
+            do_exit(child_pid);
+        }
+
         /*
          * See if the child (TTY side) has data, and if so post it to stdout.
          */
@@ -368,8 +375,10 @@ int main(int argc, char **argv) {
                 perror("read()");
             } else if (rc == 0) {
                 /*
-                 * We have run out of stdin.  Don't care!
+                 * We have run out of stdin.  Kill the child with SIGHUP.
                  */
+                kill(child_pid, SIGHUP);
+                do_exit(child_pid);
             } else {
                 /*
                  * We have something in buffer to emit to the child.

@@ -185,7 +185,7 @@ public class EditorOptionsWindow extends TWindow {
 
         // External editor
         addLabel(i18n.getString("externalEditorNew"), 5, 17, "ttext", false);
-        externalEditorNew = addField(22, 16, 25, false,
+        externalEditorNew = addField(22, 17, 25, false,
             app.getOption("editor.external.new"));
         addLabel(i18n.getString("externalEditorOpen"), 5, 18, "ttext", false);
         externalEditorOpen = addField(22, 18, 25, false,

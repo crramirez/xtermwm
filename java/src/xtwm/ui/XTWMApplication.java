@@ -1085,7 +1085,7 @@ public class XTWMApplication extends TApplication {
         subPrograms.addItem(MENU_APPLICATION_PROGRAMS_SHELL,
             i18n.getString("applicationProgramsShell"), kbCtrlS);
         subPrograms.addItem(MENU_APPLICATION_PROGRAMS_EDITOR,
-            i18n.getString("applicationProgramsEditor"));
+            i18n.getString("applicationProgramsEditor"), kbCtrlE);
         programsMenu = subPrograms;
 
         widgetsMenu = applicationMenu.addSubMenu(i18n.
