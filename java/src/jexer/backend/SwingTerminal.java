@@ -675,7 +675,7 @@ public class SwingTerminal extends LogicalScreen
             SwingComponent.tripleBuffer = false;
         }
 
-        mouseStyle = System.getProperty("jexer.Swing.mouseStyle", "default");
+        setMouseStyle(System.getProperty("jexer.Swing.mouseStyle", "default"));
 
         // Set custom colors
         setCustomSystemColors();
@@ -711,7 +711,9 @@ public class SwingTerminal extends LogicalScreen
      */
     public void setMouseStyle(final String style) {
         this.mouseStyle = style;
-        swing.setMouseStyle(mouseStyle);
+        if (swing != null) {
+            swing.setMouseStyle(mouseStyle);
+        }
     }
 
     /**

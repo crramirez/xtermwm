@@ -309,7 +309,9 @@ public class Document {
             }
             return true;
         }
-        return false;
+
+        // Bottom line: treat down() like end().
+        return end();
     }
 
     /**
@@ -352,7 +354,9 @@ public class Document {
             }
             return true;
         }
-        return false;
+
+        // Top line: treat up() like home().
+        return home();
     }
 
     /**

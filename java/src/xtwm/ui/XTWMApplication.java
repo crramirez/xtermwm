@@ -174,6 +174,7 @@ public class XTWMApplication extends TApplication {
     private static final int MENU_WINDOW_ON_ALL_DESKTOPS                = 2401;
     private static final int MENU_WINDOW_NEXT_DESKTOP                   = 2402;
     private static final int MENU_WINDOW_PREVIOUS_DESKTOP               = 2403;
+    private static final int MENU_WINDOW_FULL_SCREEN                    = 2404;
 
     // ------------------------------------------------------------------------
     // Variables --------------------------------------------------------------
@@ -932,6 +933,40 @@ public class XTWMApplication extends TApplication {
             switchToPreviousDesktop();
             return true;
 
+        case MENU_WINDOW_FULL_SCREEN:
+            if (getScreen() instanceof SwingTerminal) {
+                SwingTerminal terminal;
+                terminal = (SwingTerminal) getScreen();
+                jexer.backend.SwingComponent component;
+                component = terminal.getSwingComponent();
+                javax.swing.JFrame frame = component.getFrame();
+                if (frame != null) {
+
+                    try {
+                        javax.swing.SwingUtilities.invokeAndWait(new Runnable() {
+                            public void run() {
+                                java.awt.Toolkit toolkit = frame.getToolkit();
+                                java.awt.GraphicsConfiguration gc = frame.getGraphicsConfiguration();
+                                java.awt.GraphicsDevice device = gc.getDevice();
+                                if (device.getFullScreenWindow() == frame) {
+                                    device.setFullScreenWindow(null);
+                                } else {
+                                    device.setFullScreenWindow(frame);
+                                }
+                                frame.setBounds(0, 0,
+                                    device.getDisplayMode().getWidth(),
+                                    device.getDisplayMode().getHeight());
+                            }
+                        });
+                    } catch (InterruptedException e) {
+                        new TExceptionDialog(this, e);
+                    } catch (java.lang.reflect.InvocationTargetException e) {
+                        new TExceptionDialog(this, e);
+                    }
+                }
+            }
+            return true;
+
         case TMenu.MID_HELP_HELP:
             getCurrentDesktop().addWindow(new THelpWindow(this,
                     THelpWindow.HELP_HELP));
@@ -1248,6 +1283,9 @@ public class XTWMApplication extends TApplication {
             i18n.getString("windowNextDesktop"), kbShiftF11);
         windowMenu.addItem(MENU_WINDOW_PREVIOUS_DESKTOP,
             i18n.getString("windowPreviousDesktop"), kbShiftF12);
+        windowMenu.addSeparator();
+        windowMenu.addItem(MENU_WINDOW_FULL_SCREEN,
+            i18n.getString("windowFullScreen"));
 
         TStatusBar windowStatusBar = windowMenu.newStatusBar(i18n.
             getString("windowMenuStatus"));
