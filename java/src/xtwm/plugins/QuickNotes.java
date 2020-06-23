@@ -30,6 +30,8 @@ package xtwm.plugins;
 
 import java.util.ResourceBundle;
 
+import jexer.TAction;
+import jexer.TCheckBox;
 import jexer.TEditorWidget;
 import jexer.TWidget;
 import jexer.event.TResizeEvent;
@@ -58,6 +60,11 @@ public class QuickNotes extends PluginWidget {
      * The editor.
      */
     private TEditorWidget editor;
+
+    /**
+     * For the setting window, the auto wrap check box.
+     */
+    TCheckBox autoWrap = null;
 
     // ------------------------------------------------------------------------
     // Constructors -----------------------------------------------------------
@@ -93,9 +100,8 @@ public class QuickNotes extends PluginWidget {
     public void onResize(final TResizeEvent resize) {
         super.onResize(resize);
         if (resize.getType() == TResizeEvent.Type.WIDGET) {
-            editor.onResize(resize);
             editor.setMargin(getWidth() + 1);
-            // TODO: editor.reflowText()
+            editor.onResize(resize);
         }
     }
 
@@ -132,6 +138,7 @@ public class QuickNotes extends PluginWidget {
 
         editor = addEditor(getOption("notes", ""), 0, 0,
             getPreferredWidth(), getPreferredHeight());
+        editor.setAutoWrap(getOption("autoWrap", "false").equals("true"));
     }
 
     /**
@@ -215,8 +222,20 @@ public class QuickNotes extends PluginWidget {
      */
     @Override
     public TWidget getPluginSettingsEditor(final TWidget parent) {
-        // TODO: Expose preferred width/height.
-        return super.getPluginSettingsEditor(parent);
+
+        TAction autoWrapAction = new TAction() {
+            public void DO() {
+                setOption("autoWrap",
+                    (autoWrap.isChecked() ? "true" : "false"));
+                app.savePluginProperties((PluginWidget) data);
+            }
+        };
+        autoWrapAction.data = this;
+        autoWrap = parent.addCheckBox(3, 3, i18n.getString("autoWrap"),
+            app.getOption("autoWrap", "false").equals("true"),
+            autoWrapAction);
+
+        return parent;
     }
 
     /**

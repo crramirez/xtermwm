@@ -129,6 +129,11 @@ public class TEditorWidget extends TWidget implements EditMenuUser {
     private int margin = 0;
 
     /**
+     * If true, automatically reflow text to fit the margin.
+     */
+    private boolean autoWrap = false;
+
+    /**
      * The saved state for an undo/redo operation.
      */
     private class SavedState {
@@ -684,6 +689,25 @@ public class TEditorWidget extends TWidget implements EditMenuUser {
     // ------------------------------------------------------------------------
 
     /**
+     * Get the wrapping behavior.
+     *
+     * @return true if the editor automatically wraps text to fit in the
+     * margin
+     */
+    public boolean isAutoWrap() {
+        return autoWrap;
+    }
+
+    /**
+     * Set the wrapping behavior.
+     *
+     * @param autoWrap if true, automatically wrap text to fit in the margin
+     */
+    public void setAutoWrap(final boolean autoWrap) {
+        this.autoWrap = autoWrap;
+    }
+
+    /**
      * Set the undo level.
      *
      * @param undoLevel the maximum number of undo operations
@@ -699,6 +723,9 @@ public class TEditorWidget extends TWidget implements EditMenuUser {
      */
     public void setMargin(final int margin) {
         this.margin = margin;
+        if (autoWrap) {
+            wrapText();
+        }
     }
 
     /**
@@ -952,6 +979,16 @@ public class TEditorWidget extends TWidget implements EditMenuUser {
      */
     public void saveToFilename(final String filename) throws IOException {
         document.saveToFilename(filename);
+    }
+
+    /**
+     * Reflow the text to fit inside the margin.
+     */
+    public void wrapText() {
+        if (margin > 0) {
+            document.wrapText(margin);
+            alignDocument(true);
+        }
     }
 
     /**

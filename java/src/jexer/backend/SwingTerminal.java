@@ -2266,6 +2266,12 @@ public class SwingTerminal extends LogicalScreen
         mouse3 = eventMouse3;
         int x = textColumn(mouse.getX());
         int y = textRow(mouse.getY());
+        if ((x == oldMouseX) && (y == oldMouseY)) {
+            // Bail out, we've moved some pixels but not a whole text cell.
+            return;
+        }
+        oldMouseX = x;
+        oldMouseY = y;
 
         TMouseEvent mouseEvent = new TMouseEvent(backend,
             TMouseEvent.Type.MOUSE_MOTION,
