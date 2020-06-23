@@ -903,6 +903,16 @@ public class XTWMApplication extends TApplication {
             }
             return true;
 
+        case TMenu.MID_WINDOW_CLOSE:
+            window = getActiveWindow();
+            if ((window != null) && (desktopPager != null)) {
+                if (window == desktopPager.getWindow()) {
+                    // Lose the pager.
+                    desktopPager = null;
+                }
+            }
+            break;
+
         case MENU_WINDOW_TO_DESKTOP:
             menuWindowToDesktop();
             return true;
@@ -1027,6 +1037,15 @@ public class XTWMApplication extends TApplication {
 
             if (pluginClass != null) {
                 PluginWidget plugin = makePluginWidget(pluginClass);
+                if (plugin instanceof DesktopPager) {
+                    if (desktopPager != null) {
+                        // Do not create additional desktop pagers.
+                        return true;
+                    } else {
+                        // Save the new desktop pager.
+                        desktopPager = (DesktopPager) plugin;
+                    }
+                }
                 if (plugin.isOnAllDesktops()) {
                     makePluginWindow(plugin);
                 } else {

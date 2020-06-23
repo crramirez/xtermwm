@@ -1333,7 +1333,13 @@ public abstract class TWidget implements Comparable<TWidget> {
      * @return the ColorTheme
      */
     public final ColorTheme getTheme() {
-        return window.getApplication().getTheme();
+        if (window != null) {
+            return window.getApplication().getTheme();
+        }
+
+        // This widget is not yet tied to a window, return a default color
+        // theme.
+        return new ColorTheme();
     }
 
     /**

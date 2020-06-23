@@ -69,6 +69,7 @@ public class StandardPluginLoader implements PluginLoader {
         List<Class<?>> plugins = new LinkedList<Class<?>>();
 
         plugins.add(Calendar.class);
+        plugins.add(QuickNotes.class);
         plugins.add(SystemMonitor.class);
         plugins.add(DesktopPager.class);
         plugins.add(BlankScreensaver.class);
