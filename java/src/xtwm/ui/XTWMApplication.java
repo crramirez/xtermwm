@@ -941,7 +941,6 @@ public class XTWMApplication extends TApplication {
                 component = terminal.getSwingComponent();
                 javax.swing.JFrame frame = component.getFrame();
                 if (frame != null) {
-
                     try {
                         javax.swing.SwingUtilities.invokeAndWait(new Runnable() {
                             public void run() {

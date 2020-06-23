@@ -1273,9 +1273,12 @@ public class TTerminalWidget extends TScrollableWidget
         } else if (getScreen() instanceof ECMA48Terminal) {
             ECMA48Terminal terminal = (ECMA48Terminal) getScreen();
 
-            if (!terminal.hasSixel()) {
-                // The backend does not have sixel support, draw this as text
-                // and bail out.
+            if (!terminal.hasSixel()
+                && !terminal.hasJexerImages()
+                && !terminal.hasIterm2Images()
+            ) {
+                // The backend does not have images support, draw this as
+                // text and bail out.
                 putCharXY(x, y, cell);
                 putCharXY(x + 1, y, ' ', cell);
                 return;
