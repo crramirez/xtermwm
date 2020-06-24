@@ -268,6 +268,40 @@ public class TEditorWidget extends TWidget implements EditMenuUser {
     }
 
     /**
+     * Handle mouse release events.
+     *
+     * @param mouse mouse button release event
+     */
+    @Override
+    public void onMouseUp(final TMouseEvent mouse) {
+        if (mouse.isMouse1() && inSelection) {
+            int newLine = topLine + mouse.getY();
+            int newX = leftColumn + mouse.getX();
+            int newSelectionLine0 = selectionLine0;
+            int newSelectionColumn0 = selectionColumn0;
+
+            if (newLine > document.getLineCount() - 1) {
+                newSelectionLine0 = document.getLineCount() - 1;
+            } else {
+                newSelectionLine0 = topLine + mouse.getY();
+            }
+            newSelectionColumn0 = leftColumn + mouse.getX();
+            newSelectionColumn0 = Math.max(0, Math.min(newSelectionColumn0,
+                    document.getLine(newSelectionLine0).getDisplayLength() - 1));
+            if ((newSelectionLine0 == selectionLine0)
+                && (newSelectionColumn0 == selectionColumn0)
+            ) {
+                // The mouse clicked on a cell, but did not continue
+                // selecting.
+                inSelection = false;
+                return;
+            }
+        }
+        // Didn't handle the event, pass on.
+        super.onMouseUp(mouse);
+    }
+
+    /**
      * Handle mouse motion events.
      *
      * @param mouse mouse motion event
@@ -1086,9 +1120,12 @@ public class TEditorWidget extends TWidget implements EditMenuUser {
      */
     private void copySelection() {
         if (!inSelection) {
-            return;
+            // Copy the entire buffer.
+            getClipboard().copyText(getText());
+        } else {
+            // Copy just the selected portion.
+            getClipboard().copyText(getSelection());
         }
-        getClipboard().copyText(getSelection());
     }
 
     /**
