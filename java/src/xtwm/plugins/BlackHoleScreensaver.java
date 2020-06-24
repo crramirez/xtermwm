@@ -37,14 +37,14 @@ import jexer.backend.Screen;
 import jexer.bits.Cell;
 
 /**
- * RainScreensaver drops characters like they are raining from the bottom.
+ * BlackHoleScreensaver sucks the screen into a single point.
  */
-public class RainScreensaver extends ScreensaverPlugin {
+public class BlackHoleScreensaver extends ScreensaverPlugin {
 
     /**
      * Translated strings.
      */
-    private static ResourceBundle i18n = ResourceBundle.getBundle(RainScreensaver.class.getName());
+    private static ResourceBundle i18n = ResourceBundle.getBundle(BlackHoleScreensaver.class.getName());
 
     // ------------------------------------------------------------------------
     // Constants --------------------------------------------------------------
@@ -65,9 +65,24 @@ public class RainScreensaver extends ScreensaverPlugin {
     private Screen originalScreen = null;
 
     /**
-     * The raining screen.
+     * The black hole screen.
      */
-    private Screen rainScreen = null;
+    private Screen blackHoleScreen = null;
+
+    /**
+     * The black hole X location.
+     */
+    private int blackHoleX = 0;
+
+    /**
+     * The black hole Y location.
+     */
+    private int blackHoleY = 0;
+
+    /**
+     * The "event horizon" for the black hole.
+     */
+    private int blackHoleR = 100;
 
     // ------------------------------------------------------------------------
     // Constructors -----------------------------------------------------------
@@ -78,7 +93,7 @@ public class RainScreensaver extends ScreensaverPlugin {
      *
      * @param parent parent widget
      */
-    public RainScreensaver(final TWidget parent) {
+    public BlackHoleScreensaver(final TWidget parent) {
         super(parent);
     }
 
@@ -86,7 +101,7 @@ public class RainScreensaver extends ScreensaverPlugin {
      * No-argument constructor that is intended only for use by
      * XTWMApplication.loadPlugin().
      */
-    public RainScreensaver() {
+    public BlackHoleScreensaver() {
         super(null);
     }
 
@@ -111,7 +126,7 @@ public class RainScreensaver extends ScreensaverPlugin {
     /**
      * Get the translated short name for this plugin.
      *
-     * @return a short name, e.g. "RainScreensaver"
+     * @return a short name, e.g. "BlackHoleScreensaver"
      */
     @Override
     public String getPluginName() {
@@ -121,7 +136,7 @@ public class RainScreensaver extends ScreensaverPlugin {
     /**
      * Get the translated full description for this plugin.
      *
-     * @return a short name, e.g. "Watch the characters fall like rain."
+     * @return a short name, e.g. "Screen falls into a black hole."
      */
     @Override
     public String getPluginDescription() {
@@ -180,10 +195,10 @@ public class RainScreensaver extends ScreensaverPlugin {
      */
     @Override
     public void draw() {
-        synchronized (rainScreen) {
-            for (int y = 0; y < rainScreen.getHeight(); y++) {
-                for (int x = 0; x < rainScreen.getWidth(); x++) {
-                    putCharXY(x, y, rainScreen.getCharXY(x, y));
+        synchronized (blackHoleScreen) {
+            for (int y = 0; y < blackHoleScreen.getHeight(); y++) {
+                for (int x = 0; x < blackHoleScreen.getWidth(); x++) {
+                    putCharXY(x, y, blackHoleScreen.getCharXY(x, y));
                 }
             }
         }
@@ -197,12 +212,16 @@ public class RainScreensaver extends ScreensaverPlugin {
     @Override
     public void startScreensaver(final Screen screen) {
         originalScreen = screen;
-        rainScreen = originalScreen.snapshot();
+        blackHoleScreen = originalScreen.snapshot();
+
+        blackHoleX = (int) (Math.random() * screen.getWidth());
+        blackHoleY = (int) (Math.random() * screen.getHeight());
+        blackHoleR = Math.max(screen.getWidth(), screen.getHeight()) / 2;
 
         timer = app.addTimer((int) Math.ceil(1000.0 / 18.2), true,
             new TAction() {
                 public void DO() {
-                    RainScreensaver.this.doRain();
+                    BlackHoleScreensaver.this.doBlackHole();
                 }
             });
     }
@@ -218,47 +237,68 @@ public class RainScreensaver extends ScreensaverPlugin {
     }
 
     // ------------------------------------------------------------------------
-    // RainScreensaver --------------------------------------------------------
+    // BlackHoleScreensaver ---------------------------------------------------
     // ------------------------------------------------------------------------
 
     /**
-     * Perform the rain sequence.
+     * Perform the black hole sequence.
      */
-    private void doRain() {
+    private void doBlackHole() {
         boolean found = false;
 
-        synchronized (rainScreen) {
-            for (int x = 0; x < rainScreen.getWidth(); x++) {
+        synchronized (blackHoleScreen) {
+            int width = blackHoleScreen.getWidth();
+            int height = blackHoleScreen.getHeight();
+            blackHoleR--;
 
-                // Add some odds for skipping columns.
-                if ((x > 0) && (Math.random() > 0.6)) {
-                    x++;
-                }
+            for (int y = 0; y < height; y++) {
+                for (int x = 0; x < width; x++) {
 
-                Cell rainDrop = null;
-                int y = rainScreen.getHeight() - 1;
-                for (; y >= 0; y--) {
-                    Cell ch = rainScreen.getCharXY(x, y);
-                    if (!ch.isBlank()) {
-                        rainDrop = ch;
-                        found = true;
-                        break;
+                    // Add some odds for skipping columns.
+                    if ((x > 0) && (Math.random() > 0.1)) {
+                        // x++;
                     }
-                }
-                if (y < 0) {
-                    y = 0;
-                }
-                rainScreen.putCharXY(x, y, new Cell());
-                if ((rainDrop != null) && (y < rainScreen.getHeight() - 1)) {
-                    rainScreen.putCharXY(x, y + 1, rainDrop);
+
+                    Cell ch = blackHoleScreen.getCharXY(x, y);
+                    if (!ch.isBlank()) {
+                        found = true;
+                    }
+
+                    int distance = (int) Math.sqrt(Math.pow(blackHoleX - x, 2) +
+                        Math.pow((blackHoleY - y) * 2, 2));
+
+                    if (distance > blackHoleR) {
+                        blackHoleScreen.putCharXY(x, y, new Cell());
+                    } else if (distance == blackHoleR) {
+                        int dX = Math.min(Math.abs(blackHoleX - x), 1);
+                        int dY = Math.min(Math.abs(blackHoleY - y), 1);
+                        if (blackHoleX == x) {
+                            dX = 0;
+                        } else if (blackHoleX < x) {
+                            dX = Math.max(-dX, -1);
+                        } else {
+                            dX = Math.min(dX, 1);
+                        }
+                        if (blackHoleY == y) {
+                            dY = 0;
+                        } else if (blackHoleY < y) {
+                            dY = Math.max(-dY, -1);
+                        } else {
+                            dY = Math.min(dY, 1);
+                        }
+                        blackHoleScreen.putCharXY(x + dX, y + dY, new Cell(ch));
+                    }
                 }
             }
 
             if (!found) {
-                rainScreen = originalScreen.snapshot();
+                blackHoleScreen = originalScreen.snapshot();
+                blackHoleX = (int) (Math.random() * originalScreen.getWidth());
+                blackHoleY = (int) (Math.random() * originalScreen.getHeight());
+                blackHoleR = Math.max(width, height) / 2;
             }
 
-        } // synchronized (rainScreen)
+        } // synchronized (blackHoleScreen)
     }
 
 }

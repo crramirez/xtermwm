@@ -140,7 +140,7 @@ public class BlankScreensaver extends ScreensaverPlugin {
      */
     @Override
     public boolean isWidget() {
-        return true;
+        return false;
     }
 
     /**
