@@ -74,6 +74,7 @@ public class StandardPluginLoader implements PluginLoader {
         plugins.add(DesktopPager.class);
         plugins.add(BlackHoleScreensaver.class);
         plugins.add(BlankScreensaver.class);
+        plugins.add(BouncingTextScreensaver.class);
         plugins.add(RainScreensaver.class);
         plugins.add(HtopPlugin.class);
         return plugins;

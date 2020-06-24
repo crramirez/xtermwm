@@ -227,12 +227,11 @@ public class QuickNotes extends PluginWidget {
             public void DO() {
                 setOption("autoWrap",
                     (autoWrap.isChecked() ? "true" : "false"));
-                app.savePluginProperties((PluginWidget) data);
             }
         };
         autoWrapAction.data = this;
         autoWrap = parent.addCheckBox(3, 3, i18n.getString("autoWrap"),
-            app.getOption("autoWrap", "false").equals("true"),
+            getOption("autoWrap", "false").equals("true"),
             autoWrapAction);
 
         return parent;

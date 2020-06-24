@@ -31,20 +31,23 @@ package xtwm.plugins;
 import java.util.ResourceBundle;
 
 import jexer.TAction;
+import jexer.TField;
 import jexer.TTimer;
 import jexer.TWidget;
 import jexer.backend.Screen;
 import jexer.bits.Cell;
+import jexer.bits.CellAttributes;
+import jexer.bits.StringUtils;
 
 /**
- * BlackHoleScreensaver sucks the screen into a single point.
+ * BouncingTextScreensaver displays a logo that bounces around.
  */
-public class BlackHoleScreensaver extends ScreensaverPlugin {
+public class BouncingTextScreensaver extends ScreensaverPlugin {
 
     /**
      * Translated strings.
      */
-    private static ResourceBundle i18n = ResourceBundle.getBundle(BlackHoleScreensaver.class.getName());
+    private static ResourceBundle i18n = ResourceBundle.getBundle(BouncingTextScreensaver.class.getName());
 
     // ------------------------------------------------------------------------
     // Constants --------------------------------------------------------------
@@ -60,29 +63,29 @@ public class BlackHoleScreensaver extends ScreensaverPlugin {
     private TTimer timer = null;
 
     /**
-     * The original screen.
+     * The text to display.
      */
-    private Screen originalScreen = null;
+    private String text = "";
 
     /**
-     * The black hole screen.
+     * The text X position in pixels.
      */
-    private Screen blackHoleScreen = null;
+    private int textX = 0;
 
     /**
-     * The black hole X location.
+     * The text Y position in pixels.
      */
-    private int blackHoleX = 0;
+    private int textY = 0;
 
     /**
-     * The black hole Y location.
+     * The bounce vector.
      */
-    private int blackHoleY = 0;
+    private int bounceDegrees = (int) (Math.random() * 360.0);
 
     /**
-     * The "event horizon" for the black hole.
+     * For the setting window, the text to display field.
      */
-    private int blackHoleR = 100;
+    private TField textToDisplay = null;
 
     // ------------------------------------------------------------------------
     // Constructors -----------------------------------------------------------
@@ -93,7 +96,7 @@ public class BlackHoleScreensaver extends ScreensaverPlugin {
      *
      * @param parent parent widget
      */
-    public BlackHoleScreensaver(final TWidget parent) {
+    public BouncingTextScreensaver(final TWidget parent) {
         super(parent);
     }
 
@@ -101,7 +104,7 @@ public class BlackHoleScreensaver extends ScreensaverPlugin {
      * No-argument constructor that is intended only for use by
      * XTWMApplication.loadPlugin().
      */
-    public BlackHoleScreensaver() {
+    public BouncingTextScreensaver() {
         super(null);
     }
 
@@ -126,7 +129,7 @@ public class BlackHoleScreensaver extends ScreensaverPlugin {
     /**
      * Get the translated short name for this plugin.
      *
-     * @return a short name, e.g. "BlackHoleScreensaver"
+     * @return a short name, e.g. "BouncingTextScreensaver"
      */
     @Override
     public String getPluginName() {
@@ -186,22 +189,96 @@ public class BlackHoleScreensaver extends ScreensaverPlugin {
         return i18n.getString("windowTitle");
     }
 
+    /**
+     * Get an interface for editing the plugin settings.
+     *
+     * @param parent parent widget
+     * @return a widget that has settings
+     */
+    @Override
+    public TWidget getPluginSettingsEditor(final TWidget parent) {
+
+        parent.addLabel(i18n.getString("textToDisplay"), 3, 3, "ttext", false,
+            new TAction() {
+                public void DO() {
+                    textToDisplay.activate();
+                }
+            });
+
+        textToDisplay = parent.addField(22, 3, 33, false,
+            getOption("textToDisplay", i18n.getString("defaultText")),
+            new TAction() {
+                public void DO() {
+                    setOption("textToDisplay", textToDisplay.getText());
+                }
+            },
+            new TAction() {
+                public void DO() {
+                    setOption("textToDisplay", textToDisplay.getText());
+                }
+            });
+
+        return parent;
+    }
+
     // ------------------------------------------------------------------------
     // ScreensaverPlugin ------------------------------------------------------
     // ------------------------------------------------------------------------
 
     /**
-     * Draw the black hole screen.
+     * Draw a blank screen with the text in color.
      */
     @Override
     public void draw() {
-        synchronized (blackHoleScreen) {
-            for (int y = 0; y < blackHoleScreen.getHeight(); y++) {
-                for (int x = 0; x < blackHoleScreen.getWidth(); x++) {
-                    putCharXY(x, y, blackHoleScreen.getCharXY(x, y));
-                }
-            }
+        CellAttributes color = new CellAttributes();
+        putAll(' ', color);
+
+        int x = textX / getScreen().getTextWidth();
+        int y = textY / getScreen().getTextHeight();
+
+        // Convert bounceDegrees as HSL hue to RGB.
+        double theta = bounceDegrees;
+        while (theta < 0) {
+            theta = theta + 360.0;
         }
+        while (theta > 360.0) {
+            theta = theta - 360.0;
+        }
+        double S = 100.0;
+        double L = 50.0;
+        double C = (1.0 - Math.abs((2.0 * L) - 1.0)) * S;
+        double Hp = theta / 60.0;
+        double X = C * (1.0 - Math.abs((Hp % 2) - 1.0));
+        double Rp = 0.0;
+        double Gp = 0.0;
+        double Bp = 0.0;
+        if (Hp <= 1.0) {
+            Rp = C;
+            Gp = X;
+        } else if (Hp <= 2.0) {
+            Rp = X;
+            Gp = C;
+        } else if (Hp <= 3.0) {
+            Gp = C;
+            Bp = X;
+        } else if (Hp <= 4.0) {
+            Gp = X;
+            Bp = C;
+        } else if (Hp <= 5.0) {
+            Rp = X;
+            Bp = C;
+        } else if (Hp <= 6.0) {
+            Rp = C;
+            Bp = X;
+        }
+        double m = L - (C / 2.0);
+        int red   = ((int) ((Rp + m) * 255.0)) << 16;
+        int green = ((int) ((Gp + m) * 255.0)) << 8;
+        int blue  =  (int) ((Bp + m) * 255.0);
+        color.setForeColorRGB((red | green | blue) & 0xFFFFFF);
+        color.setBackColorRGB(0);
+        assert (color.isRGB());
+        putStringXY(x, y, text, color);
     }
 
     /**
@@ -211,17 +288,12 @@ public class BlackHoleScreensaver extends ScreensaverPlugin {
      */
     @Override
     public void startScreensaver(final Screen screen) {
-        originalScreen = screen;
-        blackHoleScreen = originalScreen.snapshot();
-
-        blackHoleX = (int) (Math.random() * screen.getWidth());
-        blackHoleY = (int) (Math.random() * screen.getHeight());
-        blackHoleR = Math.max(screen.getWidth(), screen.getHeight()) / 2;
+        text = getOption("textToDisplay", i18n.getString("defaultText"));
 
         timer = app.addTimer((int) Math.ceil(1000.0 / 18.2), true,
             new TAction() {
                 public void DO() {
-                    BlackHoleScreensaver.this.doBlackHole();
+                    BouncingTextScreensaver.this.doBouncingText();
                 }
             });
     }
@@ -237,69 +309,42 @@ public class BlackHoleScreensaver extends ScreensaverPlugin {
     }
 
     // ------------------------------------------------------------------------
-    // BlackHoleScreensaver ---------------------------------------------------
+    // BouncingTextScreensaver ------------------------------------------------
     // ------------------------------------------------------------------------
 
     /**
-     * Perform the black hole sequence.
+     * Move the text one cell along the bounce vector.
      */
-    private void doBlackHole() {
-        boolean found = false;
+    private void doBouncingText() {
+        double theta = 2.0 * Math.PI * bounceDegrees / 360.0;
+        double dx = getScreen().getTextWidth() * Math.cos(theta);
+        double dy = getScreen().getTextWidth() * Math.sin(theta);
+        int textWidth = getScreen().getTextWidth();
+        int textHeight = getScreen().getTextHeight();
+        int width = StringUtils.width(text) * textWidth;
 
-        synchronized (blackHoleScreen) {
-            int width = blackHoleScreen.getWidth();
-            int height = blackHoleScreen.getHeight();
-            blackHoleR--;
+        double newTheta = theta;
+        if (textX + dx + width > (getScreen().getWidth() + 1) * textWidth) {
+            // Hit the right edge.
+            dx = -Math.abs(dx);
+        }
+        if (textX + dx < 0) {
+            // Hit the left edge.
+            dx = Math.abs(dx);
+        }
+        if (textY + dy > getScreen().getHeight() * textHeight) {
+            // Hit the bottom edge.
+            dy = -Math.abs(dy);
+        }
+        if (textY + dy < 0) {
+            // Hit the top edge.
+            dy = Math.abs(dy);
+        }
+        newTheta = Math.atan2(dy, dx);
+        bounceDegrees = (int) (newTheta * 360.0 / (2.0 * Math.PI));
 
-            for (int y = 0; y < height; y++) {
-                for (int x = 0; x < width; x++) {
-
-                    // Add some odds for skipping columns.  This leaves a
-                    // nice raggedy effect on the "black hole" edge.
-                    if ((x > 0) && (Math.random() > 0.6)) {
-                        x++;
-                    }
-
-                    Cell ch = blackHoleScreen.getCharXY(x, y);
-                    if (!ch.isBlank()) {
-                        found = true;
-                    }
-
-                    int distance = (int) Math.sqrt(Math.pow(blackHoleX - x, 2) +
-                        Math.pow((blackHoleY - y) * 2, 2));
-
-                    if (distance > blackHoleR) {
-                        blackHoleScreen.putCharXY(x, y, new Cell());
-                    } else if (distance == blackHoleR) {
-                        int dX = Math.min(Math.abs(blackHoleX - x), 1);
-                        int dY = Math.min(Math.abs(blackHoleY - y), 1);
-                        if (blackHoleX == x) {
-                            dX = 0;
-                        } else if (blackHoleX < x) {
-                            dX = Math.max(-dX, -1);
-                        } else {
-                            dX = Math.min(dX, 1);
-                        }
-                        if (blackHoleY == y) {
-                            dY = 0;
-                        } else if (blackHoleY < y) {
-                            dY = Math.max(-dY, -1);
-                        } else {
-                            dY = Math.min(dY, 1);
-                        }
-                        blackHoleScreen.putCharXY(x + dX, y + dY, new Cell(ch));
-                    }
-                }
-            }
-
-            if (!found) {
-                blackHoleScreen = originalScreen.snapshot();
-                blackHoleX = (int) (Math.random() * originalScreen.getWidth());
-                blackHoleY = (int) (Math.random() * originalScreen.getHeight());
-                blackHoleR = Math.max(width, height) / 2;
-            }
-
-        } // synchronized (blackHoleScreen)
+        textX += dx;
+        textY += dy;
     }
 
 }

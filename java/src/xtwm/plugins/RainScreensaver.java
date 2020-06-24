@@ -176,7 +176,7 @@ public class RainScreensaver extends ScreensaverPlugin {
     // ------------------------------------------------------------------------
 
     /**
-     * Draw a blank screen.
+     * Draw the raining screen.
      */
     @Override
     public void draw() {

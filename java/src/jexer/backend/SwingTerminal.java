@@ -1074,9 +1074,9 @@ public class SwingTerminal extends LogicalScreen
     public static Color attrToForegroundColor(final CellAttributes attr) {
         int rgb = attr.getForeColorRGB();
         if (rgb >= 0) {
-            int red     = (rgb >> 16) & 0xFF;
-            int green   = (rgb >>  8) & 0xFF;
-            int blue    =  rgb        & 0xFF;
+            int red     = (rgb >>> 16) & 0xFF;
+            int green   = (rgb >>>  8) & 0xFF;
+            int blue    =  rgb         & 0xFF;
 
             return new Color(red, green, blue);
         }
@@ -1131,9 +1131,9 @@ public class SwingTerminal extends LogicalScreen
     public static Color attrToBackgroundColor(final CellAttributes attr) {
         int rgb = attr.getBackColorRGB();
         if (rgb >= 0) {
-            int red     = (rgb >> 16) & 0xFF;
-            int green   = (rgb >>  8) & 0xFF;
-            int blue    =  rgb        & 0xFF;
+            int red     = (rgb >>> 16) & 0xFF;
+            int green   = (rgb >>>  8) & 0xFF;
+            int blue    =  rgb         & 0xFF;
 
             return new Color(red, green, blue);
         }
@@ -1390,8 +1390,13 @@ public class SwingTerminal extends LogicalScreen
 
         // Check for reverse
         if (cell.isReverse()) {
-            cellColor.setForeColor(cell.getBackColor());
-            cellColor.setBackColor(cell.getForeColor());
+            if (cell.isRGB()) {
+                cellColor.setForeColorRGB(cell.getBackColorRGB());
+                cellColor.setBackColorRGB(cell.getForeColorRGB());
+            } else {
+                cellColor.setForeColor(cell.getBackColor());
+                cellColor.setBackColor(cell.getForeColor());
+            }
         }
 
         // Draw the background rectangle, then the foreground character.
