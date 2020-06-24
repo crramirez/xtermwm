@@ -255,6 +255,7 @@ public class PluginOptionsWindow extends TWindow {
 
         if (widgets == null) {
             widgets = app.getWidgets();
+            widgets.addAll(app.getScreensavers());
         }
 
         for (PluginWidget plugin: widgets) {

@@ -420,7 +420,7 @@ public class DesktopPager extends PluginWidget {
                 }
             });
         initialColumns = parent.addField(20, 5, 5, false,
-            getOption("initialColumns"),
+            getOption("initialColumns", "1"),
             new TAction() {
                 public void DO() {
                     setOption("initialColumns", initialColumns.getText());
