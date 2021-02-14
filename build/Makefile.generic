@@ -5,7 +5,7 @@
 
 # The MIT License (MIT)
 #
-# Copyright (c) 2020 Kevin Lamonte
+# Copyright (c) 2021 Autumn Lamonte
 #
 # Permission is hereby granted, free of charge, to any person
 # obtaining a copy of this software and associated documentation files

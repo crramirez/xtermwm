@@ -2,7 +2,7 @@
 
 <help>
   <name>XtermWM Help File</name>
-  <author>Kevin Lamonte</author>
+  <author>Autumn Lamonte</author>
   <version>0.0.1</version>
   <date>Jan 1, 2021</date>
   <topics>
@@ -50,7 +50,7 @@
 
     <topic title="Copyright Infomation">
       <text>
-        Copyright (C) 2020 Kevin Lamonte
+        Copyright (C) 2021 Autumn Lamonte
 
         Available to all under the MIT License.
     </text>

@@ -109,5 +109,5 @@ rm -rf $RPM_BUILD_ROOT
 
 
 %changelog
-* Sun Jun 7 2020 Kevin Lamonte <lamonte at, users.sourceforge.net> - 0.2.0-1
+* Sun Jun 7 2020 Autumn Lamonte <lamonte at, users.sourceforge.net> - 0.2.0-1
 - Initial package creation
