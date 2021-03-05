@@ -1,12 +1,12 @@
 Name:           xtermwm
-Version:        0.3.0
+Version:        0.4.0
 Release:        1%{?dist}
 Summary:        Xterm Window Manager
 
 Group:          User Interface/Desktops
 License:        MIT
 URL:            http://xtermwm.sourceforge.net/
-Source0:        https://downloads.sourceforge.net/project/xtermwm/xtermwm/0.3.0/xtermwm-0.3.0.tar.gz
+Source0:        https://downloads.sourceforge.net/project/xtermwm/xtermwm/0.4.0/xtermwm-0.4.0.tar.gz
 BuildRoot:      %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 
 Requires:  java-devel

@@ -30,7 +30,7 @@
 
 <project name="xtwm" basedir="." default="jar">
 
-  <property name="version"       value="0.3.0"/>
+  <property name="version"       value="0.4.0"/>
   <property name="src.dir"       value="src"/>
   <property name="resources.dir" value="resources"/>
   <property name="build.dir"     value="build"/>
