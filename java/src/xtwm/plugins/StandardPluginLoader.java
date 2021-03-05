@@ -77,6 +77,7 @@ public class StandardPluginLoader implements PluginLoader {
         plugins.add(BouncingTextScreensaver.class);
         plugins.add(RainScreensaver.class);
         plugins.add(HtopPlugin.class);
+        plugins.add(TransHeart.class);
         return plugins;
     }
 
