@@ -838,7 +838,11 @@ public class XTWMApplication extends TApplication {
 
         case MENU_TERMINAL_NEW_WINDOW:
             TDesktop desktop = getDesktop();
-            if (desktop.getChildren().size() == 0) {
+            if (((desktop instanceof Desktop)
+                    && (((Desktop) desktop).hasPanels() == false))
+                || (!(desktop instanceof Desktop)
+                    && (desktop.getChildren().size() == 0))
+            ) {
                 new TiledTerminal(desktop);
                 desktop.setEchoKeystrokes(desktop.isEchoKeystrokes(), true);
             }
@@ -1125,6 +1129,7 @@ public class XTWMApplication extends TApplication {
         TMenu toolMenu = addMenu(i18n.getString("toolMenuTitle"));
         toolMenu.addDefaultItem(TMenu.MID_REPAINT);
         toolMenu.addDefaultItem(TMenu.MID_VIEW_IMAGE);
+        toolMenu.addDefaultItem(TMenu.MID_VIEW_ANSI);
         TStatusBar toolStatusBar = toolMenu.newStatusBar(i18n.
             getString("toolMenuStatus"));
         toolStatusBar.addShortcutKeypress(kbF1, cmHelp, i18n.getString("Help"));
@@ -2522,7 +2527,7 @@ public class XTWMApplication extends TApplication {
 
         // System.err.println(desktop.toPrettyString());
 
-        if (desktop.getChildren().size() == 0) {
+        if (desktop.hasPanels() == false) {
             return;
         }
 

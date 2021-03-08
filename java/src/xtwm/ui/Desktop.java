@@ -34,6 +34,7 @@ import java.util.ResourceBundle;
 import jexer.TApplication;
 import jexer.TDesktop;
 import jexer.TSplitPane;
+import jexer.TTextPicture;
 import jexer.TWidget;
 import jexer.bits.CellAttributes;
 import jexer.bits.GraphicsChars;
@@ -78,6 +79,11 @@ public class Desktop extends TDesktop {
      * If true, focus will follow mouse across panels.
      */
     private boolean focusFollowsMouse = false;
+
+    /**
+     * Optional background image to display.
+     */
+    private TTextPicture picture = null;
 
     // ------------------------------------------------------------------------
     // Constructors -----------------------------------------------------------
@@ -141,7 +147,11 @@ public class Desktop extends TDesktop {
      */
     @Override
     public void draw() {
-        putAll(GraphicsChars.HATCH, attributes);
+        if (picture == null) {
+            putAll(GraphicsChars.HATCH, attributes);
+        } else {
+            putAll(' ', new CellAttributes());
+        }
     }
 
     // ------------------------------------------------------------------------
@@ -278,6 +288,10 @@ public class Desktop extends TDesktop {
      * @param widget the panel widget
      */
     public void addPanel(final TWidget widget) {
+        if (picture != null) {
+            picture.remove(true);
+            picture = null;
+        }
         panels.add(widget);
     }
 
@@ -354,6 +368,39 @@ public class Desktop extends TDesktop {
      */
     public boolean getFocusFollowsMouse() {
         return focusFollowsMouse;
+    }
+
+    /**
+     * Set a picture for the desktop.
+     *
+     * @param filename file to read ANSI/ASCII art from
+     */
+    public void setPicture(final String filename) {
+        if (picture != null) {
+            picture.remove(true);
+        }
+
+        if (getChildren().size() > 0) {
+            return;
+        }
+
+        picture = new TTextPicture(this, filename, 0, 0,
+            getWidth(), getHeight());
+    }
+
+    /**
+     * See if panels are defined on this desktop.
+     *
+     * @return true if panels are on this desktop
+     */
+    public boolean hasPanels() {
+        if (picture != null) {
+            return false;
+        }
+        if (getChildren().size() == 0) {
+            return false;
+        }
+        return true;
     }
 
 }
