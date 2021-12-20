@@ -3990,7 +3990,7 @@ public class ECMA48Terminal extends LogicalScreen
 
         sb.append("\033]1337;File=name=");
         sb.append(StringUtils.toBase64("jexer".getBytes()));
-        sb.append(";inline=1;");
+        sb.append(";inline=1;doNotMoveCursor=1;");
         sb.append(String.format("width=%dpx;height=%dpx;preserveAspectRatio=1:",
                 image.getWidth(), Math.min(image.getHeight(),
                     getTextHeight())));
