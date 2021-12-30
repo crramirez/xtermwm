@@ -239,6 +239,7 @@ public class TTerminalWidget extends TScrollableWidget
 
         super(parent, x, y, width, height);
 
+        setMouseStyle("text");
         this.closeAction = closeAction;
 
         // Save the external command line that can be used to recreate this
@@ -341,6 +342,7 @@ public class TTerminalWidget extends TScrollableWidget
 
         super(parent, x, y, width, height);
 
+        setMouseStyle("text");
         this.closeAction = closeAction;
 
         if (System.getProperty("jexer.TTerminal.shell") != null) {
@@ -844,7 +846,9 @@ public class TTerminalWidget extends TScrollableWidget
      */
     public void setDirty() {
         synchronized (dirtyQueue) {
-            dirtyQueue.add("dirty");
+            if (dirtyQueue.size() == 0) {
+                dirtyQueue.add("dirty");
+            }
         }
     }
 
@@ -911,10 +915,30 @@ public class TTerminalWidget extends TScrollableWidget
      * cursor drawn over it
      */
     public boolean hasHiddenMouse() {
-        if (emulator == null) {
-            return false;
+        if (emulator != null) {
+            boolean hiddenMouse = (emulator.hasHiddenMousePointer()
+                || typingHidMouse);
+            if (hiddenMouse) {
+                setMouseStyle("none");
+            } else {
+                setMouseStyle("text");
+            }
+            return hiddenMouse;
         }
-        return (emulator.hasHiddenMousePointer() || typingHidMouse);
+        return false;
+    }
+
+    /**
+     * Check if per-pixel mouse events are requested.
+     *
+     * @return true if per-pixel mouse events are requested
+     */
+    @Override
+    public boolean isPixelMouse() {
+        if (emulator != null) {
+            return emulator.isPixelMouse();
+        }
+        return false;
     }
 
     /**
@@ -980,6 +1004,9 @@ public class TTerminalWidget extends TScrollableWidget
             shell = pb.start();
             emulator = new ECMA48(deviceType, shell.getInputStream(),
                 shell.getOutputStream(), this);
+            if (getApplication() != null) {
+                emulator.setBackend(getApplication().getBackend());
+            }
         } catch (IOException e) {
             messageBox(i18n.getString("errorLaunchingShellTitle"),
                 MessageFormat.format(i18n.getString("errorLaunchingShellText"),
@@ -1483,12 +1510,14 @@ public class TTerminalWidget extends TScrollableWidget
      * Called by emulator when fresh data has come in.
      */
     public void displayChanged() {
-        synchronized (emulator) {
-            setDirty();
-        }
-        TApplication app = getApplication();
-        if (app != null) {
-            app.postEvent(new TMenuEvent(null, TMenu.MID_REPAINT));
+        synchronized (dirtyQueue) {
+            if (dirtyQueue.size() == 0) {
+                dirtyQueue.add("dirty");
+                TApplication app = getApplication();
+                if (app != null) {
+                    app.postEvent(new TMenuEvent(null, TMenu.MID_REPAINT));
+                }
+            }
         }
     }
 

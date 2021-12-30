@@ -190,4 +190,49 @@ public class ECMA48Backend extends GenericBackend {
         this(listener, input, reader, writer, false);
     }
 
+    /**
+     * Check if backend will support incomplete image fragments over text
+     * display.
+     *
+     * @return true if images can partially obscure text
+     */
+    @Override
+    public boolean isImagesOverText() {
+        return ((ECMA48Terminal) terminal).isImagesOverText();
+    }
+
+    /**
+     * Check if backend is reporting pixel-based mouse position.
+     *
+     * @return true if single-pixel mouse movements are reported
+     */
+    @Override
+    public boolean isPixelMouse() {
+        return ((ECMA48Terminal) terminal).isPixelMouse();
+    }
+
+    /**
+     * Set request for backend to report pixel-based mouse position.
+     *
+     * @param pixelMouse if true, single-pixel mouse movements will be
+     * reported, if the backend supports it
+     */
+    @Override
+    public void setPixelMouse(final boolean pixelMouse) {
+        if (pixelMouse != ((ECMA48Terminal) terminal).isPixelMouse()) {
+            ((ECMA48Terminal) terminal).setPixelMouse(pixelMouse);
+        }
+    }
+
+    /**
+     * Set the mouse pointer (cursor) style.
+     *
+     * @param mouseStyle the pointer style string, one of: "default", "none",
+     * "hand", "text", "move", or "crosshair"
+     */
+    @Override
+    public void setMouseStyle(final String mouseStyle) {
+        ((ECMA48Terminal) terminal).setMouseStyle(mouseStyle);
+    }
+
 }

@@ -382,15 +382,28 @@ public class TTerminalWindow extends TScrollableWindow {
 
     /**
      * Returns true if this window does not want the application-wide mouse
-     * cursor drawn over it.
+     * pointer drawn over it.
      *
      * @return true if this window does not want the application-wide mouse
-     * cursor drawn over it
+     * pointer drawn over it
      */
     @Override
     public boolean hasHiddenMouse() {
         if (terminal != null) {
             return terminal.hasHiddenMouse();
+        }
+        return false;
+    }
+
+    /**
+     * Check if per-pixel mouse events are requested.
+     *
+     * @return true if per-pixel mouse events are requested
+     */
+    @Override
+    public boolean isPixelMouse() {
+        if (terminal != null) {
+            return terminal.isPixelMouse();
         }
         return false;
     }

@@ -46,6 +46,8 @@ import jexer.event.TMouseEvent;
 import jexer.event.TResizeEvent;
 import jexer.layout.LayoutManager;
 import jexer.menu.TMenu;
+import jexer.tackboard.MousePointer;
+import jexer.tackboard.Tackboard;
 import jexer.ttree.TTreeItem;
 import jexer.ttree.TTreeView;
 import jexer.ttree.TTreeViewWidget;
@@ -148,6 +150,19 @@ public abstract class TWidget implements Comparable<TWidget> {
      * Layout manager.
      */
     private LayoutManager layout = null;
+
+    /**
+     * An optional mouse pointer picture to use when the mouse is over this
+     * widget.
+     */
+    private MousePointer customMousePointer;
+
+    /**
+     * The mouse pointer (cursor) style string, one of: "default", "none",
+     * "hand", "text", "move", or "crosshair".  Currently this feature only
+     * works on the Swing backend.
+     */
+    private String mouseStyle = "default";
 
     // ------------------------------------------------------------------------
     // Constructors -----------------------------------------------------------
@@ -1329,6 +1344,75 @@ public abstract class TWidget implements Comparable<TWidget> {
     }
 
     /**
+     * Get the mouse pointer (cursor) style.
+     *
+     * @return the pointer style string, one of: "default", "none",
+     * "hand", "text", "move", or "crosshair"
+     */
+    public final String getMouseStyle() {
+        return mouseStyle;
+    }
+
+    /**
+     * Set the mouse pointer (cursor) style.  Currently this feature only
+     * works on the Swing backend.  By contrast, custom mouse pointers work
+     * on all backends.
+     *
+     * @param mouseStyle the pointer style string, one of: "default", "none",
+     * "hand", "text", "move", or "crosshair"
+     *
+     * @see #setCustomMousePointer(final MousePointer pointer)
+     */
+    public final void setMouseStyle(final String mouseStyle) {
+        String styleLower = mouseStyle.toLowerCase();
+
+        assert (styleLower.equals("none")
+            || styleLower.equals("default")
+            || styleLower.equals("hand")
+            || styleLower.equals("text")
+            || styleLower.equals("move")
+            || styleLower.equals("crosshair"));
+
+        this.mouseStyle = styleLower;
+    }
+
+    /**
+     * Get the custom mouse pointer.
+     *
+     * @return the custom mouse pointer, or null if it was never set
+     */
+    public final MousePointer getCustomMousePointer() {
+        return customMousePointer;
+    }
+
+    /**
+     * Set a custom mouse pointer.
+     *
+     * @param pointer the new mouse pointer, or null to use the default mouse
+     * pointer.
+     */
+    public final void setCustomMousePointer(final MousePointer pointer) {
+        if (customMousePointer != null) {
+            customMousePointer.remove();
+        }
+        customMousePointer = pointer;
+        if (customMousePointer == null) {
+            // Custom bitmap mouse pointer removed.
+            return;
+        }
+    }
+
+    /**
+     * Check if per-pixel mouse events are requested.
+     *
+     * @return true if per-pixel mouse events are requested
+     */
+    public boolean isPixelMouse() {
+        // Default: do not request per-pixel mouse events.
+        return false;
+    }
+
+    /**
      * Get the global color theme.
      *
      * @return the ColorTheme
@@ -1427,6 +1511,12 @@ public abstract class TWidget implements Comparable<TWidget> {
         screen.setOffsetX(getAbsoluteX());
         screen.setOffsetY(getAbsoluteY());
 
+        // Hang onto these in case there is an overlay to draw
+        int overlayClipRight = screen.getClipRight();
+        int overlayClipBottom = screen.getClipBottom();
+        int overlayOffsetX = screen.getOffsetX();
+        int overlayOffsetY = screen.getOffsetY();
+
         // Draw me
         draw();
         if (!isDrawable()) {
@@ -1451,6 +1541,20 @@ public abstract class TWidget implements Comparable<TWidget> {
         }
         if (activeChild != null) {
             activeChild.drawChildren();
+        }
+
+        // The TWindow overlay has to be here so that it can cover drawn
+        // widgets.
+        if (this instanceof TWindow) {
+            Tackboard overlay = ((TWindow) this).overlay;
+            if (overlay != null) {
+                screen.setClipRight(overlayClipRight);
+                screen.setClipBottom(overlayClipBottom);
+                screen.setOffsetX(overlayOffsetX);
+                screen.setOffsetY(overlayOffsetY);
+                overlay.draw(getScreen(),
+                    getApplication().getBackend().isImagesOverText());
+            }
         }
     }
 
@@ -1684,6 +1788,25 @@ public abstract class TWidget implements Comparable<TWidget> {
             }
         }
         // No active children, return me
+        return this;
+    }
+
+    /**
+     * Returns the widget under the mouse.
+     *
+     * @param mouse the mouse position
+     * @return widget that is under the mouse, or null if the mouse is not
+     * over this widget
+     */
+    public TWidget getWidgetUnderMouse(final TMouseEvent mouse) {
+        if (!mouseWouldHit(mouse)) {
+            return null;
+        }
+        for (TWidget widget: children) {
+            if (widget.mouseWouldHit(mouse)) {
+                return widget.getWidgetUnderMouse(mouse);
+            }
+        }
         return this;
     }
 

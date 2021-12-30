@@ -31,6 +31,8 @@ package jexer.demos;
 import java.io.File;
 import java.io.IOException;
 import java.text.MessageFormat;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.ResourceBundle;
 
 import jexer.TAction;
@@ -124,7 +126,7 @@ public class DemoMainWindow extends TWindow {
     private DemoMainWindow(final TApplication parent, final int flags) {
         // Construct a demo window.  X and Y don't matter because it will be
         // centered on screen.
-        super(parent, i18n.getString("windowTitle"), 0, 0, 64, 23, flags);
+        super(parent, i18n.getString("windowTitle"), 0, 0, 64, 25, flags);
 
         setLayoutManager(new StretchLayoutManager(getWidth() - 2,
                 getHeight() - 2));
@@ -247,6 +249,16 @@ public class DemoMainWindow extends TWindow {
             new TAction() {
                 public void DO() {
                     new TEditColorThemeWindow(getApplication());
+                }
+            }
+        );
+        row += 2;
+
+        addLabel(i18n.getString("pixelsLabel"), 1, row);
+        addButton(i18n.getString("pixelsButton"), 35, row,
+            new TAction() {
+                public void DO() {
+                    new DemoPixelsWindow(getApplication());
                 }
             }
         );

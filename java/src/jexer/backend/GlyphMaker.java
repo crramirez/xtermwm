@@ -245,12 +245,14 @@ class GlyphMakerFont {
         }
         gr2.dispose();
 
-        // We need a new key that will not be mutated by invertCell().
-        Cell key = new Cell(cell);
-        if (cell.isBlink() && !blinkVisible) {
-            glyphCacheBlink.put(key, image);
-        } else {
-            glyphCache.put(key, image);
+        if (cell.isCacheable()) {
+            // We need a new key that will not be mutated by invertCell().
+            Cell key = new Cell(cell);
+            if (cell.isBlink() && !blinkVisible) {
+                glyphCacheBlink.put(key, image);
+            } else {
+                glyphCache.put(key, image);
+            }
         }
 
         /*
@@ -323,7 +325,7 @@ public class GlyphMaker {
     /**
      * The mono font resource filename (terminus).
      */
-    private static final String MONO = "terminus-ttf-4.39/TerminusTTF-Bold-4.39.ttf";
+    private static final String MONO = "terminus-ttf-4.49.1/TerminusTTF-Bold-4.49.1.ttf";
 
     /**
      * The CJK font resource filename.

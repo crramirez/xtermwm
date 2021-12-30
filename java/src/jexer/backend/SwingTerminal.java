@@ -99,7 +99,32 @@ public class SwingTerminal extends LogicalScreen
     /**
      * The terminus font resource filename.
      */
-    public static final String FONTFILE = "terminus-ttf-4.39/TerminusTTF-Bold-4.39.ttf";
+    public static final String FONTFILE = "terminus-ttf-4.49.1/TerminusTTF-Bold-4.49.1.ttf";
+
+    /**
+     * The minimum number of milliseconds between a triple-buffer frame sync
+     * request for an initial burst of frames.  Too much memory pressure can
+     * cause the window system to crash.
+     *
+     * A value of 2 or less is very responsive for user input.
+     */
+    private static final long SYNC_MIN_MILLIS_BURST = 2;
+
+    /**
+     * The minimum number of milliseconds between a triple-buffer frame sync
+     * request for an extended (several seconds or more) rate.  Too much
+     * memory pressure can cause the window system to crash.
+     *
+     * A value of 25 or more feels sluggish for input, but is sustainable for
+     * the garbage collector.
+     */
+    private static final long SYNC_MIN_MILLIS_SUSTAIN = 20;
+
+    /**
+     * The number of frames that can be emitted quickly (at
+     * SYNC_MIN_MILLIS_BURST) before slowing down.
+     */
+    private static final long SYNC_BURST_COUNT = 20;
 
     /**
      * Cursor style to draw.
@@ -152,6 +177,27 @@ public class SwingTerminal extends LogicalScreen
      * When true, all the MYBLACK, MYRED, etc. colors are set.
      */
     private static boolean dosColors = false;
+
+    /**
+     * The minimum number of milliseconds between a triple-buffer frame sync
+     * request.  If Toolkit.sync() is called too frequently, the window
+     * system and/or video driver can crash.
+     *
+     * A value of 2 or less is very responsive, while 25 or more feels
+     * sluggish for input but is sustainable for the garbage collector.
+     */
+    private long syncMinMillis = SYNC_MIN_MILLIS_BURST;
+
+    /**
+     * The number of frames that have been rendered in a row at
+     * SYNC_MIN_MILLIS_BURST.
+     */
+    private int frameRequests = 0;
+
+    /**
+     * The time that Toolkit.getDefaultToolkit().sync() was last called.
+     */
+    private long lastSyncTime = 0;
 
     /**
      * The backend that is reading from this terminal.
@@ -314,10 +360,16 @@ public class SwingTerminal extends LogicalScreen
     private boolean mouse3 = false;
 
     /**
-     * If true, draw text glyphs underneath images on cells.  This is
-     * expensive.
+     * If true, draw text glyphs underneath images on cells.  This can be
+     * expensive, but if the images are trimmed to minimize transparent
+     * pixels (as ECMA48 and Bitmap do) then it isn't bad.
      */
-    private boolean imagesOverText = false;
+    private boolean imagesOverText = true;
+
+    /**
+     * If true, report mouse events per-pixel rather than per-text-cell.
+     */
+    private boolean pixelMouse = false;
 
     // ------------------------------------------------------------------------
     // Constructors -----------------------------------------------------------
@@ -591,6 +643,14 @@ public class SwingTerminal extends LogicalScreen
      */
     @Override
     public void flushPhysical() {
+        if ((syncMinMillis == SYNC_MIN_MILLIS_BURST)
+            && (frameRequests > SYNC_BURST_COUNT)
+        ) {
+            // System.err.println("Auto - Switch to sustain");
+            // Switch to throttled frames.
+            syncMinMillis = SYNC_MIN_MILLIS_SUSTAIN;
+        }
+
         // See if it is time to flip the blink time.
         long nowTime = System.currentTimeMillis();
         if (nowTime >= blinkMillis + lastBlinkTime) {
@@ -606,14 +666,41 @@ public class SwingTerminal extends LogicalScreen
                 do {
                     drawToSwing();
                 } while (swing.getBufferStrategy().contentsRestored());
-
-                swing.getBufferStrategy().show();
-                Toolkit.getDefaultToolkit().sync();
+                syncSwingBuffer();
             } while (swing.getBufferStrategy().contentsLost());
         } else {
             // Non-triple-buffered, call drawToSwing() once
             drawToSwing();
         }
+    }
+
+    /**
+     * Display the Swing triple-buffer buffer on the screen.
+     */
+    private void syncSwingBuffer() {
+        long now = System.currentTimeMillis();
+        while (now - lastSyncTime < syncMinMillis) {
+            try {
+                Thread.sleep(now - lastSyncTime);
+            } catch (InterruptedException e) {
+                // SQUASH
+            }
+            now = System.currentTimeMillis();
+        }
+        if ((syncMinMillis == SYNC_MIN_MILLIS_SUSTAIN)
+            && (now - lastSyncTime > SYNC_MIN_MILLIS_SUSTAIN * 5)
+        ) {
+            // It's quiet, we can let latency improve again.
+            // System.err.println("Auto - Allow bursts");
+            syncMinMillis = SYNC_MIN_MILLIS_BURST;
+            frameRequests = 0;
+        } else if (syncMinMillis == SYNC_MIN_MILLIS_BURST) {
+            frameRequests++;
+        }
+        lastSyncTime = now;
+
+        swing.getBufferStrategy().show();
+        Toolkit.getDefaultToolkit().sync();
     }
 
     // ------------------------------------------------------------------------
@@ -643,6 +730,11 @@ public class SwingTerminal extends LogicalScreen
                     queue.addAll(eventQueue);
                 }
                 eventQueue.clear();
+
+                // Allow bursts with user input.
+                // System.err.println("User input - allow bursts");
+                syncMinMillis = SYNC_MIN_MILLIS_BURST;
+                frameRequests = 0;
             }
         }
     }
@@ -684,10 +776,10 @@ public class SwingTerminal extends LogicalScreen
         setMouseStyle(System.getProperty("jexer.Swing.mouseStyle", "default"));
 
         if (System.getProperty("jexer.Swing.imagesOverText",
-                "false").equals("true")) {
-            imagesOverText = true;
-        } else {
+                "true").equals("false")) {
             imagesOverText = false;
+        } else {
+            imagesOverText = true;
         }
 
         // Set custom colors
@@ -717,15 +809,17 @@ public class SwingTerminal extends LogicalScreen
     }
 
     /**
-     * Set the mouse cursor style.
+     * Set the mouse pointer (cursor) style.
      *
-     * @param style the cursor style string, one of: "default", "none",
+     * @param mouseStyle the pointer style string, one of: "default", "none",
      * "hand", "text", "move", or "crosshair"
      */
-    public void setMouseStyle(final String style) {
-        this.mouseStyle = style;
-        if (swing != null) {
-            swing.setMouseStyle(mouseStyle);
+    public void setMouseStyle(final String mouseStyle) {
+        if (!this.mouseStyle.equals(mouseStyle)) {
+            this.mouseStyle = mouseStyle;
+            if (swing != null) {
+                swing.setMouseStyle(mouseStyle);
+            }
         }
     }
 
@@ -1432,13 +1526,17 @@ public class SwingTerminal extends LogicalScreen
         if ((SwingComponent.tripleBuffer) && (swing.getFrame() != null)) {
             gr2.dispose();
 
-            // We need a new key that will not be mutated by
-            // invertCell().
-            Cell key = new Cell(cell);
-            if (cell.isBlink() && !cursorBlinkVisible) {
-                glyphCacheBlink.put(key, image);
-            } else {
-                glyphCache.put(key, image);
+            if (!cell.isImage()) {
+                // We need a new key that will not be mutated by
+                // invertCell().
+                if (cell.isCacheable()) {
+                    Cell key = new Cell(cell);
+                    if (cell.isBlink() && !cursorBlinkVisible) {
+                        glyphCacheBlink.put(key, image);
+                    } else {
+                        glyphCache.put(key, image);
+                    }
+                }
             }
 
             if (swing.getFrame() != null) {
@@ -1593,8 +1691,10 @@ public class SwingTerminal extends LogicalScreen
 
                         if (lCell.isImage()) {
                             if (imagesOverText) {
-                                // Draw the glyph underneath the image.
-                                drawGlyph(gr, lCell, xPixel, yPixel);
+                                if (lCell.isTransparentImage()) {
+                                    // Draw the glyph underneath the image.
+                                    drawGlyph(gr, lCell, xPixel, yPixel);
+                                }
                             }
                             drawImage(gr, lCell, xPixel, yPixel);
                         } else {
@@ -1638,8 +1738,7 @@ public class SwingTerminal extends LogicalScreen
             Graphics gr = swing.getBufferStrategy().getDrawGraphics();
             swing.paint(gr);
             gr.dispose();
-            swing.getBufferStrategy().show();
-            Toolkit.getDefaultToolkit().sync();
+            syncSwingBuffer();
             return;
         } else if (((swing.getFrame() != null)
                 && (swing.getBufferStrategy() == null))
@@ -1671,8 +1770,10 @@ public class SwingTerminal extends LogicalScreen
                         ) {
                             if (lCell.isImage()) {
                                 if (imagesOverText) {
-                                    // Draw the glyph underneath the image.
-                                    drawGlyph(gr, lCell, xPixel, yPixel);
+                                    if (lCell.isTransparentImage()) {
+                                        // Draw the glyph underneath the image.
+                                        drawGlyph(gr, lCell, xPixel, yPixel);
+                                    }
                                 }
                                 drawImage(gr, lCell, xPixel, yPixel);
                             } else {
@@ -1686,8 +1787,7 @@ public class SwingTerminal extends LogicalScreen
             } // synchronized (this)
 
             gr.dispose();
-            swing.getBufferStrategy().show();
-            Toolkit.getDefaultToolkit().sync();
+            syncSwingBuffer();
             return;
         }
 
@@ -1753,8 +1853,7 @@ public class SwingTerminal extends LogicalScreen
             gr.setClip(bounds);
             swing.paint(gr);
             gr.dispose();
-            swing.getBufferStrategy().show();
-            Toolkit.getDefaultToolkit().sync();
+            syncSwingBuffer();
         } else {
             // Repaint on the Swing thread.
             swing.repaint(xMin, yMin, xMax - xMin, yMax - yMin);
@@ -1811,6 +1910,35 @@ public class SwingTerminal extends LogicalScreen
      */
     public SwingComponent getSwingComponent() {
         return swing;
+    }
+
+    /**
+     * Check if screen will support incomplete image fragments over text
+     * display.
+     *
+     * @return true if images can partially obscure text
+     */
+    public boolean isImagesOverText() {
+        return imagesOverText;
+    }
+
+    /**
+     * Check if terminal is reporting pixel-based mouse position.
+     *
+     * @return true if single-pixel mouse movements are reported
+     */
+    public boolean isPixelMouse() {
+        return pixelMouse;
+    }
+
+    /**
+     * Set request for terminal to report pixel-based mouse position.
+     *
+     * @param pixelMouse if true, single-pixel mouse movements will be
+     * reported
+     */
+    public void setPixelMouse(final boolean pixelMouse) {
+        this.pixelMouse = pixelMouse;
     }
 
     // ------------------------------------------------------------------------
@@ -2291,16 +2419,18 @@ public class SwingTerminal extends LogicalScreen
         mouse3 = eventMouse3;
         int x = textColumn(mouse.getX());
         int y = textRow(mouse.getY());
-        if ((x == oldMouseX) && (y == oldMouseY)) {
+        if ((x == oldMouseX) && (y == oldMouseY) && (pixelMouse == false)) {
             // Bail out, we've moved some pixels but not a whole text cell.
             return;
         }
         oldMouseX = x;
         oldMouseY = y;
+        int offsetX = (mouse.getX() - left) % textWidth;
+        int offsetY = (mouse.getY() - top) % textHeight;
 
         TMouseEvent mouseEvent = new TMouseEvent(backend,
-            TMouseEvent.Type.MOUSE_MOTION,
-            x, y, x, y, mouse1, mouse2, mouse3, false, false,
+            TMouseEvent.Type.MOUSE_MOTION, x, y, x, y, offsetX, offsetY,
+            mouse1, mouse2, mouse3, false, false,
             eventAlt, eventCtrl, eventShift);
 
         synchronized (eventQueue) {
@@ -2322,12 +2452,14 @@ public class SwingTerminal extends LogicalScreen
     public void mouseMoved(final MouseEvent mouse) {
         int x = textColumn(mouse.getX());
         int y = textRow(mouse.getY());
-        if ((x == oldMouseX) && (y == oldMouseY)) {
+        if ((x == oldMouseX) && (y == oldMouseY) && (pixelMouse == false)) {
             // Bail out, we've moved some pixels but not a whole text cell.
             return;
         }
         oldMouseX = x;
         oldMouseY = y;
+        int offsetX = (mouse.getX() - left) % textWidth;
+        int offsetY = (mouse.getY() - top) % textHeight;
 
         boolean eventAlt = false;
         boolean eventCtrl = false;
@@ -2345,8 +2477,8 @@ public class SwingTerminal extends LogicalScreen
         }
 
         TMouseEvent mouseEvent = new TMouseEvent(backend,
-            TMouseEvent.Type.MOUSE_MOTION,
-            x, y, x, y, mouse1, mouse2, mouse3, false, false,
+            TMouseEvent.Type.MOUSE_MOTION, x, y, x, y, offsetX, offsetY,
+            mouse1, mouse2, mouse3, false, false,
             eventAlt, eventCtrl, eventShift);
 
         synchronized (eventQueue) {
@@ -2429,10 +2561,12 @@ public class SwingTerminal extends LogicalScreen
         mouse3 = eventMouse3;
         int x = textColumn(mouse.getX());
         int y = textRow(mouse.getY());
+        int offsetX = (mouse.getX() - left) % textWidth;
+        int offsetY = (mouse.getY() - top) % textHeight;
 
         TMouseEvent mouseEvent = new TMouseEvent(backend,
-            TMouseEvent.Type.MOUSE_DOWN,
-            x, y, x, y, mouse1, mouse2, mouse3, false, false,
+            TMouseEvent.Type.MOUSE_DOWN, x, y, x, y, offsetX, offsetY,
+            mouse1, mouse2, mouse3, false, false,
             eventAlt, eventCtrl, eventShift);
 
         synchronized (eventQueue) {
@@ -2493,10 +2627,12 @@ public class SwingTerminal extends LogicalScreen
         }
         int x = textColumn(mouse.getX());
         int y = textRow(mouse.getY());
+        int offsetX = (mouse.getX() - left) % textWidth;
+        int offsetY = (mouse.getY() - top) % textHeight;
 
         TMouseEvent mouseEvent = new TMouseEvent(backend,
-            TMouseEvent.Type.MOUSE_UP,
-            x, y, x, y, eventMouse1, eventMouse2, eventMouse3, false, false,
+            TMouseEvent.Type.MOUSE_UP, x, y, x, y, offsetX, offsetY,
+            eventMouse1, eventMouse2, eventMouse3, false, false,
             eventAlt, eventCtrl, eventShift);
 
         synchronized (eventQueue) {
@@ -2560,10 +2696,12 @@ public class SwingTerminal extends LogicalScreen
         if (mouse.getWheelRotation() < 0) {
             mouseWheelUp = true;
         }
+        int offsetX = (mouse.getX() - left) % textWidth;
+        int offsetY = (mouse.getY() - top) % textHeight;
 
         TMouseEvent mouseEvent = new TMouseEvent(backend,
-            TMouseEvent.Type.MOUSE_DOWN,
-            x, y, x, y, mouse1, mouse2, mouse3, mouseWheelUp, mouseWheelDown,
+            TMouseEvent.Type.MOUSE_DOWN, x, y, x, y, offsetX, offsetY,
+            mouse1, mouse2, mouse3, mouseWheelUp, mouseWheelDown,
             eventAlt, eventCtrl, eventShift);
 
         synchronized (eventQueue) {

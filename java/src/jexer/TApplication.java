@@ -58,16 +58,19 @@ import jexer.event.TMenuEvent;
 import jexer.event.TMouseEvent;
 import jexer.event.TResizeEvent;
 import jexer.backend.Backend;
+import jexer.backend.ECMA48Backend;
 import jexer.backend.MultiBackend;
 import jexer.backend.Screen;
 import jexer.backend.SwingBackend;
-import jexer.backend.ECMA48Backend;
+import jexer.backend.SwingTerminal;
 import jexer.backend.TWindowBackend;
 import jexer.help.HelpFile;
 import jexer.help.Topic;
 import jexer.menu.TMenu;
 import jexer.menu.TMenuItem;
 import jexer.menu.TSubMenu;
+import jexer.tackboard.Tackboard;
+import jexer.tackboard.MousePointer;
 import static jexer.TCommand.*;
 import static jexer.TKeypress.*;
 
@@ -385,6 +388,27 @@ public class TApplication implements Runnable {
     protected long lastUserInputTime = System.currentTimeMillis();
 
     /**
+     * The pixel-based overlay.
+     */
+    protected Tackboard overlay = new Tackboard();
+
+    /**
+     * An optional mouse pointer.
+     */
+    protected MousePointer customMousePointer;
+
+    /**
+     * An optional mouse pointer for the widget under the mouse.
+     */
+    protected MousePointer customWidgetMousePointer;
+
+    /**
+     * If true, the backend was in pixelMouse mode when the
+     * customWidgetMousePointer was last set.
+     */
+    protected boolean oldPixelMouse = false;
+
+    /**
      * WidgetEventHandler is the main event consumer loop.  There are at most
      * two such threads in existence: the primary for normal case and a
      * secondary that is used for TMessageBox, TInputBox, and similar.
@@ -564,7 +588,7 @@ public class TApplication implements Runnable {
         /**
          * The dirty flag.
          */
-        private boolean dirty = false;
+        private ArrayList<String> dirtyQueue = new ArrayList<String>();
 
         /**
          * Public constructor.
@@ -600,15 +624,17 @@ public class TApplication implements Runnable {
 
                 // Wait until application notifies me
                 while (!application.quit) {
+                    synchronized (dirtyQueue) {
+                        if (dirtyQueue.size() > 0) {
+                            dirtyQueue.remove(dirtyQueue.size() - 1);
+                            break;
+                        }
+                    }
                     try {
                         synchronized (this) {
-                            if (dirty) {
-                                dirty = false;
-                                break;
-                            }
-
-                            // Always check within 50 milliseconds.
-                            this.wait(50);
+                            // Always check once a second, but this is
+                            // redundant.
+                            this.wait(1000);
                         }
                     } catch (InterruptedException e) {
                         // SQUASH
@@ -633,8 +659,13 @@ public class TApplication implements Runnable {
          * Set the dirty flag.
          */
         public void setDirty() {
-            synchronized (this) {
-                dirty = true;
+            synchronized (dirtyQueue) {
+                if (dirtyQueue.size() == 0) {
+                    dirtyQueue.add("dirty");
+                    synchronized (this) {
+                        notify();
+                    }
+                }
             }
         }
 
@@ -1409,6 +1440,12 @@ public class TApplication implements Runnable {
             typingHidMouse = false;
 
             TMouseEvent mouse = (TMouseEvent) event;
+
+            if (customMousePointer != null) {
+                setCustomMousePointerLocation(mouse);
+            }
+            setMouseState(mouse);
+
             if (mouse.isMouse1() && (mouse.isShift() || mouse.isCtrl())) {
                 // Screen selection.
                 if (inScreenSelection) {
@@ -1447,6 +1484,7 @@ public class TApplication implements Runnable {
                             TMouseEvent.Type.MOUSE_DOUBLE_CLICK,
                             mouse.getX(), mouse.getY(),
                             mouse.getAbsoluteX(), mouse.getAbsoluteY(),
+                            mouse.getPixelOffsetX(), mouse.getPixelOffsetY(),
                             mouse.isMouse1(), mouse.isMouse2(),
                             mouse.isMouse3(),
                             mouse.isMouseWheelUp(), mouse.isMouseWheelDown(),
@@ -1636,6 +1674,12 @@ public class TApplication implements Runnable {
             typingHidMouse = false;
 
             TMouseEvent mouse = (TMouseEvent) event;
+
+            if (customMousePointer != null) {
+                setCustomMousePointerLocation(mouse);
+            }
+            setMouseState(mouse);
+
             if ((mouseX != mouse.getX()) || (mouseY != mouse.getY())) {
                 mouseX = mouse.getX();
                 mouseY = mouse.getY();
@@ -1652,6 +1696,7 @@ public class TApplication implements Runnable {
                             TMouseEvent.Type.MOUSE_DOUBLE_CLICK,
                             mouse.getX(), mouse.getY(),
                             mouse.getAbsoluteX(), mouse.getAbsoluteY(),
+                            mouse.getPixelOffsetX(), mouse.getPixelOffsetY(),
                             mouse.isMouse1(), mouse.isMouse2(),
                             mouse.isMouse3(),
                             mouse.isMouseWheelUp(), mouse.isMouseWheelDown(),
@@ -2059,7 +2104,7 @@ public class TApplication implements Runnable {
         String version = getClass().getPackage().getImplementationVersion();
         if (version == null) {
             // This is Java 9+, use a hardcoded string here.
-            version = "1.0.0";
+            version = "1.5.0";
         }
         messageBox(i18n.getString("aboutDialogTitle"),
             MessageFormat.format(i18n.getString("aboutDialogText"), version),
@@ -2126,6 +2171,181 @@ public class TApplication implements Runnable {
             return true;
         }
         return false;
+    }
+
+    /**
+     * Get the pixel-based overlay.
+     *
+     * @return the overlay
+     */
+    public final Tackboard getOverlay() {
+        return overlay;
+    }
+
+    /**
+     * Add a tackboard item to the overlay.
+     *
+     * @param item the item to add
+     */
+    public void addOverlay(final MousePointer item) {
+        overlay.addItem(item);
+    }
+
+    /**
+     * Get the custom mouse pointer.
+     *
+     * @return the custom mouse pointer, or null if it was never set
+     */
+    public final MousePointer getCustomMousePointer() {
+        return customMousePointer;
+    }
+
+    /**
+     * Set a custom mouse pointer.
+     *
+     * @param pointer the new mouse pointer, or null to use the default mouse
+     * pointer.
+     */
+    public final void setCustomMousePointer(final MousePointer pointer) {
+        if (customMousePointer != null) {
+            customMousePointer.remove();
+        }
+        customMousePointer = pointer;
+        if (customMousePointer == null) {
+            // Custom bitmap mouse pointer removed.
+            if (getScreen() instanceof SwingTerminal) {
+                // Restore the Swing pointer to the application default.
+                SwingTerminal terminal = (SwingTerminal) getScreen();
+                terminal.setMouseStyle(System.getProperty(
+                    "jexer.Swing.mouseStyle", "default"));
+            }
+            return;
+        }
+
+        // Set a negative Z that should be above the default items on the
+        // overlay.  The user can always put items above it with more
+        // negative Z.
+        pointer.setZ(-1);
+
+        // Put it at the mouse location.
+        int pixelX = mouseX * getScreen().getTextWidth();
+        int pixelY = mouseY * getScreen().getTextHeight();
+        pixelX -= customMousePointer.getHotspotX();
+        pixelY -= customMousePointer.getHotspotY();
+        customMousePointer.setX(pixelX);
+        customMousePointer.setY(pixelY);
+        overlay.addItem(pointer);
+
+        if (getScreen() instanceof SwingTerminal) {
+            // Turn off the Swing pointer.
+            SwingTerminal terminal = (SwingTerminal) getScreen();
+            terminal.setMouseStyle("none");
+        }
+    }
+
+    /**
+     * Get the visible widget under the mouse position.
+     *
+     * @param mouse the mouse position
+     * @return the widget, or null if the mouse is over the menu
+     */
+    private TWidget getWidgetUnderMouse(final TMouseEvent mouse) {
+        TWidget activeWidget = null;
+        for (TMenu menu: menus) {
+            if (menu.isActive()) {
+                return null;
+            }
+        }
+        TWindow window = getActiveWindow();
+        if (window == null) {
+            return null;
+        }
+        return window.getWidgetUnderMouse(mouse);
+    }
+
+    /**
+     * Set the mouse state to match the style or bitmap requested by the
+     * widget under the mouse.
+     *
+     * @param mouse the mouse position
+     */
+    private void setMouseState(final TMouseEvent mouse) {
+        /*
+         * There are three reasons to use pixel-level mouse events:
+         *
+         * 1. A custom bitmap mouse pointer is active over the entire
+         *    application.
+         *
+         * 2. The active widget or window has requested it.
+         *
+         * 3. There is a custom bitmap mouse pointer for the widget
+         *    immediately under the mouse.
+         */
+        boolean pixelMouse = false;
+        String mouseStyle = System.getProperty("jexer.Swing.mouseStyle",
+            "default");
+
+        if (customMousePointer != null) {
+            pixelMouse = true;
+            mouseStyle = "none";
+        }
+
+        TWidget activeWidget = getWidgetUnderMouse(mouse);
+        if (activeWidget == null) {
+            // Reset to default.
+            backend.setPixelMouse(pixelMouse);
+            backend.setMouseStyle(mouseStyle);
+            return;
+        }
+        if (activeWidget.isPixelMouse()) {
+            pixelMouse = true;
+        }
+        if (customMousePointer == null) {
+            mouseStyle = activeWidget.getMouseStyle();
+        } else {
+            activeWidget.getWindow().setTackboardsDirty();
+        }
+        MousePointer newCustomWidgetMousePointer;
+        newCustomWidgetMousePointer = activeWidget.getCustomMousePointer();
+        if (newCustomWidgetMousePointer != null) {
+            pixelMouse = true;
+            mouseStyle = "none";
+            int pixelX = mouse.getAbsoluteX() * getScreen().getTextWidth();
+            pixelX += mouse.getPixelOffsetX();
+            pixelX -= newCustomWidgetMousePointer.getHotspotX();
+            int pixelY = mouse.getAbsoluteY() * getScreen().getTextHeight();
+            pixelY += mouse.getPixelOffsetY();
+            pixelY -= newCustomWidgetMousePointer.getHotspotY();
+            newCustomWidgetMousePointer.setX(pixelX);
+            newCustomWidgetMousePointer.setY(pixelY);
+            activeWidget.getWindow().setTackboardsDirty();
+            doRepaint();
+        } else {
+            if (customWidgetMousePointer != null) {
+                activeWidget.getWindow().setTackboardsDirty();
+                doRepaint();
+            }
+        }
+        backend.setPixelMouse(pixelMouse);
+        backend.setMouseStyle(mouseStyle);
+        customWidgetMousePointer = newCustomWidgetMousePointer;
+    }
+
+    /**
+     * Set the location of the application-side custom mouse pointer.
+     *
+     * @param mouse the mouse position
+     */
+    private void setCustomMousePointerLocation(final TMouseEvent mouse) {
+        int pixelX = mouse.getAbsoluteX() * getScreen().getTextWidth();
+        pixelX += mouse.getPixelOffsetX();
+        pixelX -= customMousePointer.getHotspotX();
+        int pixelY = mouse.getAbsoluteY() * getScreen().getTextHeight();
+        pixelY += mouse.getPixelOffsetY();
+        pixelY -= customMousePointer.getHotspotY();
+        customMousePointer.setX(pixelX);
+        customMousePointer.setY(pixelY);
+        doRepaint();
     }
 
     // ------------------------------------------------------------------------
@@ -2217,7 +2437,9 @@ public class TApplication implements Runnable {
         }
 
         // I don't think this does anything useful anymore...
-        if (!repaint) {
+        if (!repaint && (customMousePointer == null)
+            && (customWidgetMousePointer == null)
+        ) {
             if (debugThreads) {
                 System.err.printf("%d %s drawAll() !repaint\n",
                     System.currentTimeMillis(), Thread.currentThread());
@@ -2268,7 +2490,9 @@ public class TApplication implements Runnable {
                         screenSelectionRectangle);
                 }
 
-                if ((textMouse == true) && (typingHidMouse == false)) {
+                if ((textMouse == true) && (typingHidMouse == false)
+                    && (customMousePointer == null)
+                ) {
                     // Draw mouse at the new position.
                     drawTextMouse(mouseX, mouseY);
                 }
@@ -2441,11 +2665,8 @@ public class TApplication implements Runnable {
                 screenSelectionX1, screenSelectionY1, screenSelectionRectangle);
         }
 
-        if ((textMouse == true) && (typingHidMouse == false)) {
-            drawTextMouse(mouseX, mouseY);
-        }
-        oldDrawnMouseX = mouseX;
-        oldDrawnMouseY = mouseY;
+        // The active widget
+        TWidget activeWidget = null;
 
         // Place the cursor if it is visible
         if (!menuIsActive) {
@@ -2464,7 +2685,6 @@ public class TApplication implements Runnable {
                 }
             }
 
-            TWidget activeWidget = null;
             if (sorted.size() > 0) {
                 activeWidget = sorted.get(sorted.size() - 1).getActiveChild();
                 int cursorClipTop = desktopTop;
@@ -2485,11 +2705,40 @@ public class TApplication implements Runnable {
                 }
             }
         }
-
         // Kill the cursor
         if (!cursor) {
             getScreen().hideCursor();
         }
+
+        // Draw the overlay
+        getScreen().resetClipping();
+        // Special case: if the mouse is over the active widget, and that
+        // widget has a custom mouse pointer, then draw that pointer in the
+        // overlay.
+        if (customWidgetMousePointer != null) {
+            // Replace my pointer with the widget's pointer.
+            if (customMousePointer != null) {
+                overlay.getItems().remove(customMousePointer);
+            }
+            overlay.getItems().add(customWidgetMousePointer);
+            overlay.setDirty();
+            overlay.draw(getScreen(), getBackend().isImagesOverText());
+            overlay.getItems().remove(customWidgetMousePointer);
+            if (customMousePointer != null) {
+                overlay.getItems().add(customMousePointer);
+            }
+        } else {
+            overlay.setDirty();
+            overlay.draw(getScreen(), getBackend().isImagesOverText());
+        }
+        if ((textMouse == true) && (typingHidMouse == false)
+            && (customMousePointer == null)
+            && (customWidgetMousePointer == null)
+        ) {
+            drawTextMouse(mouseX, mouseY);
+        }
+        oldDrawnMouseX = mouseX;
+        oldDrawnMouseY = mouseY;
 
         if (getScreen().isDirty()) {
             // Give subclass TApplications a chance to update the
@@ -2508,6 +2757,9 @@ public class TApplication implements Runnable {
         quit = true;
         synchronized (this) {
             this.notify();
+        }
+        if (screenHandler != null) {
+            screenHandler.setDirty();
         }
     }
 

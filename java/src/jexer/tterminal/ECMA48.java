@@ -51,10 +51,13 @@ import java.util.List;
 import javax.imageio.ImageIO;
 
 import jexer.TKeypress;
+import jexer.backend.Backend;
 import jexer.backend.GlyphMaker;
+import jexer.backend.SwingTerminal;
 import jexer.bits.Color;
 import jexer.bits.Cell;
 import jexer.bits.CellAttributes;
+import jexer.bits.ImageUtils;
 import jexer.bits.StringUtils;
 import jexer.event.TInputEvent;
 import jexer.event.TKeypressEvent;
@@ -148,6 +151,7 @@ public class ECMA48 implements Runnable {
         DCS_PASSTHROUGH,
         DCS_IGNORE,
         DCS_SIXEL,
+        DCS_XTGETTCAP,
         SOSPMAPC_STRING,
         OSC_STRING,
         VT52_DIRECT_CURSOR_ADDRESS
@@ -235,12 +239,23 @@ public class ECMA48 implements Runnable {
     private enum MouseEncoding {
         X10,
         UTF8,
-        SGR
+        SGR,
+        SGR_PIXELS
     }
+
+    /**
+     * The version of the terminal to report in XTVERSION.
+     */
+    private final String VERSION = "1.5.0";
 
     // ------------------------------------------------------------------------
     // Variables --------------------------------------------------------------
     // ------------------------------------------------------------------------
+
+    /**
+     * The backend that will be responsible for rendering.
+     */
+    private Backend backend;
 
     /**
      * The enclosing listening object.
@@ -275,7 +290,7 @@ public class ECMA48 implements Runnable {
     /**
      * The maximum number of lines in the scrollback buffer.
      */
-    private int scrollbackMax = 10000;
+    private int scrollbackMax = 2000;
 
     /**
      * The terminal's input.  For type == XTERM, this is an InputStreamReader
@@ -313,6 +328,26 @@ public class ECMA48 implements Runnable {
      * Which mouse encoding is active.
      */
     private MouseEncoding mouseEncoding = MouseEncoding.X10;
+
+    /**
+     * If true, report mouse events per-pixel rather than per-text-cell.
+     */
+    private boolean pixelMouse = false;
+
+    /**
+     * If true, the remote side has requested a synchronized update.
+     */
+    private volatile boolean withinSynchronizedUpdate = false;
+
+    /**
+     * The last display returned from getVisibleDisplay().
+     */
+    private volatile List<DisplayLine> lastVisibleDisplay;
+
+    /**
+     * The last time we returned lastVisibleDisplay.
+     */
+    private volatile long lastVisibleUpdateTime;
 
     /**
      * A terminal may request that the mouse pointer be hidden using a
@@ -479,6 +514,11 @@ public class ECMA48 implements Runnable {
      * Sixel shared palette.
      */
     private HashMap<Integer, java.awt.Color> sixelPalette;
+
+    /**
+     * XTGETTCAP collection buffer.
+     */
+    private StringBuilder xtgettcapBuffer = new StringBuilder();
 
     /**
      * The width of a character cell in pixels.
@@ -727,9 +767,7 @@ public class ECMA48 implements Runnable {
                 if (utf8) {
                     if (readBufferUTF8.length < n) {
                         // The buffer wasn't big enough, make it huger
-                        int newSizeHalf = Math.max(readBufferUTF8.length,
-                            n);
-
+                        int newSizeHalf = Math.max(readBufferUTF8.length, n);
                         readBufferUTF8 = new char[newSizeHalf * 2];
                     }
                 } else {
@@ -774,14 +812,13 @@ public class ECMA48 implements Runnable {
                     // This is EOF
                     done = true;
                 } else {
-                    // Don't step on UI events
-                    synchronized (this) {
-                        if (utf8) {
-                            for (int i = 0; i < rc;) {
-                                int ch = Character.codePointAt(readBufferUTF8,
-                                    i);
-                                i += Character.charCount(ch);
+                    if (utf8) {
+                        for (int i = 0; i < rc;) {
+                            int ch = Character.codePointAt(readBufferUTF8, i);
+                            i += Character.charCount(ch);
 
+                            // Don't step on UI events
+                            synchronized (this) {
                                 // Special case for VT10x: 7-bit characters
                                 // only.
                                 if ((type == DeviceType.VT100)
@@ -792,8 +829,11 @@ public class ECMA48 implements Runnable {
                                     consume(ch);
                                 }
                             }
-                        } else {
-                            for (int i = 0; i < rc; i++) {
+                        }
+                    } else {
+                        for (int i = 0; i < rc; i++) {
+                            // Don't step on UI events
+                            synchronized (this) {
                                 // Special case for VT10x: 7-bit characters
                                 // only.
                                 if ((type == DeviceType.VT100)
@@ -869,6 +909,15 @@ public class ECMA48 implements Runnable {
     // ------------------------------------------------------------------------
     // ECMA48 -----------------------------------------------------------------
     // ------------------------------------------------------------------------
+
+    /**
+     * Set the backend to enable querying uncommon rendering features.
+     *
+     * @param backend the backend
+     */
+    public void setBackend(final Backend backend) {
+        this.backend = backend;
+    }
 
     /**
      * Wait for a period of time to get output from the launched process.
@@ -1160,6 +1209,18 @@ public class ECMA48 implements Runnable {
 
         assert (visibleHeight >= 0);
         assert (scrollBottom >= 0);
+
+        long now = System.currentTimeMillis();
+
+        if (withinSynchronizedUpdate
+            && (lastVisibleDisplay != null)
+            && (lastVisibleDisplay.size() == visibleHeight)
+            && ((now - lastVisibleUpdateTime) < 125)
+        ) {
+            // More data is being received, and we have a usable screen from
+            // before.  Use it.
+            return lastVisibleDisplay;
+        }
 
         int visibleBottom = scrollback.size() + display.size() - scrollBottom;
 
@@ -1951,7 +2012,7 @@ public class ECMA48 implements Runnable {
         /*
         System.err.printf("mouse(): protocol %s encoding %s mouse %s\n",
             mouseProtocol, mouseEncoding, mouse);
-         */
+        */
 
         if (mouseEncoding == MouseEncoding.X10) {
             // We will support X10 but only for (160,94) and smaller.
@@ -2006,7 +2067,9 @@ public class ECMA48 implements Runnable {
 
         // Now encode the event
         StringBuilder sb = new StringBuilder(6);
-        if (mouseEncoding == MouseEncoding.SGR) {
+        if ((mouseEncoding == MouseEncoding.SGR)
+            || (mouseEncoding == MouseEncoding.SGR_PIXELS)
+        ) {
             sb.append((char) 0x1B);
             sb.append("[<");
             int buttons = 0;
@@ -2047,8 +2110,13 @@ public class ECMA48 implements Runnable {
                 buttons |= 0x04;
             }
 
-            sb.append(String.format("%d;%d;%d", buttons, mouse.getX() + 1,
-                    mouse.getY() + 1));
+            int cols = mouse.getX() + 1;
+            int rows = mouse.getY() + 1;
+            if (mouseEncoding == MouseEncoding.SGR_PIXELS) {
+                cols = (mouse.getX() * textWidth) + mouse.getPixelOffsetX() + 1;
+                rows = (mouse.getY() * textHeight) + mouse.getPixelOffsetY() + 1;
+            }
+            sb.append(String.format("%d;%d;%d", buttons, cols, rows));
 
             if (mouse.getType() == TMouseEvent.Type.MOUSE_UP) {
                 sb.append("m");
@@ -3597,6 +3665,44 @@ public class ECMA48 implements Runnable {
                 }
                 break;
 
+            case 1016:
+                if ((type == DeviceType.XTERM)
+                    && (decPrivateModeFlag == true)
+                ) {
+                    // Mouse: SGR coordinates in pixels
+                    if (value == true) {
+                        mouseEncoding = MouseEncoding.SGR_PIXELS;
+                        // We need our host widget to report in pixels too.
+                        pixelMouse = true;
+                    } else {
+                        mouseEncoding = MouseEncoding.X10;
+                        pixelMouse = false;
+                    }
+                }
+                break;
+
+            case 1047:
+                // Fall through...
+            case 1048:
+                // Fall through...
+            case 1049:
+                if (type == DeviceType.XTERM) {
+                    if (decPrivateModeFlag == true) {
+                        // Save cursor, select alternate/normal, and clear
+                        // screen.  We won't switch to a different buffer,
+                        // instead we will just clear the screen.
+                        currentState.attr.setForeColor(Color.WHITE);
+                        currentState.attr.setForeColorRGB(-1);
+                        currentState.attr.setBackColor(Color.BLACK);
+                        currentState.attr.setBackColorRGB(-1);
+                        eraseScreen(0, 0, height - 1, width - 1, false);
+                        scrollRegionTop = 0;
+                        scrollRegionBottom = height - 1;
+                        cursorPosition(0, 0);
+                    }
+                }
+                break;
+
             case 1070:
                 if (type == DeviceType.XTERM) {
                     if (decPrivateModeFlag == true) {
@@ -3608,6 +3714,40 @@ public class ECMA48 implements Runnable {
                             // Use shared color registers for each sixel
                             // graphic.
                             sixelPalette = new HashMap<Integer, java.awt.Color>();
+                        }
+                    }
+                }
+                break;
+
+            case 2026:
+                if ((type == DeviceType.XTERM)
+                    && (decPrivateModeFlag == true)
+                ) {
+
+                    /*
+                    System.err.printf("Synchronized output: %s\n",
+                        (value ? "set" : "reset"));
+                     */
+
+                    /*
+                     * Request Synchronized Output mode (2026).  See
+                     * https://gist.github.com/christianparpart/d8a62cc1ab659194337d73e399004036
+                     * for details of this mode.
+                     */
+
+                    // Hang onto the visible screen.  If we immediately go
+                    // back into sync then this screen will be returned.
+                    lastVisibleDisplay = getVisibleDisplay(height, 0);
+                    lastVisibleUpdateTime = System.currentTimeMillis();
+                    if (value == true) {
+                        withinSynchronizedUpdate = true;
+                    } else {
+                        if (withinSynchronizedUpdate) {
+                            withinSynchronizedUpdate = false;
+                            // Permit my enclosing UI to know that I updated.
+                            if (displayListener != null) {
+                                displayListener.displayChanged();
+                            }
                         }
                     }
                 }
@@ -4758,9 +4898,9 @@ public class ECMA48 implements Runnable {
             if (i == 0) {
                 // DCS > | {text} ST
                 if (s8c1t == true) {
-                    writeRemote("\u0090>|jexer\u009c");
+                    writeRemote("\u0090>|jexer(" + VERSION + ")\u009c");
                 } else {
-                    writeRemote("\033P>|jexer\033\\");
+                    writeRemote("\033P>|jexer(" + VERSION + ")\033\\");
                 }
             }
         }
@@ -5188,7 +5328,7 @@ public class ECMA48 implements Runnable {
                 if (p[0].equals("10")) {
                     if (p[1].equals("?")) {
                         // Respond with foreground color.
-                        java.awt.Color color = jexer.backend.SwingTerminal.attrToForegroundColor(currentState.attr);
+                        java.awt.Color color = SwingTerminal.attrToForegroundColor(currentState.attr);
 
                         writeRemote(String.format(
                             "\033]10;rgb:%04x/%04x/%04x\033\\",
@@ -5201,7 +5341,7 @@ public class ECMA48 implements Runnable {
                 if (p[0].equals("11")) {
                     if (p[1].equals("?")) {
                         // Respond with background color.
-                        java.awt.Color color = jexer.backend.SwingTerminal.attrToBackgroundColor(currentState.attr);
+                        java.awt.Color color = SwingTerminal.attrToBackgroundColor(currentState.attr);
 
                         writeRemote(String.format(
                             "\033]11;rgb:%04x/%04x/%04x\033\\",
@@ -5343,6 +5483,46 @@ public class ECMA48 implements Runnable {
     }
 
     /**
+     * DECRQM - Request DEC private mode flags.
+     */
+    private void decrqm() {
+        boolean decPrivateModeFlag = false;
+
+        for (int i = 0; i < collectBuffer.length(); i++) {
+            if (collectBuffer.charAt(i) == '?') {
+                decPrivateModeFlag = true;
+                break;
+            }
+        }
+
+        int i = getCsiParam(0, 0);
+
+        if (decPrivateModeFlag) {
+            // System.err.printf("DECRQM: %d\n", i);
+
+            int Ps = 2;         // Reset
+            switch (i) {
+            case 1016:
+                // Report SGR-Pixels support
+                if (mouseEncoding == MouseEncoding.SGR_PIXELS) {
+                    Ps = 1;     // Set
+                }
+                writeRemote(String.format("\033[?%d;%d$y", i, Ps));
+                break;
+            case 2026:
+                // Report Synchronized Updates support
+                if (withinSynchronizedUpdate) {
+                    Ps = 1;     // Set
+                }
+                writeRemote(String.format("\033[?%d;%d$y", i, Ps));
+                break;
+            default:
+                break;
+            }
+        }
+    }
+
+    /**
      * Run this input character through the ECMA48 state machine.
      *
      * @param ch character from the remote side
@@ -5369,6 +5549,7 @@ public class ECMA48 implements Runnable {
             if ((type == DeviceType.XTERM)
                 && ((scanState == ScanState.OSC_STRING)
                     || (scanState == ScanState.DCS_SIXEL)
+                    || (scanState == ScanState.DCS_XTGETTCAP)
                     || (scanState == ScanState.SOSPMAPC_STRING))
             ) {
                 // Xterm can pass ESCAPE to its OSC sequence.
@@ -7033,6 +7214,13 @@ public class ECMA48 implements Runnable {
                         // DECSTR - Soft terminal reset
                         decstr();
                     }
+                    if ((type == DeviceType.XTERM)
+                        && (collectBuffer.length() > 0)
+                        && (collectBuffer.charAt(collectBuffer.length() - 1) == '$')
+                    ) {
+                        // DECRQM - Query DEC private mode flags
+                        decrqm();
+                    }
                     break;
                 case 'q':
                     if (((type == DeviceType.VT220)
@@ -7098,7 +7286,6 @@ public class ECMA48 implements Runnable {
             }
             if (ch == 0x5C) {
                 if ((collectBuffer.length() > 0)
-                    && (collectBuffer.length() > 0)
                     && (collectBuffer.charAt(collectBuffer.length() - 1) == 0x1B)
                 ) {
                     toGround();
@@ -7157,7 +7344,6 @@ public class ECMA48 implements Runnable {
             }
             if (ch == 0x5C) {
                 if ((collectBuffer.length() > 0)
-                    && (collectBuffer.length() > 0)
                     && (collectBuffer.charAt(collectBuffer.length() - 1) == 0x1B)
                 ) {
                     toGround();
@@ -7169,8 +7355,16 @@ public class ECMA48 implements Runnable {
                 scanState = ScanState.DCS_IGNORE;
             }
 
-            // 0x40-7E goes to DCS_PASSTHROUGH
-            if ((ch >= 0x40) && (ch <= 0x7E)) {
+            if (ch == 0x71) {
+                if ((collectBuffer.length() > 0)
+                    && (collectBuffer.charAt(collectBuffer.length() - 1) == '+')
+                ) {
+                    // DCS + q --> XTGETTCAP
+                    xtgettcapBuffer.setLength(0);
+                    scanState = ScanState.DCS_XTGETTCAP;
+                }
+            } else if ((ch >= 0x40) && (ch <= 0x7E)) {
+                // 0x40-7E goes to DCS_PASSTHROUGH
                 scanState = ScanState.DCS_PASSTHROUGH;
             }
 
@@ -7190,7 +7384,6 @@ public class ECMA48 implements Runnable {
             }
             if (ch == 0x5C) {
                 if ((collectBuffer.length() > 0)
-                    && (collectBuffer.length() > 0)
                     && (collectBuffer.charAt(collectBuffer.length() - 1) == 0x1B)
                 ) {
                     toGround();
@@ -7253,7 +7446,6 @@ public class ECMA48 implements Runnable {
             }
             if (ch == 0x5C) {
                 if ((collectBuffer.length() > 0)
-                    && (collectBuffer.length() > 0)
                     && (collectBuffer.charAt(collectBuffer.length() - 1) == 0x1B)
                 ) {
                     toGround();
@@ -7307,7 +7499,6 @@ public class ECMA48 implements Runnable {
             }
             if (ch == 0x5C) {
                 if ((collectBuffer.length() > 0)
-                    && (collectBuffer.length() > 0)
                     && (collectBuffer.charAt(collectBuffer.length() - 1) == 0x1B)
                 ) {
                     parseSixel();
@@ -7323,6 +7514,41 @@ public class ECMA48 implements Runnable {
                 || ((ch >= 0x20) && (ch <= 0x7E))
             ) {
                 sixelParseBuffer.append((char) ch);
+            }
+
+            // 7F                        --> ignore
+            return;
+
+        case DCS_XTGETTCAP:
+            // 0x9C goes to GROUND
+            if (ch == 0x9C) {
+                parseXtgettcap();
+                toGround();
+                return;
+            }
+
+            // 0x1B 0x5C goes to GROUND
+            if (ch == 0x1B) {
+                collect((char) ch);
+                return;
+            }
+            if (ch == 0x5C) {
+                if ((collectBuffer.length() > 0)
+                    && (collectBuffer.charAt(collectBuffer.length() - 1) == 0x1B)
+                ) {
+                    parseXtgettcap();
+                    toGround();
+                    return;
+                }
+            }
+
+            // 00-17, 19, 1C-1F, 20-7E   --> put
+            if ((ch <= 0x17)
+                || (ch == 0x19)
+                || ((ch >= 0x1C) && (ch <= 0x1F))
+                || ((ch >= 0x20) && (ch <= 0x7E))
+            ) {
+                xtgettcapBuffer.append((char) ch);
             }
 
             // 7F                        --> ignore
@@ -7415,6 +7641,15 @@ public class ECMA48 implements Runnable {
     }
 
     /**
+     * Check if terminal is reporting pixel-based mouse position.
+     *
+     * @return true if single-pixel mouse movements are reported
+     */
+    public final boolean isPixelMouse() {
+        return pixelMouse;
+    }
+
+    /**
      * Get the mouse protocol.
      *
      * @return MouseProtocol.OFF, MouseProtocol.X10, etc.
@@ -7480,18 +7715,91 @@ public class ECMA48 implements Runnable {
     }
 
     /**
+     * Parse a XTGETTCAP request.
+     */
+    private void parseXtgettcap() {
+        // System.err.println("XTGETTCAP: '" + xtgettcapBuffer.toString() + "'");
+
+        String [] namesHex = xtgettcapBuffer.toString().split(";");
+        StringBuilder name = new StringBuilder();
+        for (int i = 0; i < namesHex.length; i++) {
+            // System.err.println("XTGETTCAP: hex " + namesHex[i]);
+            if ((namesHex[i].length() % 2) != 0) {
+                // Incorrect format of name, bail out.
+                return;
+            }
+            name.setLength(0);
+            String nameHex = namesHex[i].toUpperCase();
+            try {
+                for (int j = 0; j < nameHex.length(); j += 2) {
+                    String ch = nameHex.substring(j, j + 2);
+                    name.append((char) Integer.parseInt(ch, 16));
+                }
+            } catch (NumberFormatException e) {
+                // Incorrect format of name, bail out.
+                return;
+            }
+            // System.err.println("XTGETTCAP: '" + name + "'");
+
+            if (name.toString().equals("TN")) {
+                writeXtgettcapResponse(name.toString(), "xterm-256color");
+            }
+            if (name.toString().equals("RGB")) {
+                /*
+                 * See
+                 * https://gist.github.com/XVilka/8346728#true-color-detection
+                 *
+                 * We can pick either "truecolor" or "24bit".
+                 */
+                writeXtgettcapResponse(name.toString(), "truecolor");
+            }
+        }
+    }
+
+    /**
+     * Emit the valid response to a XTGETTCAP query.
+     *
+     * @param name the name
+     * @param value the value
+     */
+    private void writeXtgettcapResponse(final String name, final String value) {
+        StringBuilder response = new StringBuilder(16);
+        response.append("\033P1+r");
+        for (int i = 0; i < name.length(); i++) {
+            response.append(Integer.toHexString(name.charAt(i)));
+        }
+        response.append("=");
+        for (int i = 0; i < value.length(); i++) {
+            response.append(Integer.toHexString(value.charAt(i)));
+        }
+        response.append("\033\\");
+        writeRemote(response.toString());
+    }
+
+    /**
      * Parse a sixel string into a bitmap image, and overlay that image onto
      * the text cells.
      */
     private void parseSixel() {
-
         /*
         System.err.println("parseSixel(): '" + sixelParseBuffer.toString()
             + "'");
         */
 
-        Sixel sixel = new Sixel(sixelParseBuffer.toString(), sixelPalette,
-            jexer.backend.SwingTerminal.attrToBackgroundColor(currentState.attr));
+        boolean maybeTransparent = false;
+        // The check below is forced to always enable maybeTransparent.  Even
+        // when imagesOverText is disabled, we can still process sixel images
+        // with missing pixels by way of checking for entirely empty text
+        // cell regions and removing them.  The effect is to have a blocky
+        // black outline around the image rather than an entire black
+        // rectangle.
+        if (true || ((backend != null) && backend.isImagesOverText())) {
+            maybeTransparent = true;
+        }
+        SixelDecoder sixel = new SixelDecoder(sixelParseBuffer.toString(),
+            sixelPalette,
+            SwingTerminal.attrToBackgroundColor(currentState.attr),
+            maybeTransparent);
         BufferedImage image = sixel.getImage();
 
         // System.err.println("parseSixel(): image " + image);
@@ -7508,10 +7816,8 @@ public class ECMA48 implements Runnable {
             return;
         }
 
-        boolean maybeTransparent = false;
-        if (System.getProperty("jexer.Swing.imagesOverText",
-                "false").equals("true")) {
-            maybeTransparent = true;
+        if (maybeTransparent) {
+            maybeTransparent = sixel.isTransparent();
         }
         imageToCells(image, true, maybeTransparent);
     }
@@ -7656,6 +7962,11 @@ public class ECMA48 implements Runnable {
         } else {
             return;
         }
+        if (maybeTransparent) {
+            if (image.getTransparency() == java.awt.Transparency.OPAQUE) {
+                maybeTransparent = false;
+            }
+        }
 
         imageToCells(image, scroll, maybeTransparent);
     }
@@ -7699,8 +8010,8 @@ public class ECMA48 implements Runnable {
         // If the backend supports transparent images, then we will not
         // draw the black underneath the cells.
         boolean transparent = false;
-        if (System.getProperty("jexer.Swing.imagesOverText",
-                "false").equals("true")) {
+
+        if ((backend != null) && backend.isImagesOverText()) {
             transparent = true;
         }
 
@@ -7713,7 +8024,9 @@ public class ECMA48 implements Runnable {
             cellRows++;
         }
 
-        if (!transparent && maybeTransparent) {
+        // See the comment in parseSixel().  The partially-transparent cell
+        // will be rendered over a black background below inside the loop.
+        if (false && !transparent && maybeTransparent) {
             // Re-render the image against a black background, so that alpha
             // in the image does not lead to bleed-through artifacts.
             BufferedImage newImage;
@@ -7732,8 +8045,6 @@ public class ECMA48 implements Runnable {
         Cell [][] cells = new Cell[cellColumns][cellRows];
         for (int x = 0; x < cellColumns; x++) {
             for (int y = 0; y < cellRows; y++) {
-                Cell cell = new Cell();
-
                 int width = textWidth;
                 if ((x + 1) * textWidth > image.getWidth()) {
                     width = image.getWidth() - (x * textWidth);
@@ -7742,9 +8053,22 @@ public class ECMA48 implements Runnable {
                 if ((y + 1) * textHeight > image.getHeight()) {
                     height = image.getHeight() - (y * textHeight);
                 }
-                if ((width != textWidth) || (height != textHeight)) {
-                    // Copy the smaller-than-text-cell-size image to a
-                    // full-text-cell-size.
+
+                // I'm genuinely not sure if making many small cells with
+                // array copy is better than lots of sumImages.  Memory
+                // pressure is killing it at high animation rates.  For now,
+                // we will ALWAYS make a copy.
+                Cell cell = new Cell();
+
+                BufferedImage imageSlice = image.getSubimage(x * textWidth,
+                    y * textHeight, width, height);
+
+                if (ImageUtils.isFullyTransparent(imageSlice)) {
+                    // There is nothing more to do, this entire image is
+                    // empty.
+
+                    // NOP
+                } else {
                     BufferedImage newImage;
                     newImage = new BufferedImage(textWidth, textHeight,
                         BufferedImage.TYPE_INT_ARGB);
@@ -7754,14 +8078,25 @@ public class ECMA48 implements Runnable {
                         gr.fillRect(0, 0, newImage.getWidth(),
                             newImage.getHeight());
                     }
-                    gr.drawImage(image.getSubimage(x * textWidth,
-                            y * textHeight, width, height),
-                        0, 0, null, null);
+                    gr.drawImage(imageSlice, 0, 0, null, null);
                     gr.dispose();
+
                     cell.setImage(newImage);
-                } else {
-                    cell.setImage(image.getSubimage(x * textWidth,
-                            y * textHeight, width, height));
+
+                    if (maybeTransparent) {
+                        // Check now if this cell has transparent pixels.
+                        // This will slow down the reader thread but unload
+                        // the render thread.
+                        //
+                        // Truth is performance is going to be bad for a
+                        // while...
+                        cell.isTransparentImage();
+                    } else {
+                        // We support transparency, but this image doesn't
+                        // have any transparent pixels.  Force the cell to
+                        // never check transparency.
+                        cell.setOpaqueImage();
+                    }
                 }
                 cells[x][y] = cell;
             }
@@ -7771,6 +8106,7 @@ public class ECMA48 implements Runnable {
         int y0 = currentState.cursorY;
         for (int y = 0; y < cellRows; y++) {
             DisplayLine line = display.get(currentState.cursorY);
+            BufferedImage newImage;
 
             for (int x = 0; x < cellColumns; x++) {
                 assert (currentState.cursorX <= rightMargin);
@@ -7780,7 +8116,52 @@ public class ECMA48 implements Runnable {
                 Cell oldCell = line.charAt(currentState.cursorX);
                 cells[x][y].setChar(oldCell.getChar());
                 cells[x][y].setAttr(oldCell, true);
-                line.replace(currentState.cursorX, cells[x][y]);
+                if (transparent && maybeTransparent
+                    && cells[x][y].isTransparentImage()
+                ) {
+                    if (oldCell.isImage()) {
+                        // Blit the old cell image underneath this cell's
+                        // image.
+                        newImage = new BufferedImage(textWidth,
+                            textHeight, BufferedImage.TYPE_INT_ARGB);
+
+                        java.awt.Graphics gr = newImage.getGraphics();
+                        gr.setColor(java.awt.Color.BLACK);
+                        gr.drawImage(oldCell.getImage(), 0, 0, null, null);
+                        gr.drawImage(cells[x][y].getImage(), 0, 0, null, null);
+                        gr.dispose();
+                        cells[x][y].setImage(newImage);
+                        cells[x][y].isTransparentImage();
+                    } else if (false) {
+                        // This path would be good for the ECMA48 backend, as
+                        // it renders all images onto cells at once.  On the
+                        // Swing backend it can lead to multiple fonts and
+                        // kind of weird looking things, so leaving it
+                        // disabled.
+
+                        // Render the old cell text underneath this cell.
+                        if (lastTextHeight != textHeight) {
+                            glyphMaker = GlyphMaker.getInstance(textHeight);
+                            lastTextHeight = textHeight;
+                        }
+                        newImage = new BufferedImage(textWidth,
+                            textHeight, BufferedImage.TYPE_INT_ARGB);
+
+                        BufferedImage textImage = glyphMaker.getImage(oldCell,
+                            textWidth, textHeight);
+
+                        java.awt.Graphics gr = newImage.getGraphics();
+                        gr.setColor(java.awt.Color.BLACK);
+                        gr.drawImage(textImage, 0, 0, null, null);
+                        gr.drawImage(cells[x][y].getImage(), 0, 0, null, null);
+                        gr.dispose();
+                        cells[x][y].setImage(newImage);
+                        cells[x][y].isTransparentImage();
+                    }
+                }
+                if (cells[x][y].isImage()) {
+                    line.replace(currentState.cursorX, cells[x][y]);
+                }
 
                 // If at the end of the visible screen, stop.
                 if (currentState.cursorX == rightMargin) {

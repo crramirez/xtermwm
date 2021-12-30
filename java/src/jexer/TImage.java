@@ -31,6 +31,7 @@ package jexer;
 import java.awt.image.BufferedImage;
 
 import jexer.bits.Cell;
+import jexer.bits.ImageUtils;
 import jexer.event.TCommandEvent;
 import jexer.event.TKeypressEvent;
 import jexer.event.TMouseEvent;
@@ -349,8 +350,8 @@ public class TImage extends TWidget implements EditMenuUser {
     public void draw() {
         sizeToImage(false);
 
-        // We have already broken the image up, just draw the last set of
-        // cells.
+        // We have already broken the image up, just draw the previously
+        // created set of cells.
         for (int x = 0; (x < getWidth()) && (x + left < cellColumns); x++) {
             if ((left + x) * lastTextWidth > image.getWidth()) {
                 continue;
@@ -363,10 +364,9 @@ public class TImage extends TWidget implements EditMenuUser {
                 assert (x + left < cellColumns);
                 assert (y + top < cellRows);
 
-                getWindow().putCharXY(x, y, cells[x + left][y + top]);
+                putCharXY(x, y, cells[x + left][y + top]);
             }
         }
-
     }
 
     // ------------------------------------------------------------------------
@@ -422,23 +422,21 @@ public class TImage extends TWidget implements EditMenuUser {
                     }
 
                     Cell cell = new Cell();
+                    cell.setTo(getWindow().getBackground());
 
-                    // Always re-render the image against the cell
-                    // background, so that alpha in the image does not lead
-                    // to bleed-through artifacts.
-                    BufferedImage newImage;
-                    newImage = new BufferedImage(textWidth, textHeight,
-                        BufferedImage.TYPE_INT_ARGB);
-
+                    // Render over a full-cell-size image.
+                    BufferedImage newImage = new BufferedImage(textWidth,
+                        textHeight, BufferedImage.TYPE_INT_ARGB);
                     java.awt.Graphics gr = newImage.getGraphics();
-                    gr.setColor(cell.getBackground());
-                    gr.fillRect(0, 0, textWidth, textHeight);
-                    gr.drawImage(image.getSubimage(x * textWidth,
-                            y * textHeight, width, height),
-                        0, 0, null, null);
+                    BufferedImage subImage = image.getSubimage(x * textWidth,
+                        y * textHeight, width, height);
+                    gr.drawImage(subImage, 0, 0, null, null);
                     gr.dispose();
-                    cell.setImage(newImage);
 
+                    if (!ImageUtils.isFullyTransparent(newImage)) {
+                        cell.setImage(newImage);
+                        cell.flattenImage(false);
+                    }
                     cells[x][y] = cell;
                 }
             }

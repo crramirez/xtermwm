@@ -29,6 +29,7 @@
 package jexer.bits;
 
 import java.awt.image.BufferedImage;
+import jexer.backend.GlyphMaker;
 
 /**
  * This class represents a single text cell or bit of image on the screen.
@@ -107,6 +108,15 @@ public class Cell extends CellAttributes {
      */
     private int backgroundHashCode = 0;
 
+    /**
+     * If this cell has image data, whether or not it also has transparent
+     * pixels.  -1 = no image data; 0 = unknown if transparent pixels are
+     * present; 1 = transparent pixels are present; 2 = transparent pixels
+     * are not present; 3 = the entire image is transparent; 4 = transparent
+     * pixels are present, but not all of the image.
+     */
+    private int hasTransparentPixels = -1;
+
     // ------------------------------------------------------------------------
     // Constructors -----------------------------------------------------------
     // ------------------------------------------------------------------------
@@ -172,6 +182,7 @@ public class Cell extends CellAttributes {
      */
     public void setImage(final BufferedImage image) {
         this.image = image;
+        hasTransparentPixels = 0;
         imageHashCode = image.hashCode();
         width = Width.SINGLE;
     }
@@ -186,6 +197,114 @@ public class Cell extends CellAttributes {
             return invertedImage;
         }
         return image;
+    }
+
+    /**
+     * Get the image data for this cell.
+     *
+     * @param copy if true, return a copy of the image
+     * @return the image for this cell
+     */
+    public BufferedImage getImage(final boolean copy) {
+        if (!copy) {
+            return getImage();
+        }
+        if (image == null) {
+            return null;
+        }
+
+        int textWidth = image.getWidth();
+        int textHeight = image.getHeight();
+        BufferedImage newImage = new BufferedImage(textWidth,
+            textHeight, BufferedImage.TYPE_INT_ARGB);
+        java.awt.Graphics gr = newImage.getGraphics();
+        if (invertedImage != null) {
+            assert (image != null);
+            gr.drawImage(invertedImage, 0, 0, null, null);
+        } else {
+            gr.drawImage(image, 0, 0, null, null);
+        }
+        gr.dispose();
+        return newImage;
+    }
+
+    /**
+     * Flatten the image on this cell by rendering it either onto the
+     * background color, or generating the glyph and rendering over that.
+     *
+     * @param overGlyph if true, render over the glyph
+     */
+    public void flattenImage(final boolean overGlyph) {
+        if (!isImage()) {
+            return;
+        }
+
+        if (hasTransparentPixels == 2) {
+            // The image already covers the entire cell.
+            return;
+        }
+
+        // We will be opaque when done.
+        hasTransparentPixels = 2;
+
+        int textWidth = image.getWidth();
+        int textHeight = image.getHeight();
+        BufferedImage newImage = new BufferedImage(textWidth,
+            textHeight, BufferedImage.TYPE_INT_ARGB);
+        java.awt.Graphics gr = newImage.getGraphics();
+        gr.setColor(jexer.backend.SwingTerminal.
+            attrToBackgroundColor(this));
+
+        if (overGlyph) {
+            // Render this cell to a flat image.  The bad news is that we
+            // won't get to use the actual terminal's font.
+            GlyphMaker glyphMaker = GlyphMaker.getInstance(textHeight);
+            gr.drawImage(glyphMaker.getImage(this, textWidth, textHeight),
+                0, 0, null, null);
+        } else {
+            // Put the background color behind the pixels.
+            gr.fillRect(0, 0, newImage.getWidth(),
+                newImage.getHeight());
+        }
+        gr.drawImage(image, 0, 0, null, null);
+        gr.dispose();
+        setImage(newImage);
+    }
+
+    /**
+     * Blit another cell's image on top of the image data for this cell.
+     *
+     * @param cell the other cell
+     */
+    public void blitImage(final Cell cell) {
+        if (!cell.isImage() || cell.isFullyTransparentImage()) {
+            // The other cell has no image data.
+            return;
+        }
+        if (!isImage() || !cell.isTransparentImage()) {
+            // Just replace this cell's image.
+            setImage(cell.getImage());
+            return;
+        }
+        assert (isImage() && cell.isTransparentImage());
+        assert (image.getWidth() > 0);
+        assert (image.getHeight() > 0);
+        assert (cell.getImage().getWidth() > 0);
+        assert (cell.getImage().getHeight() > 0);
+
+        // Blit the new cell image over this cell's image.
+        int textWidth = Math.min(image.getWidth(), cell.getImage().getWidth());
+        int textHeight = Math.min(image.getHeight(),
+            cell.getImage().getHeight());
+        BufferedImage newImage = new BufferedImage(textWidth,
+            textHeight, BufferedImage.TYPE_INT_ARGB);
+
+        java.awt.Graphics gr = newImage.getGraphics();
+        gr.setColor(java.awt.Color.BLACK);
+        gr.drawImage(image, 0, 0, null, null);
+        gr.drawImage(cell.getImage(), 0, 0, null, null);
+        gr.dispose();
+        setImage(newImage);
     }
 
     /**
@@ -208,6 +327,105 @@ public class Cell extends CellAttributes {
             return true;
         }
         return false;
+    }
+
+    /**
+     * If true, this cell has image data and some of the pixels are
+     * transparent.
+     *
+     * @return true if this cell has image data with transparent pixels
+     */
+    public boolean isTransparentImage() {
+        if (image == null) {
+            return false;
+        }
+        if (hasTransparentPixels == 0) {
+            // Scan for transparent pixels.
+            int [] rgbArray = image.getRGB(0, 0,
+                image.getWidth(), image.getHeight(), null, 0, image.getWidth());
+
+            for (int i = 0; i < rgbArray.length; i++) {
+                if (((rgbArray[i] >>> 24) & 0xFF) != 0xFF) {
+                    // A pixel might be transparent.
+                    hasTransparentPixels = 1;
+                    return true;
+                }
+            }
+            // No transparent pixels.
+            hasTransparentPixels = 2;
+        }
+        if ((hasTransparentPixels == 1)
+            || (hasTransparentPixels == 3)
+            || (hasTransparentPixels == 4)
+        ) {
+            // Transparent pixels were found at some time.
+            return true;
+        }
+        assert (hasTransparentPixels == 2);
+        return false;
+    }
+
+    /**
+     * If true, this cell has image data and all of its pixels are fully
+     * transparent (alpha of 0).
+     *
+     * @return true if this cell has image data with only transparent pixels
+     */
+    public boolean isFullyTransparentImage() {
+        if (image == null) {
+            return false;
+        }
+        if ((hasTransparentPixels == 0) || (hasTransparentPixels == 1)) {
+            // Scan for transparent pixels.  Only if ALL pixels are
+            // transparent do we return true.
+            int [] rgbArray = image.getRGB(0, 0,
+                image.getWidth(), image.getHeight(), null, 0, image.getWidth());
+
+            if (rgbArray.length == 0) {
+                // No image data, fully transparent.
+                hasTransparentPixels = 3;
+                return true;
+            }
+
+            boolean allOpaque = true;
+            boolean allTransparent = true;
+            for (int i = 0; i < rgbArray.length; i++) {
+                int alpha = (rgbArray[i] >>> 24) & 0xFF;
+                if ((alpha != 0xFF) && (alpha != 0x00)) {
+                    // Some transparent pixels, but not fully transparent.
+                    hasTransparentPixels = 4;
+                    return false;
+                }
+                // This pixel is either fully opaque or fully transparent.
+                if (alpha == 0xFF) {
+                    allTransparent = false;
+                } else {
+                    allOpaque = false;
+                }
+            }
+            if (allOpaque == true) {
+                // No transparent pixels.
+                hasTransparentPixels = 2;
+            } else {
+                assert (allTransparent == true);
+                hasTransparentPixels = 3;
+            }
+        }
+        if (hasTransparentPixels == 3) {
+            // Fully transparent.
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * Force calls to isTransparentImage() to always return false.
+     */
+    public void setOpaqueImage() {
+        if (image == null) {
+            hasTransparentPixels = -1;
+        }
+        hasTransparentPixels = 2;
     }
 
     /**
@@ -249,8 +467,6 @@ public class Cell extends CellAttributes {
                 if (rgbArray[i] != 0x00FFFFFF) {
                     rgbArray[i] ^= 0x00FFFFFF;
                 }
-                // Also set alpha to non-transparent.
-                rgbArray[i] |= 0xFF000000;
             }
             invertedImage.setRGB(0, 0, image.getWidth(), image.getHeight(),
                 rgbArray, 0, image.getWidth());
@@ -307,6 +523,7 @@ public class Cell extends CellAttributes {
         invertedImage = null;
         background = java.awt.Color.BLACK;
         backgroundHashCode = 0;
+        hasTransparentPixels = -1;
     }
 
     /**
@@ -322,6 +539,7 @@ public class Cell extends CellAttributes {
         invertedImage = null;
         background = java.awt.Color.BLACK;
         backgroundHashCode = 0;
+        hasTransparentPixels = -1;
     }
 
     /**
@@ -350,6 +568,32 @@ public class Cell extends CellAttributes {
             return true;
         }
         return false;
+    }
+
+    /**
+     * If true, this cell can be placed in a glyph cache somewhere so that it
+     * does not have to be re-rendered many times.
+     *
+     * @return true if this cell can be placed in a cache
+     */
+    public boolean isCacheable() {
+        /*
+         * Heuristics, omit cells that:
+         *
+         *   - Are text only and have 24-bit RGB color.
+         *
+         *   - Are image over a glyph.
+         */
+        if ((image == null)
+            && (getForeColorRGB() != -1)
+            && (getBackColorRGB() != -1)
+        ) {
+            return false;
+        }
+        if ((image != null) && (ch != ' ')) {
+            return false;
+        }
+        return true;
     }
 
     /**
@@ -440,14 +684,6 @@ public class Cell extends CellAttributes {
      */
     @Override
     public void setTo(final Object rhs) {
-        // Let this throw a ClassCastException
-        CellAttributes thatAttr = (CellAttributes) rhs;
-        this.image = null;
-        this.imageHashCode = 0;
-        this.backgroundHashCode = 0;
-        this.width = Width.SINGLE;
-        super.setTo(thatAttr);
-
         if (rhs instanceof Cell) {
             Cell that = (Cell) rhs;
             this.ch = that.ch;
@@ -457,7 +693,17 @@ public class Cell extends CellAttributes {
             this.background = that.background;
             this.imageHashCode = that.imageHashCode;
             this.backgroundHashCode = that.backgroundHashCode;
+            this.hasTransparentPixels = that.hasTransparentPixels;
+        } else {
+            this.image = null;
+            this.imageHashCode = 0;
+            this.backgroundHashCode = 0;
+            this.hasTransparentPixels = -1;
+            this.width = Width.SINGLE;
         }
+        // Let this throw a ClassCastException
+        CellAttributes thatAttr = (CellAttributes) rhs;
+        super.setTo(thatAttr);
     }
 
     /**
@@ -467,6 +713,7 @@ public class Cell extends CellAttributes {
      */
     public void setAttr(final CellAttributes that) {
         image = null;
+        hasTransparentPixels = -1;
         super.setTo(that);
     }
 
@@ -479,6 +726,7 @@ public class Cell extends CellAttributes {
     public void setAttr(final CellAttributes that, final boolean keepImage) {
         if (!keepImage) {
             image = null;
+            hasTransparentPixels = -1;
         }
         super.setTo(that);
     }
