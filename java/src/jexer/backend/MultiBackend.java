@@ -3,7 +3,7 @@
  *
  * The MIT License (MIT)
  *
- * Copyright (C) 2021 Autumn Lamonte
+ * Copyright (C) 2022 Autumn Lamonte
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -23,7 +23,7 @@
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
  * DEALINGS IN THE SOFTWARE.
  *
- * @author Autumn Lamonte [AutumnWalksTheLake@gmail.com] ⚧ Trans Liberation Now
+ * @author Autumn Lamonte ⚧ Trans Liberation Now
  * @version 1
  */
 package jexer.backend;
@@ -31,6 +31,7 @@ package jexer.backend;
 import java.util.ArrayList;
 import java.util.List;
 
+import jexer.bits.CellAttributes;
 import jexer.event.TCommandEvent;
 import jexer.event.TInputEvent;
 import static jexer.TCommand.*;
@@ -76,6 +77,7 @@ public class MultiBackend implements Backend {
         } else {
             multiScreen = new MultiScreen(backend.getScreen());
         }
+        multiScreen.setBackend(this);
         if (backend instanceof GenericBackend) {
             ((GenericBackend) backend).abortOnDisconnect = false;
         }
@@ -109,8 +111,18 @@ public class MultiBackend implements Backend {
      * screen to the physical device.
      */
     public void flushScreen() {
-        for (Backend backend: backends) {
-            backend.flushScreen();
+        multiScreen.flushPhysical();
+        int n = backends.size();
+        for (int i = 0; i < n; i++) {
+            final Backend backend = backends.get(Math.min(i, backends.size()));
+            // Flush to the physical device on another thread.
+            (new Thread(new Runnable() {
+                public void run() {
+                    synchronized (backend.getScreen()) {
+                        backend.flushScreen();
+                    }
+                }
+            })).start();
         }
     }
 
@@ -371,6 +383,28 @@ public class MultiBackend implements Backend {
         for (Backend backend: backends) {
             backend.setMouseStyle(mouseStyle);
         }
+    }
+
+    /**
+     * Convert a CellAttributes foreground color to an AWT Color.
+     *
+     * @param attr the text attributes
+     * @return the AWT Color
+     */
+    public java.awt.Color attrToForegroundColor(final CellAttributes attr) {
+        // Use Swing colors.
+        return SwingTerminal.attrToForegroundColor(attr);
+    }
+
+    /**
+     * Convert a CellAttributes background color to an AWT Color.
+     *
+     * @param attr the text attributes
+     * @return the AWT Color
+     */
+    public java.awt.Color attrToBackgroundColor(final CellAttributes attr) {
+        // Use Swing colors.
+        return SwingTerminal.attrToBackgroundColor(attr);
     }
 
 }

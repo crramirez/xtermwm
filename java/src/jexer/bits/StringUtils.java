@@ -3,7 +3,7 @@
  *
  * The MIT License (MIT)
  *
- * Copyright (C) 2021 Autumn Lamonte
+ * Copyright (C) 2022 Autumn Lamonte
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -23,7 +23,7 @@
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
  * DEALINGS IN THE SOFTWARE.
  *
- * @author Autumn Lamonte [AutumnWalksTheLake@gmail.com] ⚧ Trans Liberation Now
+ * @author Autumn Lamonte ⚧ Trans Liberation Now
  * @version 1
  */
 package jexer.bits;
@@ -457,6 +457,8 @@ public class StringUtils {
                 || ((ch >= 0x30000) && (ch <= 0x3fffd))
                 // emoji - exclude symbols for legacy computing
                 || ((ch >= 0x1f004) && (ch < 0x1fb00))
+                // Symbols for Legacy Computing, 1 or 2?
+                // || ((ch >= 0x1fb00) && (ch <= 0x1fbff))
                 || ((ch >= 0x1fc00) && (ch <= 0x1fffd))
             )
         ) {
@@ -503,7 +505,32 @@ public class StringUtils {
      * @return true if this character is in the emoji range
      */
     public static boolean isEmoji(final int ch) {
+        if ((ch >= 0x1fb00) && (ch <= 0x1fbff)) {
+            // Unicode Symbols for Legacy Computing
+            return false;
+        }
         return ((ch >= 0x1f004) && (ch <= 0x1fffd));
+    }
+
+    /**
+     * Check if character is in the Symbols for Legacy Computing range.
+     *
+     * @param ch character to check
+     * @return true if this character is in the Symbols for Legacy Computing
+     * range
+     */
+    public static boolean isLegacyComputingSymbol(final int ch) {
+        return ((ch >= 0x1fb00) && (ch <= 0x1fbff));
+    }
+
+    /**
+     * Check if character is in the braille range.
+     *
+     * @param ch character to check
+     * @return true if this character is in the braille range
+     */
+    public static boolean isBraille(final int ch) {
+        return ((ch >= 0x2800) && (ch <= 0x28ff));
     }
 
     // ------------------------------------------------------------------------

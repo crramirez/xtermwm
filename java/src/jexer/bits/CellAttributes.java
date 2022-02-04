@@ -3,7 +3,7 @@
  *
  * The MIT License (MIT)
  *
- * Copyright (C) 2021 Autumn Lamonte
+ * Copyright (C) 2022 Autumn Lamonte
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -23,10 +23,12 @@
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
  * DEALINGS IN THE SOFTWARE.
  *
- * @author Autumn Lamonte [AutumnWalksTheLake@gmail.com] ⚧ Trans Liberation Now
+ * @author Autumn Lamonte ⚧ Trans Liberation Now
  * @version 1
  */
 package jexer.bits;
+
+import jexer.backend.Backend;
 
 /**
  * The attributes used by a Cell: color, bold, blink, etc.
@@ -61,6 +63,42 @@ public class CellAttributes {
      * Protected attribute.
      */
     private static final int PROTECT    = 0x10;
+
+    /**
+     * Animation bits for time-dependent transforms.
+     */
+    private static final int ANIMATION_MASK       = 0xFFFFF000;
+
+    /**
+     * Animation: pulse color.  8 bits: rrrgggbb.  Fades and pulses will go
+     * between this color and the foregound RGB color.
+     */
+    private static final int ANIMATION_COLOR_MASK = 0xFF000000;
+
+    /**
+     * Animation: timer seed value.  Currently supporting 6 bits.
+     */
+    private static final int ANIMATION_TIME_MASK  = 0x00FC0000;
+
+    /**
+     * Animation: fade in.
+     */
+    // private static final int ANIMATION_FADE_IN    = 0x00001000;
+
+    /**
+     * Animation: fade out.
+     */
+    // private static final int ANIMATION_FADE_OUT   = 0x00002000;
+
+    /**
+     * Animation: pulse slowly.
+     */
+    private static final int ANIMATION_PULSE      = 0x00004000;
+
+    /**
+     * Animation: pulse quickly.
+     */
+    private static final int ANIMATION_PULSE_FAST = 0x00008000;
 
     // ------------------------------------------------------------------------
     // Variables --------------------------------------------------------------
@@ -125,7 +163,7 @@ public class CellAttributes {
      * @return bold value
      */
     public final boolean isBold() {
-        return ((flags & BOLD) == 0 ? false : true);
+        return ((flags & BOLD) != 0);
     }
 
     /**
@@ -230,6 +268,25 @@ public class CellAttributes {
     }
 
     /**
+     * Getter for animation flags.
+     *
+     * @return animation flags.
+     */
+    public final int getAnimations() {
+        return (flags & ANIMATION_MASK);
+    }
+
+    /**
+     * Setter for animations.
+     *
+     * @param animationFlags new animation flags
+     */
+    public final void setAnimations(final int animationFlags) {
+        flags &= ~ANIMATION_MASK;
+        flags |= animationFlags;
+    }
+
+    /**
      * Getter for foreColor.
      *
      * @return foreColor value
@@ -268,7 +325,53 @@ public class CellAttributes {
     }
 
     /**
-     * Getter for foreColor RGB.
+     * Get the current pulsed RGB value for foreColor.
+     *
+     * @param backend the backend that can obtain the correct ANSI
+     * (palette-based) foreground color
+     * @param pulseTimeMillis the time to compute the pulse color for in
+     * millis
+     * @return foreColor RGB value at this time slice.
+     */
+    public final int getForeColorPulseRGB(final Backend backend,
+        final long pulseTimeMillis) {
+
+        if ((flags & (ANIMATION_PULSE | ANIMATION_PULSE_FAST)) == 0) {
+            // Not pulsed.
+            if (foreColorRGB != -1) {
+                return foreColorRGB;
+            }
+            return backend.attrToForegroundColor(this).getRGB() & 0xFFFFFF;
+        }
+
+        int offsetSlice = (flags & ANIMATION_TIME_MASK) >>> 16;
+        int slice = 0;
+        int sliceN = 16;
+        int sliceI = 0;
+        if ((flags & ANIMATION_PULSE_FAST) == 0) {
+            // This is a fast pulse: 32 steps / second
+            sliceN = 32;
+            slice = (int) (pulseTimeMillis * sliceN / 1000);
+            sliceI = (slice + offsetSlice) & 0x1F;
+        } else {
+            // Slow pulse: 16 steps / second
+            slice = (int) (pulseTimeMillis * (sliceN * 2) / 1000);
+            sliceI = (slice + offsetSlice) & 0x0F;
+        }
+        if (sliceI >= (sliceN / 2)) {
+            sliceI = sliceN - sliceI;
+        }
+        int pulseColorRGB = getPulseColorRGB();
+        int foreColorRGB = backend.attrToForegroundColor(this).getRGB();
+        double fraction = (double) sliceI * 2.0 / (sliceN - 1);
+        int finalColor = ImageUtils.rgbMove(foreColorRGB, pulseColorRGB,
+            fraction);
+        return finalColor;
+    }
+
+    /**
+     * Getter for foreColor RGB.  Note that this is always a RGB value,
+     * i.e. alpha is 0.
      *
      * @return foreColor value.  Negative means unset.
      */
@@ -282,11 +385,13 @@ public class CellAttributes {
      * @param foreColorRGB new foreColor RGB value
      */
     public final void setForeColorRGB(final int foreColorRGB) {
-        this.foreColorRGB = foreColorRGB;
+        this.foreColorRGB = foreColorRGB & 0xFFFFFF;
+        this.foreColor = Color.WHITE;
     }
 
     /**
-     * Getter for backColor RGB.
+     * Getter for backColor RGB.  Note that this is always a RGB value,
+     * i.e. alpha is 0.
      *
      * @return backColor value.  Negative means unset.
      */
@@ -300,7 +405,8 @@ public class CellAttributes {
      * @param backColorRGB new backColor RGB value
      */
     public final void setBackColorRGB(final int backColorRGB) {
-        this.backColorRGB = backColorRGB;
+        this.backColorRGB = backColorRGB & 0xFFFFFF;
+        this.backColor = Color.BLACK;
     }
 
     /**
@@ -444,6 +550,76 @@ public class CellAttributes {
         return String.format("style=\"color: %s; background-color: %s; " +
             "text-decoration: %s; font-weight: %s\"",
             fgText, bgText, textDecoration, fontWeight);
+    }
+
+    /**
+     * Getter for animation pulse.
+     *
+     * @return pulse value
+     */
+    public final boolean isPulse() {
+        if ((flags & (ANIMATION_PULSE | ANIMATION_PULSE_FAST)) != 0) {
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * Setter for animation pulse.
+     *
+     * @param pulse new pulse value
+     * @param fast if true, fast pulse
+     * @param offset number of frames (up to 16 for slow, up to 32 for
+     * fast) to offset the pulse animation
+     */
+    public final void setPulse(final boolean pulse, final boolean fast,
+        int offset) {
+
+        flags &= ~(ANIMATION_PULSE | ANIMATION_PULSE_FAST);
+        if (!pulse && !fast) {
+            return;
+        }
+        int sliceN = 16;
+        if (fast) {
+            flags |= ANIMATION_PULSE_FAST;
+            sliceN = 32;
+            offset &= 0x1F;
+        } else {
+            flags |= ANIMATION_PULSE;
+            offset &= 0x0F;
+        }
+        flags &= ~ANIMATION_TIME_MASK;
+        flags |= (offset & 0x3F) << 16;
+    }
+
+    /**
+     * Getter for pulse color RGB.
+     *
+     * @return pulse color RGB value
+     */
+    public final int getPulseColorRGB() {
+        int pulseColor = (flags >>> 24) & 0xFF;
+        int colorRGB = ((pulseColor & 0xE0) << 16)
+                | ((pulseColor & 0x1C) << 11)
+                | ((pulseColor & 0x03) << 6);
+
+        return colorRGB;
+    }
+
+    /**
+     * Setter for pulse color RGB.
+     *
+     * @param pulseColorRGB new pulse color RGB value
+     */
+    public final void setPulseColorRGB(final int pulseColorRGB) {
+        int color = ((pulseColorRGB & 0xE00000) >>> 16)
+                | ((pulseColorRGB & 0xE000) >>> 11)
+                | ((pulseColorRGB & 0xC0) >>> 6);
+
+        flags &= ~ANIMATION_COLOR_MASK;
+        flags |= color << 24;
+
+        // System.err.printf("setPulseColorRGB(): %08x\n", getPulseColorRGB());
     }
 
 }

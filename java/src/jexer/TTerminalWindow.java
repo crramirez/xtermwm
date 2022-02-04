@@ -3,7 +3,7 @@
  *
  * The MIT License (MIT)
  *
- * Copyright (C) 2021 Autumn Lamonte
+ * Copyright (C) 2022 Autumn Lamonte
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -23,7 +23,7 @@
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
  * DEALINGS IN THE SOFTWARE.
  *
- * @author Autumn Lamonte [AutumnWalksTheLake@gmail.com] ⚧ Trans Liberation Now
+ * @author Autumn Lamonte ⚧ Trans Liberation Now
  * @version 1
  */
 package jexer;
@@ -160,6 +160,17 @@ public class TTerminalWindow extends TScrollableWindow {
                 onShellExit();
             }
         });
+
+        int opacity = 95;
+        try {
+            opacity = Integer.parseInt(System.getProperty(
+                "jexer.TTerminal.opacity", "95"));
+            opacity = Math.max(opacity, 10);
+            opacity = Math.min(opacity, 100);
+        } catch (NumberFormatException e) {
+            // SQUASH
+        }
+        setAlpha(opacity * 255 / 100);
     }
 
     /**
@@ -216,6 +227,17 @@ public class TTerminalWindow extends TScrollableWindow {
                 onShellExit();
             }
         });
+
+        int opacity = 95;
+        try {
+            opacity = Integer.parseInt(System.getProperty(
+                "jexer.TTerminal.opacity", "95"));
+            opacity = Math.max(opacity, 10);
+            opacity = Math.min(opacity, 100);
+        } catch (NumberFormatException e) {
+            // SQUASH
+        }
+        setAlpha(opacity * 255 / 100);
     }
 
     // ------------------------------------------------------------------------

@@ -3,7 +3,7 @@
  *
  * The MIT License (MIT)
  *
- * Copyright (C) 2021 Autumn Lamonte
+ * Copyright (C) 2022 Autumn Lamonte
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -23,7 +23,7 @@
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
  * DEALINGS IN THE SOFTWARE.
  *
- * @author Autumn Lamonte [AutumnWalksTheLake@gmail.com] ⚧ Trans Liberation Now
+ * @author Autumn Lamonte ⚧ Trans Liberation Now
  * @version 1
  */
 package jexer.backend;
@@ -126,6 +126,11 @@ class GlyphMakerFont {
      */
     private HashMap<Cell, BufferedImage> glyphCache;
 
+    /**
+     * If true, this font loaded OK.
+     */
+    private boolean loaded = false;
+
     // ------------------------------------------------------------------------
     // Constructors -----------------------------------------------------------
     // ------------------------------------------------------------------------
@@ -140,7 +145,7 @@ class GlyphMakerFont {
 
         if (filename.length() == 0) {
             // Fallback font
-            font = new Font(Font.MONOSPACED, Font.PLAIN, fontSize - 2);
+            font = new Font(Font.MONOSPACED, Font.PLAIN, fontSize);
             return;
         }
 
@@ -149,16 +154,17 @@ class GlyphMakerFont {
             ClassLoader loader = Thread.currentThread().getContextClassLoader();
             InputStream in = loader.getResourceAsStream(filename);
             fontRoot = Font.createFont(Font.TRUETYPE_FONT, in);
-            font = fontRoot.deriveFont(Font.PLAIN, fontSize - 2);
+            font = fontRoot.deriveFont(Font.PLAIN, fontSize);
+            loaded = true;
         } catch (FontFormatException e) {
             // Ideally we would report an error here, either via System.err
             // or TExceptionDialog.  However, I do not want GlyphMaker to
             // know about available backends, so we quietly fallback to
             // whatever is available as MONO.
-            font = new Font(Font.MONOSPACED, Font.PLAIN, fontSize - 2);
+            font = new Font(Font.MONOSPACED, Font.PLAIN, fontSize);
         } catch (IOException e) {
             // See comment above.
-            font = new Font(Font.MONOSPACED, Font.PLAIN, fontSize - 2);
+            font = new Font(Font.MONOSPACED, Font.PLAIN, fontSize);
         }
     }
 
@@ -172,12 +178,14 @@ class GlyphMakerFont {
      * @param cell the character to draw
      * @param cellWidth the width of the text cell to draw into
      * @param cellHeight the height of the text cell to draw into
+     * @param backend the backend that can obtain the correct background
+     * color
      * @return the glyph as an image
      */
     public BufferedImage getImage(final Cell cell, final int cellWidth,
-        final int cellHeight) {
+        final int cellHeight, final Backend backend) {
 
-        return getImage(cell, cellWidth, cellHeight, true);
+        return getImage(cell, cellWidth, cellHeight, backend, true);
     }
 
     /**
@@ -186,11 +194,14 @@ class GlyphMakerFont {
      * @param cell the character to draw
      * @param cellWidth the width of the text cell to draw into
      * @param cellHeight the height of the text cell to draw into
+     * @param backend the backend that can obtain the correct background
+     * color
      * @param blinkVisible if true, the cell is visible if it is blinking
      * @return the glyph as an image
      */
     public BufferedImage getImage(final Cell cell, final int cellWidth,
-        final int cellHeight, final boolean blinkVisible) {
+        final int cellHeight, final Backend backend,
+        final boolean blinkVisible) {
 
         if (gotFontDimensions == false) {
             // Lazy-load the text width/height and adjustments.
@@ -219,22 +230,35 @@ class GlyphMakerFont {
         gr2.setFont(font);
 
         Cell cellColor = new Cell(cell);
+        if (cell.isPulse()) {
+            cellColor.setPulse(false, false, 0);
+            cellColor.setForeColorRGB(cell.getForeColorPulseRGB(backend,
+                    System.currentTimeMillis()));
+        }
 
         // Check for reverse
         if (cell.isReverse()) {
-            cellColor.setForeColor(cell.getBackColor());
-            cellColor.setBackColor(cell.getForeColor());
+            if (cell.getBackColorRGB() < 0) {
+                cellColor.setForeColor(cell.getBackColor());
+            } else {
+                cellColor.setForeColorRGB(cell.getBackColorRGB());
+            }
+            if (cell.getForeColorRGB() < 0) {
+                cellColor.setBackColor(cell.getForeColor());
+            } else {
+                cellColor.setBackColorRGB(cell.getForeColorRGB());
+            }
         }
 
         // Draw the background rectangle, then the foreground character.
-        gr2.setColor(SwingTerminal.attrToBackgroundColor(cellColor));
+        gr2.setColor(backend.attrToBackgroundColor(cellColor));
         gr2.fillRect(0, 0, cellWidth, cellHeight);
 
         // Handle blink and underline
         if (!cell.isBlink()
             || (cell.isBlink() && blinkVisible)
         ) {
-            gr2.setColor(SwingTerminal.attrToForegroundColor(cellColor));
+            gr2.setColor(backend.attrToForegroundColor(cellColor));
             char [] chars = Character.toChars(cell.getChar());
             gr2.drawChars(chars, 0, chars.length, textAdjustX,
                 cellHeight - maxDescent + textAdjustY);
@@ -310,6 +334,16 @@ class GlyphMakerFont {
     public boolean canDisplay(final int codePoint) {
         return font.canDisplay(codePoint);
     }
+
+    /**
+     * See if this font loaded OK.
+     *
+     * @return true if this font loaded OK, otherwise it is rendering using
+     * MONO
+     */
+    public boolean isLoaded() {
+        return loaded;
+    }
 }
 
 /**
@@ -376,6 +410,11 @@ public class GlyphMaker {
      */
     private GlyphMakerFont makerFallback;
 
+    /**
+     * The system mono font.
+     */
+    private GlyphMakerFont makerSystemMono;
+
     // ------------------------------------------------------------------------
     // Constructors -----------------------------------------------------------
     // ------------------------------------------------------------------------
@@ -387,6 +426,7 @@ public class GlyphMaker {
      */
     private GlyphMaker(final int fontSize) {
         makerMono = new GlyphMakerFont(MONO, fontSize);
+        makerSystemMono = new GlyphMakerFont("", fontSize);
 
         String fontFilename = null;
         fontFilename = System.getProperty("jexer.cjkFont.filename",
@@ -427,12 +467,14 @@ public class GlyphMaker {
      * @param cell the character to draw
      * @param cellWidth the width of the text cell to draw into
      * @param cellHeight the height of the text cell to draw into
+     * @param backend the backend that can obtain the correct background
+     * color
      * @return the glyph as an image
      */
     public BufferedImage getImage(final Cell cell, final int cellWidth,
-        final int cellHeight) {
+        final int cellHeight, final Backend backend) {
 
-        return getImage(cell, cellWidth, cellHeight, true);
+        return getImage(cell, cellWidth, cellHeight, backend, true);
     }
 
     /**
@@ -441,35 +483,96 @@ public class GlyphMaker {
      * @param cell the character to draw
      * @param cellWidth the width of the text cell to draw into
      * @param cellHeight the height of the text cell to draw into
+     * @param backend the backend that can obtain the correct background
+     * color
      * @param blinkVisible if true, the cell is visible if it is blinking
      * @return the glyph as an image
      */
     public BufferedImage getImage(final Cell cell, final int cellWidth,
-        final int cellHeight, final boolean blinkVisible) {
+        final int cellHeight, final Backend backend,
+        final boolean blinkVisible) {
 
         int ch = cell.getChar();
         if (StringUtils.isCjk(ch)) {
             if (makerCjk.canDisplay(ch)) {
-                return makerCjk.getImage(cell, cellWidth, cellHeight,
+                // System.err.println("CJK: " + String.format("0x%x", ch));
+                return makerCjk.getImage(cell, cellWidth, cellHeight, backend,
                     blinkVisible);
             }
         }
         if (StringUtils.isEmoji(ch)) {
             if (makerEmoji.canDisplay(ch)) {
                 // System.err.println("emoji: " + String.format("0x%x", ch));
-                return makerEmoji.getImage(cell, cellWidth, cellHeight,
+                return makerEmoji.getImage(cell, cellWidth, cellHeight, backend,
                     blinkVisible);
             }
         }
 
-        // When all else fails, use the default.
-        if (makerMono.canDisplay(ch)) {
-            return makerMono.getImage(cell, cellWidth, cellHeight,
+        if (makerFallback.canDisplay(ch)) {
+            // System.err.println("fallback: " + String.format("0x%x", ch));
+            return makerFallback.getImage(cell, cellWidth, cellHeight, backend,
                 blinkVisible);
         }
 
-        return makerFallback.getImage(cell, cellWidth, cellHeight,
+        if (makerSystemMono.canDisplay(ch)) {
+            // System.err.println("system mono: " + String.format("0x%x", ch));
+            return makerSystemMono.getImage(cell, cellWidth, cellHeight,
+                backend, blinkVisible);
+        }
+
+        // When all else fails, use the default.
+        // System.err.println("mono: " + String.format("0x%x", ch));
+        return makerMono.getImage(cell, cellWidth, cellHeight, backend,
             blinkVisible);
+    }
+
+    /**
+     * Check if a CJK font is available.
+     *
+     * @return true if a CJK font is available
+     */
+    public boolean isCjk() {
+        return makerCjk.isLoaded();
+    }
+
+    /**
+     * Check if an emoji font is available.
+     *
+     * @return true if an emoji font is available
+     */
+    public boolean isEmoji() {
+        return makerEmoji.isLoaded();
+    }
+
+    /**
+     * Check if a fallback font is available.
+     *
+     * @return true if a fallback font is available
+     */
+    public boolean isFallback() {
+        return makerFallback.isLoaded();
+    }
+
+    /**
+     * Checks if a fallback font has a glyph for the specified character.
+     *
+     * @param codePoint the character (Unicode code point) for which a glyph
+     * is needed.
+     * @return true if this Font has a glyph for the character; false
+     * otherwise.
+     */
+    public boolean canDisplay(final int codePoint) {
+        if ((makerFallback.isLoaded() && makerFallback.canDisplay(codePoint))
+            || (makerEmoji.isLoaded() && makerEmoji.canDisplay(codePoint))
+            || (makerCjk.isLoaded() && makerCjk.canDisplay(codePoint))
+
+            // Put the system mono font ahead of terminus.
+            || makerSystemMono.canDisplay(codePoint)
+            || (makerMono.isLoaded() && makerMono.canDisplay(codePoint))
+        ) {
+            return true;
+        }
+        return false;
     }
 
 }

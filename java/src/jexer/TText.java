@@ -3,7 +3,7 @@
  *
  * The MIT License (MIT)
  *
- * Copyright (C) 2021 Autumn Lamonte
+ * Copyright (C) 2022 Autumn Lamonte
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -23,7 +23,7 @@
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
  * DEALINGS IN THE SOFTWARE.
  *
- * @author Autumn Lamonte [AutumnWalksTheLake@gmail.com] ⚧ Trans Liberation Now
+ * @author Autumn Lamonte ⚧ Trans Liberation Now
  * @version 1
  */
 package jexer;
@@ -352,7 +352,7 @@ public class TText extends TScrollableWidget {
     }
 
     /**
-     * Convenience method used by TWindowLoggerOutput.
+     * Add one line.
      *
      * @param line new line to add
      */
@@ -443,6 +443,16 @@ public class TText extends TScrollableWidget {
      */
     public void unJustify() {
         justification = Justification.NONE;
+        reflowData();
+    }
+
+    /**
+     * Set the number of lines between each paragraph.
+     *
+     * @param lineSpacing the number of blank lines between paragraphs
+     */
+    public void setLineSpacing(final int lineSpacing) {
+        this.lineSpacing = lineSpacing;
         reflowData();
     }
 

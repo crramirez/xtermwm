@@ -3,7 +3,7 @@
  *
  * The MIT License (MIT)
  *
- * Copyright (c) 2021 Autumn Lamonte
+ * Copyright (C) 2022 Autumn Lamonte
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -23,7 +23,7 @@
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
  * DEALINGS IN THE SOFTWARE.
  *
- * @author Autumn Lamonte [AutumnWalksTheLake@gmail.com] ⚧ Trans Liberation Now
+ * @author Autumn Lamonte ⚧ Trans Liberation Now
  * @version 1
  */
 package xtwm.plugins;
@@ -41,6 +41,7 @@ import jexer.TPanel;
 import jexer.TStatusBar;
 import jexer.TWidget;
 import jexer.TWindow;
+import jexer.bits.BorderStyle;
 import jexer.bits.CellAttributes;
 import jexer.bits.GraphicsChars;
 import jexer.bits.WidgetUtils;
@@ -167,7 +168,7 @@ public class DesktopPager extends PluginWidget {
 
             if (app.getDesktop() == desktop.getDesktop()) {
                 drawBox(0, 0, getWidth(), getHeight(), borderColor, color,
-                    3, false);
+                    BorderStyle.SINGLE_V_DOUBLE_H, false);
             } else {
                 drawBox(0, 0, getWidth(), getHeight(), borderColor, color);
             }

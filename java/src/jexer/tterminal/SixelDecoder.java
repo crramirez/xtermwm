@@ -3,7 +3,7 @@
  *
  * The MIT License (MIT)
  *
- * Copyright (C) 2021 Autumn Lamonte
+ * Copyright (C) 2022 Autumn Lamonte
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -23,7 +23,7 @@
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
  * DEALINGS IN THE SOFTWARE.
  *
- * @author Autumn Lamonte [AutumnWalksTheLake@gmail.com] ⚧ Trans Liberation Now
+ * @author Autumn Lamonte ⚧ Trans Liberation Now
  * @version 1
  */
 package jexer.tterminal;
@@ -221,8 +221,15 @@ public class SixelDecoder {
      * @return the sixel data as an image.
      */
     public BufferedImage getImage() {
+
+        // DEBUG
+        if (false) {
+            return null;
+        }
+
         if (buffer != null) {
-            for (int i = 0; (i < buffer.length()) && (abort == false); i++) {
+            int bufferLength = buffer.length();
+            for (int i = 0; (i < bufferLength) && (abort == false); i++) {
                 consume(buffer.charAt(i));
             }
             buffer = null;
@@ -342,7 +349,15 @@ public class SixelDecoder {
         }
 
         int rgb = color.getRGB();
-        int rep = (repeatCount == -1 ? 1 : repeatCount);
+        // As per jerch who has read STD 070 much more than I have, the
+        // repeat counter may not exceed 2^15 - 1; and a value of 0 means 1
+        // pixel wide.  CVE-2022-24130 shows how to exceed memory / crash if
+        // this value is not checked.
+        int rep = Math.min(Math.max(1, (repeatCount == -1 ? 1 : repeatCount)),
+            32767);
+        // Also clamp to the maximum allowed image width, like foot terminal
+        // does.
+        rep = Math.min(rep, MAX_WIDTH);
 
         if (DEBUG) {
             System.err.println("addSixel() rep " + rep + " char " +

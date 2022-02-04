@@ -3,7 +3,7 @@
  *
  * The MIT License (MIT)
  *
- * Copyright (C) 2021 Autumn Lamonte
+ * Copyright (C) 2022 Autumn Lamonte
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -23,7 +23,7 @@
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
  * DEALINGS IN THE SOFTWARE.
  *
- * @author Autumn Lamonte [AutumnWalksTheLake@gmail.com] ⚧ Trans Liberation Now
+ * @author Autumn Lamonte ⚧ Trans Liberation Now
  * @version 1
  */
 package jexer;
@@ -203,8 +203,13 @@ public class TLabel extends TWidget {
         mnemonicColor.setTo(getTheme().getColor("tlabel.mnemonic"));
         if (useWindowBackground) {
             CellAttributes background = getWindow().getBackground();
-            color.setBackColor(background.getBackColor());
-            mnemonicColor.setBackColor(background.getBackColor());
+            if (background.getBackColorRGB() == -1) {
+                color.setBackColor(background.getBackColor());
+                mnemonicColor.setBackColor(background.getBackColor());
+            } else {
+                color.setBackColorRGB(background.getBackColorRGB());
+                mnemonicColor.setBackColorRGB(background.getBackColorRGB());
+            }
         }
         putStringXY(0, 0, mnemonic.getRawLabel(), color);
         if (mnemonic.getScreenShortcutIdx() >= 0) {

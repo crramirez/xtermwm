@@ -3,7 +3,7 @@
  *
  * The MIT License (MIT)
  *
- * Copyright (C) 2021 Autumn Lamonte
+ * Copyright (C) 2022 Autumn Lamonte
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -23,10 +23,12 @@
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
  * DEALINGS IN THE SOFTWARE.
  *
- * @author Autumn Lamonte [AutumnWalksTheLake@gmail.com] ⚧ Trans Liberation Now
+ * @author Autumn Lamonte ⚧ Trans Liberation Now
  * @version 1
  */
 package jexer.tterminal;
+
+import java.util.List;
 
 /**
  * DisplayListener is used to callback into external UI when data has come in
@@ -35,9 +37,27 @@ package jexer.tterminal;
 public interface DisplayListener {
 
     /**
-     * Function to call when the display needs to be updated.
+     * Function to call when the display needs to be updated (request poll).
+     *
+     * @param cursorOnly if true, the screen has not changed but the cursor
+     * may be on a different location.
      */
-    public void displayChanged();
+    public void displayChanged(final boolean cursorOnly);
+
+    /**
+     * Function to call when the display has updated (push).
+     *
+     * @param display the updated display
+     */
+    public void updateDisplay(final List<DisplayLine> display);
+
+    /**
+     * Function to call to obtain the number of rows from the bottom to
+     * scroll back when sending updates via updateDisplay().
+     *
+     * @return the number of rows from the bottom to scroll back
+     */
+    public int getScrollBottom();
 
     /**
      * Function to call to obtain the display width.

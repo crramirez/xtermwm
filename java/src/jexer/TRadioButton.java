@@ -3,7 +3,7 @@
  *
  * The MIT License (MIT)
  *
- * Copyright (C) 2021 Autumn Lamonte
+ * Copyright (C) 2022 Autumn Lamonte
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -23,7 +23,7 @@
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
  * DEALINGS IN THE SOFTWARE.
  *
- * @author Autumn Lamonte [AutumnWalksTheLake@gmail.com] ⚧ Trans Liberation Now
+ * @author Autumn Lamonte ⚧ Trans Liberation Now
  * @version 1
  */
 package jexer;
@@ -191,6 +191,14 @@ public class TRadioButton extends TWidget {
         } else {
             radioButtonColor = getTheme().getColor("tradiobutton.inactive");
             mnemonicColor = getTheme().getColor("tradiobutton.mnemonic");
+        }
+
+        // Pulse color.
+        if (selected && isActive() && getWindow().isActive()) {
+            radioButtonColor.setPulse(true, false, 0);
+            radioButtonColor.setPulseColorRGB(getScreen().getBackend().
+                attrToForegroundColor(getTheme().getColor(
+                    "tradiobutton.pulse")).getRGB());
         }
 
         putCharXY(0, 0, '(', radioButtonColor);

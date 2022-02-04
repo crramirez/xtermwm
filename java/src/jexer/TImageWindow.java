@@ -3,7 +3,7 @@
  *
  * The MIT License (MIT)
  *
- * Copyright (C) 2021 Autumn Lamonte
+ * Copyright (C) 2022 Autumn Lamonte
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -23,7 +23,7 @@
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
  * DEALINGS IN THE SOFTWARE.
  *
- * @author Autumn Lamonte [AutumnWalksTheLake@gmail.com] ⚧ Trans Liberation Now
+ * @author Autumn Lamonte ⚧ Trans Liberation Now
  * @version 1
  */
 package jexer;
@@ -34,6 +34,8 @@ import java.io.IOException;
 import java.util.ResourceBundle;
 import javax.imageio.ImageIO;
 
+import jexer.bits.Animation;
+import jexer.bits.ImageUtils;
 import jexer.event.TKeypressEvent;
 import jexer.event.TMouseEvent;
 import jexer.event.TResizeEvent;
@@ -102,11 +104,30 @@ public class TImageWindow extends TScrollableWindow {
 
         super(parent, file.getName(), x, y, width, height, RESIZABLE);
 
-        BufferedImage image = ImageIO.read(file);
+        BufferedImage image = null;
+        Animation animation = null;
+        if (file.getName().toLowerCase().endsWith(".gif")) {
+            animation = ImageUtils.getAnimation(file);
+            imageField = addImage(0, 0, getWidth() - 2, getHeight() - 2,
+                animation, 0, 0);
+         } else {
+            image = ImageIO.read(file);
+            imageField = addImage(0, 0, getWidth() - 2, getHeight() - 2,
+                image, 0, 0);
+        }
 
-        imageField = addImage(0, 0, getWidth() - 2, getHeight() - 2,
-            image, 0, 0);
         setTitle(file.getName());
+
+        int opacity = 100;
+        try {
+            opacity = Integer.parseInt(System.getProperty(
+                "jexer.TImage.opacity", "100"));
+            opacity = Math.max(opacity, 10);
+            opacity = Math.min(opacity, 100);
+        } catch (NumberFormatException e) {
+            // SQUASH
+        }
+        setAlpha(opacity * 255 / 100);
 
         setupAfterImage();
     }

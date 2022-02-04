@@ -3,7 +3,7 @@
  *
  * The MIT License (MIT)
  *
- * Copyright (C) 2021 Autumn Lamonte
+ * Copyright (C) 2022 Autumn Lamonte
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -23,7 +23,7 @@
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
  * DEALINGS IN THE SOFTWARE.
  *
- * @author Autumn Lamonte [AutumnWalksTheLake@gmail.com] ⚧ Trans Liberation Now
+ * @author Autumn Lamonte ⚧ Trans Liberation Now
  * @version 1
  */
 package jexer.demos;
@@ -37,6 +37,7 @@ import java.util.ResourceBundle;
 
 import jexer.TAction;
 import jexer.TApplication;
+import jexer.TButton;
 import jexer.TEditColorThemeWindow;
 import jexer.TEditorWindow;
 import jexer.TLabel;
@@ -135,13 +136,14 @@ public class DemoMainWindow extends TWindow {
 
         // Add some widgets
         addLabel(i18n.getString("messageBoxLabel"), 1, row);
-        TWidget first = addButton(i18n.getString("messageBoxButton"), 35, row,
+        TButton first = addButton(i18n.getString("messageBoxButton"), 35, row,
             new TAction() {
                 public void DO() {
                     new DemoMsgBoxWindow(getApplication());
                 }
             }
         );
+        first.setStyle(TButton.Style.ROUND);
         row += 2;
 
         addLabel(i18n.getString("openModalLabel"), 1, row);
@@ -151,7 +153,7 @@ public class DemoMainWindow extends TWindow {
                     new DemoMainWindow(getApplication(), MODAL);
                 }
             }
-        );
+        ).setStyle(TButton.Style.DIAMOND);
         row += 2;
 
         addLabel(i18n.getString("textFieldLabel"), 1, row);
@@ -161,7 +163,7 @@ public class DemoMainWindow extends TWindow {
                     new DemoTextFieldWindow(getApplication());
                 }
             }
-        );
+        ).setStyle(TButton.Style.ARROW_LEFT);
         row += 2;
 
         addLabel(i18n.getString("radioButtonLabel"), 1, row);
@@ -171,7 +173,7 @@ public class DemoMainWindow extends TWindow {
                     new DemoCheckBoxWindow(getApplication());
                 }
             }
-        );
+        ).setStyle(TButton.Style.ARROW_RIGHT);
         row += 2;
 
         addLabel(i18n.getString("editorLabel"), 1, row);

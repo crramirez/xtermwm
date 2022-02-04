@@ -3,7 +3,7 @@
  *
  * The MIT License (MIT)
  *
- * Copyright (c) 2021 Autumn Lamonte
+ * Copyright (C) 2022 Autumn Lamonte
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -23,7 +23,7 @@
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
  * DEALINGS IN THE SOFTWARE.
  *
- * @author Autumn Lamonte [AutumnWalksTheLake@gmail.com] ⚧ Trans Liberation Now
+ * @author Autumn Lamonte ⚧ Trans Liberation Now
  * @version 1
  */
 package xtwm.ui;
@@ -38,6 +38,7 @@ import jexer.TButton;
 import jexer.TList;
 import jexer.TWidget;
 import jexer.TWindow;
+import jexer.bits.BorderStyle;
 import jexer.bits.CellAttributes;
 import jexer.bits.GraphicsChars;
 import jexer.bits.MnemonicString;
@@ -318,7 +319,7 @@ public class PluginOptionsWindow extends TWindow {
 
                 CellAttributes color = getTheme().getColor("ttext");
                 drawBox(2, 2, getWidth() - 2, getHeight() - 4, color, color,
-                    1, false);
+                    BorderStyle.SINGLE, false);
             }
 
             @Override

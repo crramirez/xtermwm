@@ -3,7 +3,7 @@
  *
  * The MIT License (MIT)
  *
- * Copyright (C) 2021 Autumn Lamonte
+ * Copyright (C) 2022 Autumn Lamonte
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -23,7 +23,7 @@
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
  * DEALINGS IN THE SOFTWARE.
  *
- * @author Autumn Lamonte [AutumnWalksTheLake@gmail.com] ⚧ Trans Liberation Now
+ * @author Autumn Lamonte ⚧ Trans Liberation Now
  * @version 1
  */
 package jexer;
@@ -125,7 +125,7 @@ public class TTextPicture extends TScrollableWidget
         try {
             terminal = new ECMA48(ECMA48.DeviceType.XTERM,
                 new FileInputStream(filename), new ByteArrayOutputStream(),
-                this);
+                this, getApplication().getBackend());
 
             terminalClosed = false;
         } catch (FileNotFoundException e) {
@@ -278,10 +278,32 @@ public class TTextPicture extends TScrollableWidget
     // ------------------------------------------------------------------------
 
     /**
-     * Called by emulator when fresh data has come in.
+     * Called by emulator when fresh data has come in (request poll).
+     *
+     * @param cursorOnly if true, the screen has not changed but the cursor
+     * may be on a different location.
      */
-    public void displayChanged() {
+    public void displayChanged(final boolean cursorOnly) {
         // Do nothing
+    }
+
+    /**
+     * Called by emulator when fresh data has come in (push).
+     *
+     * @param display the updated display
+     */
+    public void updateDisplay(final List<DisplayLine> display) {
+        // Do nothing
+    }
+
+    /**
+     * Function to call to obtain the number of rows from the bottom to
+     * scroll back when sending updates via updateDisplay().
+     *
+     * @return the number of rows from the bottom to scroll back
+     */
+    public int getScrollBottom() {
+        return -getVerticalValue();
     }
 
     /**
@@ -363,13 +385,11 @@ public class TTextPicture extends TScrollableWidget
                 if (reverse) {
                     if (ch.getForeColorRGB() < 0) {
                         newCell.setBackColor(ch.getForeColor());
-                        newCell.setBackColorRGB(-1);
                     } else {
                         newCell.setBackColorRGB(ch.getForeColorRGB());
                     }
                     if (ch.getBackColorRGB() < 0) {
                         newCell.setForeColor(ch.getBackColor());
-                        newCell.setForeColorRGB(-1);
                     } else {
                         newCell.setForeColorRGB(ch.getBackColorRGB());
                     }
@@ -439,10 +459,10 @@ public class TTextPicture extends TScrollableWidget
             Cell newCell = new Cell(cell);
             newCell.setUnderline(false);
             image = doubleFont.getImage(newCell, textWidth * 2, textHeight * 2,
-                cursorBlinkVisible);
+                getApplication().getBackend(), cursorBlinkVisible);
         } else {
             image = doubleFont.getImage(cell,  textWidth * 2, textHeight * 2,
-                cursorBlinkVisible);
+                getApplication().getBackend(), cursorBlinkVisible);
         }
 
         // Now that we have the double-wide glyph drawn, copy the right

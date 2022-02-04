@@ -3,7 +3,7 @@
  *
  * The MIT License (MIT)
  *
- * Copyright (c) 2021 Autumn Lamonte
+ * Copyright (C) 2022 Autumn Lamonte
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -23,7 +23,7 @@
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
  * DEALINGS IN THE SOFTWARE.
  *
- * @author Autumn Lamonte [AutumnWalksTheLake@gmail.com] ⚧ Trans Liberation Now
+ * @author Autumn Lamonte ⚧ Trans Liberation Now
  * @version 1
  */
 package xtwm.ui;
@@ -85,6 +85,11 @@ public class ApplicationLayout {
      * @param app the application
      * @param filename the name of the file to write to
      * @throws IOException if a java.io operation throws
+     * @throws ClassNotFoundException if thrown by the XML reader
+     * @throws IllegalAccessException if thrown by the XML reader
+     * @throws InstantiationException if thrown by the XML reader
+     * @throws ParserConfigurationException if thrown by the XML reader
+     * @throws SAXException if thrown by the XML reader
      */
     public static void saveToXml(final XTWMApplication app,
         final String filename) throws IOException,
@@ -156,6 +161,8 @@ public class ApplicationLayout {
      * @param app the application
      * @param filename the name of the file to read from
      * @throws IOException if a java.io operation throws
+     * @throws ParserConfigurationException if thrown by the XML reader
+     * @throws SAXException if thrown by the XML reader
      */
     public static void loadFromXml(final XTWMApplication app,
         final String filename) throws IOException,

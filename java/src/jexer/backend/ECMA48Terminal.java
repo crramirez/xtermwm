@@ -3,7 +3,7 @@
  *
  * The MIT License (MIT)
  *
- * Copyright (C) 2021 Autumn Lamonte
+ * Copyright (C) 2022 Autumn Lamonte
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -23,7 +23,7 @@
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
  * DEALINGS IN THE SOFTWARE.
  *
- * @author Autumn Lamonte [AutumnWalksTheLake@gmail.com] ⚧ Trans Liberation Now
+ * @author Autumn Lamonte ⚧ Trans Liberation Now
  * @version 1
  */
 package jexer.backend;
@@ -48,11 +48,18 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import javax.imageio.ImageIO;
 
 import jexer.bits.Cell;
 import jexer.bits.CellAttributes;
 import jexer.bits.Color;
+import jexer.bits.ImageUtils;
 import jexer.bits.StringUtils;
 import jexer.event.TCommandEvent;
 import jexer.event.TInputEvent;
@@ -83,6 +90,7 @@ public class ECMA48Terminal extends LogicalScreen
         CSI_ENTRY,
         CSI_PARAM,
         XTVERSION,
+        OSC,
         MOUSE,
         MOUSE_SGR,
     }
@@ -221,7 +229,12 @@ public class ECMA48Terminal extends LogicalScreen
     /**
      * The sixel encoder.
      */
-    private SixelEncoder sixelEncoder = new SixelEncoder();
+    private SixelEncoder sixelEncoder = null;
+
+    /**
+     * If true, ask sixel to be fast and dirty.
+     */
+    private boolean sixelFastAndDirty = false;
 
     /**
      * The sixel post-rendered string cache.
@@ -253,6 +266,11 @@ public class ECMA48Terminal extends LogicalScreen
      * The Jexer post-rendered string cache.
      */
     private ImageCache jexerCache = null;
+
+    /**
+     * The number of threads for image rendering.
+     */
+    private int imageThreadCount = 2;
 
     /**
      * If true, then we changed System.in and need to change it back.
@@ -292,6 +310,11 @@ public class ECMA48Terminal extends LogicalScreen
     private StringBuilder xtversionResponse = new StringBuilder();
 
     /**
+     * The string being built by OSC.
+     */
+    private StringBuilder oscResponse = new StringBuilder();
+
+    /**
      * If true, draw text glyphs underneath images on cells.  This is
      * expensive.
      */
@@ -313,6 +336,21 @@ public class ECMA48Terminal extends LogicalScreen
      * for details of this mode.
      */
     private boolean hasSynchronizedOutput = false;
+
+    /**
+     * The time we last flushed output in flushPhysical().
+     */
+    private long lastFlushTime;
+
+    /**
+     * The bytes being written in this second.
+     */
+    private int bytesPerSecond;
+
+    /**
+     * The bytes per second for the last second.
+     */
+    private int lastBytesPerSecond;
 
     /**
      * The terminal's input.  If an InputStream is not specified in the
@@ -342,22 +380,22 @@ public class ECMA48Terminal extends LogicalScreen
     private Object listener;
 
     // Colors to map DOS colors to AWT colors.
-    private static java.awt.Color MYBLACK;
-    private static java.awt.Color MYRED;
-    private static java.awt.Color MYGREEN;
-    private static java.awt.Color MYYELLOW;
-    private static java.awt.Color MYBLUE;
-    private static java.awt.Color MYMAGENTA;
-    private static java.awt.Color MYCYAN;
-    private static java.awt.Color MYWHITE;
-    private static java.awt.Color MYBOLD_BLACK;
-    private static java.awt.Color MYBOLD_RED;
-    private static java.awt.Color MYBOLD_GREEN;
-    private static java.awt.Color MYBOLD_YELLOW;
-    private static java.awt.Color MYBOLD_BLUE;
-    private static java.awt.Color MYBOLD_MAGENTA;
-    private static java.awt.Color MYBOLD_CYAN;
-    private static java.awt.Color MYBOLD_WHITE;
+    private java.awt.Color MYBLACK;
+    private java.awt.Color MYRED;
+    private java.awt.Color MYGREEN;
+    private java.awt.Color MYYELLOW;
+    private java.awt.Color MYBLUE;
+    private java.awt.Color MYMAGENTA;
+    private java.awt.Color MYCYAN;
+    private java.awt.Color MYWHITE;
+    private java.awt.Color MYBOLD_BLACK;
+    private java.awt.Color MYBOLD_RED;
+    private java.awt.Color MYBOLD_GREEN;
+    private java.awt.Color MYBOLD_YELLOW;
+    private java.awt.Color MYBOLD_BLUE;
+    private java.awt.Color MYBOLD_MAGENTA;
+    private java.awt.Color MYBOLD_CYAN;
+    private java.awt.Color MYBOLD_WHITE;
 
     /**
      * ImageCache is a least-recently-used cache that hangs on to the
@@ -428,6 +466,7 @@ public class ECMA48Terminal extends LogicalScreen
             for (Cell cell: cells) {
                 sb.append(cell.hashCode());
             }
+            // System.err.println("key: " + sb.toString());
             return sb.toString();
         }
 
@@ -438,7 +477,7 @@ public class ECMA48Terminal extends LogicalScreen
          * @return the image string representing these cells, or null if this
          * list of cells is not in the cache
          */
-        public String get(final ArrayList<Cell> cells) {
+        public synchronized String get(final ArrayList<Cell> cells) {
             CacheEntry entry = cache.get(makeKey(cells));
             if (entry == null) {
                 return null;
@@ -453,7 +492,9 @@ public class ECMA48Terminal extends LogicalScreen
          * @param cells the list of cells that are the cache key
          * @param data the image string representing these cells
          */
-        public void put(final ArrayList<Cell> cells, final String data) {
+        public synchronized void put(final ArrayList<Cell> cells,
+            final String data) {
+
             String key = makeKey(cells);
 
             // System.err.println("put() " + key + " size " + cache.size());
@@ -489,6 +530,15 @@ public class ECMA48Terminal extends LogicalScreen
             System.err.println("put() added key " + key + " " +
                 " size " + cache.size());
              */
+        }
+
+        /**
+         * Get the number of entries in the cache.
+         *
+         * @return the number of entries
+         */
+        public synchronized int size() {
+            return cache.size();
         }
 
     }
@@ -560,6 +610,7 @@ public class ECMA48Terminal extends LogicalScreen
         final InputStream input,
         final OutputStream output) throws UnsupportedEncodingException {
 
+        setDOSColors();
         this.backend    = backend;
 
         resetParser();
@@ -614,14 +665,14 @@ public class ECMA48Terminal extends LogicalScreen
         // Enable mouse reporting and metaSendsEscape
         this.output.printf("%s%s", mouse(true), xtermMetaSendsEscape(true));
 
-        // Request xterm use the sixel settings we want
-        this.output.printf("%s", xtermSetSixelSettings());
-
         // Request xterm report Synchronized Output support
         this.output.printf("%s", xtermQueryMode(2026));
 
         // Request xterm report SGR-Pixel mouse support
         this.output.printf("%s", xtermQueryMode(1016));
+
+        // Request xterm report its ANSI colors
+        this.output.printf("%s", xtermQueryAnsiColors());
 
         this.output.flush();
 
@@ -680,6 +731,7 @@ public class ECMA48Terminal extends LogicalScreen
             throw new IllegalArgumentException("Writer must be specified");
         }
 
+        setDOSColors();
         this.backend     = backend;
 
         resetParser();
@@ -727,14 +779,14 @@ public class ECMA48Terminal extends LogicalScreen
         // Enable mouse reporting and metaSendsEscape
         this.output.printf("%s%s", mouse(true), xtermMetaSendsEscape(true));
 
-        // Request xterm use the sixel settings we want
-        this.output.printf("%s", xtermSetSixelSettings());
-
         // Request xterm report Synchronized Output support
         this.output.printf("%s", xtermQueryMode(2026));
 
         // Request xterm report SGR-Pixel mouse support
         this.output.printf("%s", xtermQueryMode(1016));
+
+        // Request xterm report its ANSI colors
+        this.output.printf("%s", xtermQueryAnsiColors());
 
         this.output.flush();
 
@@ -821,19 +873,40 @@ public class ECMA48Terminal extends LogicalScreen
         }
         if (output != null) {
             if (hasSynchronizedOutput) {
-                // Begin Synchronized Update (BSU)
-                output.write("\033[?2026h");
-                output.write(sb.toString());
-                // End Synchronized Update (ESU)
-                output.write("\033[?2026l");
+                if (sb.length() > 0) {
+                    // Begin Synchronized Update (BSU)
+                    output.write("\033[?2026h");
+                    if (debugToStderr) {
+                        System.err.printf("Writing %d bytes to terminal (sync)\n",
+                            sb.length());
+                    }
+                    output.write(sb.toString());
+                    // End Synchronized Update (ESU)
+                    output.write("\033[?2026l");
+                }
                 if (debugToStderr) {
                     System.err.printf("flushPhysical() \033[?2026h%s\033[?2026l\n",
                         sb.toString());
                 }
             } else {
-                output.write(sb.toString());
+                if (sb.length() > 0) {
+                    if (debugToStderr) {
+                        System.err.printf("Writing %d bytes to terminal\n",
+                            sb.length());
+                    }
+                    output.write(sb.toString());
+                }
             }
-            flush();
+            output.flush();
+
+            long now = System.currentTimeMillis();
+            if ((int) (now / 1000) == (int) (lastFlushTime / 1000)) {
+                bytesPerSecond += sb.length();
+            } else {
+                lastBytesPerSecond = sb.length();
+                bytesPerSecond = 0;
+            }
+            lastFlushTime = now;
         }
     }
 
@@ -992,7 +1065,24 @@ public class ECMA48Terminal extends LogicalScreen
         } else {
             sixel = true;
         }
+        // Default to HQ quantizer.
+        if (System.getProperty("jexer.ECMA48.sixelEncoder",
+                "hq").equals("legacy")) {
+            sixelEncoder = new LegacySixelEncoder();
+        } else {
+            sixelEncoder = new HQSixelEncoder();
+        }
+        if (System.getProperty("jexer.ECMA48.sixelFastAndDirty",
+                "false").equals("true")
+        ) {
+            sixelFastAndDirty = true;
+        } else {
+            sixelFastAndDirty = false;
+        }
         sixelEncoder.reloadOptions();
+
+        // Request xterm use the sixel settings we want
+        this.output.printf("%s", xtermSetSixelSettings());
 
         // Default to using images for full-width characters.
         if (System.getProperty("jexer.ECMA48.wideCharImages",
@@ -1037,6 +1127,18 @@ public class ECMA48Terminal extends LogicalScreen
             imagesOverText = false;
         }
 
+        // Image thread count.
+        imageThreadCount = 2;
+        try {
+            imageThreadCount = Integer.parseInt(System.getProperty(
+                "jexer.ECMA48.imageThreadCount", "2"));
+            if (imageThreadCount < 1) {
+                imageThreadCount = 1;
+            }
+        } catch (NumberFormatException e) {
+            // SQUASH
+        }
+
         // Set custom colors
         setCustomSystemColors();
     }
@@ -1055,24 +1157,41 @@ public class ECMA48Terminal extends LogicalScreen
         char [] readBuffer = new char[128];
         List<TInputEvent> events = new ArrayList<TInputEvent>();
 
+        // boolean debugToStderr = true;
+
         while (!done && !stopReaderThread) {
             try {
                 // We assume that if inputStream has bytes available, then
                 // input won't block on read().
+                if (debugToStderr) {
+                    System.err.printf("Looking for input...");
+                }
+
                 int n = inputStream.available();
 
-                /*
-                System.err.printf("inputStream.available(): %d\n", n);
-                System.err.flush();
-                */
+                if (debugToStderr) {
+                    if (n == 0) {
+                        System.err.println("none.");
+                    }
+                    if (n < 0) {
+                        System.err.printf("WHAT?!  n = %d\n", n);
+                    }
+                }
 
                 if (n > 0) {
+                    if (debugToStderr) {
+                        System.err.printf("%d bytes to read.\n", n);
+                    }
+
                     if (readBuffer.length < n) {
                         // The buffer wasn't big enough, make it huger
                         readBuffer = new char[readBuffer.length * 2];
                     }
 
-                    // System.err.printf("BEFORE read()\n"); System.err.flush();
+                    if (debugToStderr) {
+                        System.err.printf("B4 read(): readBuffer.length = %d\n",
+                            readBuffer.length);
+                    }
 
                     int rc = input.read(readBuffer, 0, readBuffer.length);
 
@@ -1082,9 +1201,22 @@ public class ECMA48Terminal extends LogicalScreen
                     */
 
                     if (rc == -1) {
+                        if (debugToStderr) {
+                            System.err.println(" ---- EOF ----");
+                        }
+
                         // This is EOF
                         done = true;
                     } else {
+                        if (debugToStderr) {
+                            StringBuilder sb = new StringBuilder();
+                            for (int i = 0; i < rc; i++) {
+                                sb.append(readBuffer[i]);
+                            }
+                            System.err.printf("%d rc = %d INPUT: ",
+                                System.currentTimeMillis(), rc);
+                            System.err.println(sb.toString());
+                        }
                         for (int i = 0; i < rc; i++) {
                             int ch = readBuffer[i];
                             processChar(events, (char)ch);
@@ -1093,27 +1225,62 @@ public class ECMA48Terminal extends LogicalScreen
                         if (events.size() > 0) {
                             // Add to the queue for the backend thread to
                             // be able to obtain.
+                            if (debugToStderr) {
+                                System.err.printf("Checking eventQueue...");
+                            }
+
                             synchronized (eventQueue) {
                                 eventQueue.addAll(events);
                             }
+                            if (debugToStderr) {
+                                System.err.printf("done.\n");
+                            }
+
                             if (listener != null) {
+                                if (debugToStderr) {
+                                    System.err.printf("Waking up listener...");
+                                }
+
                                 synchronized (listener) {
                                     listener.notifyAll();
                                 }
+                                if (debugToStderr) {
+                                    System.err.printf("done.\n");
+                                }
+
                             }
                             events.clear();
                         }
                     }
                 } else {
+                    if (debugToStderr) {
+                        System.err.println("Looking for idle events");
+                    }
                     getIdleEvents(events);
                     if (events.size() > 0) {
+                        if (debugToStderr) {
+                            System.err.printf("Checking eventQueue...");
+                        }
+
                         synchronized (eventQueue) {
                             eventQueue.addAll(events);
                         }
+                        if (debugToStderr) {
+                            System.err.printf("done.\n");
+                        }
+
                         if (listener != null) {
+                            if (debugToStderr) {
+                                System.err.printf("Waking up listener...");
+                            }
+
                             synchronized (listener) {
                                 listener.notifyAll();
                             }
+                            if (debugToStderr) {
+                                System.err.printf("done.\n");
+                            }
+
                         }
                         events.clear();
                     }
@@ -1155,6 +1322,15 @@ public class ECMA48Terminal extends LogicalScreen
     // ------------------------------------------------------------------------
 
     /**
+     * Get the bytes per second from the last second.
+     *
+     * @return the bytes per second
+     */
+    public int getBytesPerSecond() {
+        return lastBytesPerSecond;
+    }
+
+    /**
      * Get the width of a character cell in pixels.
      *
      * @return the width in pixels of a character cell
@@ -1166,7 +1342,7 @@ public class ECMA48Terminal extends LogicalScreen
         if (sessionInfo.getWindowWidth() > 0) {
             return (widthPixels / sessionInfo.getWindowWidth());
         }
-        return 16;
+        return 10;
     }
 
     /**
@@ -1312,7 +1488,11 @@ public class ECMA48Terminal extends LogicalScreen
             Cell lCell = logical[x][y];
             Cell pCell = physical[x][y];
 
-            if (!lCell.equals(pCell) || reallyCleared) {
+            if (lCell.isImage()) {
+                continue;
+            }
+
+            if (!lCell.equals(pCell) || lCell.isPulse() || reallyCleared) {
 
                 if (debugToStderr && reallyDebug) {
                     System.err.printf("\n--\n");
@@ -1320,6 +1500,7 @@ public class ECMA48Terminal extends LogicalScreen
                         y, x, lastX, textEnd);
                     System.err.printf("   lCell: %s\n", lCell);
                     System.err.printf("   pCell: %s\n", pCell);
+                    System.err.printf("   lastAttr: %s\n", lastAttr);
                     System.err.printf("    ====    \n");
                 }
 
@@ -1402,158 +1583,98 @@ public class ECMA48Terminal extends LogicalScreen
                 assert (!lCell.isImage());
 
                 // Now emit only the modified attributes
-                if ((lCell.getForeColor() != lastAttr.getForeColor())
-                    && (lCell.getBackColor() != lastAttr.getBackColor())
-                    && (!lCell.isRGB())
-                    && (lCell.isBold() == lastAttr.isBold())
-                    && (lCell.isReverse() == lastAttr.isReverse())
-                    && (lCell.isUnderline() == lastAttr.isUnderline())
-                    && (lCell.isBlink() == lastAttr.isBlink())
-                ) {
-                    // Both colors changed, attributes the same
-                    sb.append(color(lCell.isBold(),
-                            lCell.getForeColor(), lCell.getBackColor()));
-
-                    if (debugToStderr && reallyDebug) {
-                        System.err.printf("1 Change only fore/back colors\n");
-                    }
-
-                } else if (lCell.isRGB()
-                    && (lCell.getForeColorRGB() != lastAttr.getForeColorRGB())
-                    && (lCell.getBackColorRGB() != lastAttr.getBackColorRGB())
-                    && (lCell.isBold() == lastAttr.isBold())
-                    && (lCell.isReverse() == lastAttr.isReverse())
-                    && (lCell.isUnderline() == lastAttr.isUnderline())
-                    && (lCell.isBlink() == lastAttr.isBlink())
-                ) {
-                    // Both colors changed, attributes the same
-                    sb.append(colorRGB(lCell.getForeColorRGB(),
-                            lCell.getBackColorRGB()));
-
-                    if (debugToStderr && reallyDebug) {
-                        System.err.printf("1 Change only fore/back colors (RGB)\n");
-                    }
-                } else if ((lCell.getForeColor() != lastAttr.getForeColor())
-                    && (lCell.getBackColor() != lastAttr.getBackColor())
-                    && (!lCell.isRGB())
-                    && (lCell.isBold() != lastAttr.isBold())
-                    && (lCell.isReverse() != lastAttr.isReverse())
-                    && (lCell.isUnderline() != lastAttr.isUnderline())
-                    && (lCell.isBlink() != lastAttr.isBlink())
-                ) {
-                    // Everything is different
-                    sb.append(color(lCell.getForeColor(),
-                            lCell.getBackColor(),
-                            lCell.isBold(), lCell.isReverse(),
-                            lCell.isBlink(),
-                            lCell.isUnderline()));
-
-                    if (debugToStderr && reallyDebug) {
-                        System.err.printf("2 Set all attributes\n");
-                    }
-                } else if ((lCell.getForeColor() != lastAttr.getForeColor())
-                    && (lCell.getBackColor() == lastAttr.getBackColor())
-                    && (!lCell.isRGB())
-                    && (lCell.isBold() == lastAttr.isBold())
-                    && (lCell.isReverse() == lastAttr.isReverse())
-                    && (lCell.isUnderline() == lastAttr.isUnderline())
-                    && (lCell.isBlink() == lastAttr.isBlink())
-                ) {
-
-                    // Attributes same, foreColor different
-                    sb.append(color(lCell.isBold(),
-                            lCell.getForeColor(), true));
-
-                    if (debugToStderr && reallyDebug) {
-                        System.err.printf("3 Change foreColor\n");
-                    }
-                } else if (lCell.isRGB()
-                    && (lCell.getForeColorRGB() != lastAttr.getForeColorRGB())
-                    && (lCell.getBackColorRGB() == lastAttr.getBackColorRGB())
-                    && (lCell.getForeColorRGB() >= 0)
-                    && (lCell.getBackColorRGB() >= 0)
-                    && (lCell.isBold() == lastAttr.isBold())
-                    && (lCell.isReverse() == lastAttr.isReverse())
-                    && (lCell.isUnderline() == lastAttr.isUnderline())
-                    && (lCell.isBlink() == lastAttr.isBlink())
-                ) {
-                    // Attributes same, foreColor different
-                    sb.append(colorRGB(lCell.getForeColorRGB(), true));
-
-                    if (debugToStderr && reallyDebug) {
-                        System.err.printf("3 Change foreColor (RGB)\n");
-                    }
-                } else if ((lCell.getForeColor() == lastAttr.getForeColor())
-                    && (lCell.getBackColor() != lastAttr.getBackColor())
-                    && (!lCell.isRGB())
-                    && (lCell.isBold() == lastAttr.isBold())
-                    && (lCell.isReverse() == lastAttr.isReverse())
-                    && (lCell.isUnderline() == lastAttr.isUnderline())
-                    && (lCell.isBlink() == lastAttr.isBlink())
-                ) {
-                    // Attributes same, backColor different
-                    sb.append(color(lCell.isBold(),
-                            lCell.getBackColor(), false));
-
-                    if (debugToStderr && reallyDebug) {
-                        System.err.printf("4 Change backColor\n");
-                    }
-                } else if (lCell.isRGB()
-                    && (lCell.getForeColorRGB() == lastAttr.getForeColorRGB())
-                    && (lCell.getBackColorRGB() != lastAttr.getBackColorRGB())
-                    && (lCell.isBold() == lastAttr.isBold())
-                    && (lCell.isReverse() == lastAttr.isReverse())
-                    && (lCell.isUnderline() == lastAttr.isUnderline())
-                    && (lCell.isBlink() == lastAttr.isBlink())
-                ) {
-                    // Attributes same, foreColor different
-                    sb.append(colorRGB(lCell.getBackColorRGB(), false));
-
-                    if (debugToStderr && reallyDebug) {
-                        System.err.printf("5 Change backColor (RGB)\n");
-                    }
-                } else if ((lCell.getForeColor() == lastAttr.getForeColor())
-                    && (lCell.getBackColor() == lastAttr.getBackColor())
-                    && (lCell.getForeColorRGB() == lastAttr.getForeColorRGB())
-                    && (lCell.getBackColorRGB() == lastAttr.getBackColorRGB())
-                    && (lCell.isBold() == lastAttr.isBold())
-                    && (lCell.isReverse() == lastAttr.isReverse())
-                    && (lCell.isUnderline() == lastAttr.isUnderline())
-                    && (lCell.isBlink() == lastAttr.isBlink())
-                ) {
-
-                    // All attributes the same, just print the char
-                    // NOP
-
-                    if (debugToStderr && reallyDebug) {
-                        System.err.printf("6 Only emit character\n");
-                    }
-                } else {
-                    // Just reset everything again
-                    if (!lCell.isRGB()) {
-                        sb.append(color(lCell.getForeColor(),
-                                lCell.getBackColor(),
-                                lCell.isBold(),
-                                lCell.isReverse(),
-                                lCell.isBlink(),
-                                lCell.isUnderline()));
-
-                        if (debugToStderr && reallyDebug) {
-                            System.err.printf("7 Change all attributes\n");
-                        }
+                StringBuilder attrSgr = new StringBuilder(8);
+                if (lCell.isBold() != lastAttr.isBold()) {
+                    if (lCell.isBold()) {
+                        attrSgr.append(";1");
                     } else {
-                        sb.append(colorRGB(lCell.getForeColorRGB(),
-                                lCell.getBackColorRGB(),
-                                lCell.isBold(),
-                                lCell.isReverse(),
-                                lCell.isBlink(),
-                                lCell.isUnderline()));
-                        if (debugToStderr && reallyDebug) {
-                            System.err.printf("8 Change all attributes (RGB)\n");
-                        }
+                        attrSgr.append(";22");
                     }
-
                 }
+                if (lCell.isUnderline() != lastAttr.isUnderline()) {
+                    if (lCell.isUnderline()) {
+                        attrSgr.append(";4");
+                    } else {
+                        attrSgr.append(";24");
+                    }
+                }
+                if (lCell.isBlink() != lastAttr.isBlink()) {
+                    if (lCell.isBlink()) {
+                        attrSgr.append(";5");
+                    } else {
+                        attrSgr.append(";25");
+                    }
+                }
+                if (lCell.isReverse() != lastAttr.isReverse()) {
+                    if (lCell.isReverse()) {
+                        attrSgr.append(";7");
+                    } else {
+                        attrSgr.append(";27");
+                    }
+                }
+                if (attrSgr.length() > 0) {
+                    if (debugToStderr && reallyDebug) {
+                        System.err.println("2 attr: " + attrSgr.substring(1));
+                    }
+                    sb.append("\033[");
+                    sb.append(attrSgr.substring(1));
+                    sb.append("m");
+                }
+
+                boolean doForeColorRGB = false;
+                int foreColorRGB = lCell.getForeColorRGB();
+                long now = System.currentTimeMillis();
+                if (lCell.isPulse()) {
+                    foreColorRGB = lCell.getForeColorPulseRGB(backend, now);
+                    int lastForeColorRGB = lastAttr.getForeColorRGB();
+                    if (lastAttr.isPulse()) {
+                        lastForeColorRGB = lastAttr.getForeColorRGB();
+                    }
+                    if (foreColorRGB != lastForeColorRGB) {
+                        doForeColorRGB = true;
+                    }
+                }
+                if (doForeColorRGB
+                    || ((lCell.getForeColorRGB() >= 0)
+                        && ((lCell.getForeColorRGB() != lastAttr.getForeColorRGB())
+                            || (lastAttr.getForeColorRGB() < 0)))
+                ) {
+                    if (debugToStderr && reallyDebug) {
+                        System.err.println("3 set foreColorRGB");
+                    }
+                    sb.append(colorRGB(foreColorRGB, true));
+                } else {
+                    if ((lCell.getForeColorRGB() < 0)
+                        && ((lastAttr.getForeColorRGB() >= 0)
+                            || !lCell.getForeColor().equals(lastAttr.getForeColor()))
+                    ) {
+                        if (debugToStderr && reallyDebug) {
+                            System.err.println("4 set foreColor");
+                        }
+                        sb.append(color(lCell.getForeColor(), true, true));
+                    }
+                }
+
+                if ((lCell.getBackColorRGB() >= 0)
+                    && ((lCell.getBackColorRGB() != lastAttr.getBackColorRGB())
+                        || (lastAttr.getBackColorRGB() < 0))
+                ) {
+                    if (debugToStderr && reallyDebug) {
+                        System.err.println("5 set backColorRGB");
+                    }
+                    sb.append(colorRGB(lCell.getBackColorRGB(), false));
+                } else {
+                    if ((lCell.getBackColorRGB() < 0)
+                        && ((lastAttr.getBackColorRGB() >= 0)
+                            || !lCell.getBackColor().equals(lastAttr.getBackColor()))
+                    ) {
+                        if (debugToStderr && reallyDebug) {
+                            System.err.println("6 set backColor");
+                        }
+                        sb.append(color(lCell.getBackColor(), false, true));
+                    }
+                }
+
                 // Emit the character
                 if (wideCharImages
                     // Don't emit the right-half of full-width chars.
@@ -1574,6 +1695,7 @@ public class ECMA48Terminal extends LogicalScreen
 
         } // for (int x = 0; x < width; x++)
     }
+
 
     /**
      * Render the screen to a string that can be emitted to something that
@@ -1598,18 +1720,50 @@ public class ECMA48Terminal extends LogicalScreen
          * draw everything else afterwards.  This works OK, but performance
          * is still a drag on larger pictures.
          */
+        GlyphMaker glyphMaker = GlyphMaker.getInstance(getTextHeight());
         for (int y = 0; y < height; y++) {
+            boolean unsetRow = false;
             for (int x = 0; x < width; x++) {
                 // If physical had non-image data that is now image data, the
                 // entire row must be redrawn.
                 Cell lCell = logical[x][y];
                 Cell pCell = physical[x][y];
                 if (lCell.isImage() && !pCell.isImage()) {
-                    unsetImageRow(y);
-                    break;
+                    unsetRow = true;
+                }
+                int ch = lCell.getChar();
+                if (!lCell.isImage()
+                    && (StringUtils.isLegacyComputingSymbol(ch)
+                        || StringUtils.isBraille(ch))
+                    && glyphMaker.canDisplay(ch)
+                ) {
+                    // If a fallback font is available that can support
+                    // Symbols for Legacy Computing, always use it.
+                    BufferedImage newImage = glyphMaker.getImage(lCell,
+                        getTextWidth(), getTextHeight(), getBackend());
+                    lCell.setImage(newImage);
+                    unsetRow = true;
                 }
             }
+            if (unsetRow) {
+                unsetImageRow(y);
+            }
         }
+
+        /*
+         * Image encoding is expensive, especially when the image is not in
+         * cache.  We multithread it.  Since each image contains its own
+         * gotoxy(), it doesn't matter in what order they are delivered to
+         * the terminal.
+         */
+        ExecutorService imageExecutor = null;
+        List<Future<String>> imageResults = null;
+
+        if (imageThreadCount > 1) {
+            imageExecutor = Executors.newFixedThreadPool(imageThreadCount);
+            imageResults = new ArrayList<Future<String>>();
+        }
+
         for (int y = 0; y < height; y++) {
             for (int x = 0; x < width; x++) {
                 Cell lCell = logical[x][y];
@@ -1623,6 +1777,9 @@ public class ECMA48Terminal extends LogicalScreen
                 }
 
                 int right = x;
+                // This little loop is a *HUGE* bottleneck for image cells
+                // when imageId is not set.  Higher layers of code should
+                // always aim to set imageId before putting it on the screen.
                 while ((right < width)
                     && (logical[right][y].isImage())
                     && (!logical[right][y].equals(physical[right][y])
@@ -1645,10 +1802,11 @@ public class ECMA48Terminal extends LogicalScreen
                         // if imagesOverText is disabled then we will quietly
                         // continue on.  Otherwise render a text character
                         // under the image.
+                        assert (backend != null);
                         if (imagesOverText == true) {
-                            logical[x + i][y].flattenImage(true);
+                            logical[x + i][y].flattenImage(true, backend);
                         } else {
-                            logical[x + i][y].flattenImage(false);
+                            logical[x + i][y].flattenImage(false, backend);
                         }
                     }
                     assert (!logical[x + i][y].isTransparentImage());
@@ -1662,17 +1820,73 @@ public class ECMA48Terminal extends LogicalScreen
                         System.err.println("images to render: iTerm2: " +
                             iterm2Images + " Jexer: " + jexerImageOption);
                     }
+
                     if (iterm2Images) {
-                        sb.append(toIterm2Image(x, y, cellsToDraw));
+                        if (iterm2Cache == null) {
+                            iterm2Cache = new ImageCache(height * width * 10);
+                        }
                     } else if (jexerImageOption != JexerImageOption.DISABLED) {
-                        sb.append(toJexerImage(x, y, cellsToDraw));
+                        if (jexerCache == null) {
+                            jexerCache = new ImageCache(height * width * 10);
+                        }
                     } else {
-                        sb.append(toSixel(x, y, cellsToDraw));
+                        if (sixelCache == null) {
+                            sixelCache = new ImageCache(height * width * 10);
+                        }
+                    }
+
+                    if (imageThreadCount == 1) {
+                        // Single-threaded
+                        if (iterm2Images) {
+                            sb.append(toIterm2Image(x, y, cellsToDraw));
+                        } else if (jexerImageOption != JexerImageOption.DISABLED) {
+                            sb.append(toJexerImage(x, y, cellsToDraw));
+                        } else {
+                            sb.append(toSixel(x, y, cellsToDraw));
+                        }
+                    } else {
+                        // Multi-threaded: experimental and likely borken
+                        final int callX = x;
+                        final int callY = y;
+
+                        // Make a deep copy of the cells to render.
+                        final ArrayList<Cell> callCells;
+                        callCells = new ArrayList<Cell>(cellsToDraw);
+                        imageResults.add(imageExecutor.submit(new Callable<String>() {
+                            @Override
+                            public String call() {
+                                if (iterm2Images) {
+                                    return toIterm2Image(callX, callY, callCells);
+                                } else if (jexerImageOption != JexerImageOption.DISABLED) {
+                                    return toJexerImage(callX, callY, callCells);
+                                } else {
+                                    return toSixel(callX, callY, callCells);
+                                }
+                            }
+                        }));
                     }
                 }
 
                 x = right;
             }
+        }
+
+        if (imageThreadCount > 1) {
+            // Collect all the encoded images.
+            while (imageResults.size() > 0) {
+                try {
+                    Future<String> image = imageResults.get(0);
+                    sb.append(image.get());
+                    imageResults.remove(0);
+                } catch (InterruptedException e) {
+                    // SQUASH
+                    // e.printStackTrace();
+                } catch (ExecutionException e) {
+                    // SQUASH
+                    // e.printStackTrace();
+                }
+            }
+            imageExecutor.shutdown();
         }
 
         // Draw the text part now.
@@ -1744,6 +1958,7 @@ public class ECMA48Terminal extends LogicalScreen
         decPrivateModeFlag = false;
         decDollarModeFlag = false;
         xtversionResponse.setLength(0);
+        oscResponse.setLength(0);
     }
 
     /**
@@ -2272,6 +2487,166 @@ public class ECMA48Terminal extends LogicalScreen
     }
 
     /**
+     * Process an OSC response.
+     *
+     * @param text the OSC response string
+     */
+    private void oscResponse(final String text) {
+        if (debugToStderr) {
+            System.err.println("oscResponse(): '" + text + "'");
+        }
+
+        String [] Ps = text.split(";");
+        if (Ps.length == 0) {
+            return;
+        }
+        if (Ps[0].equals("4")) {
+            // RGB response
+            if (Ps.length != 3) {
+                return;
+            }
+            try {
+                int color = Integer.parseInt(Ps[1]);
+                String rgb = Ps[2];
+                if (!rgb.startsWith("rgb:")) {
+                    return;
+                }
+                rgb = rgb.substring(4);
+                if (debugToStderr) {
+                    System.err.println("  Color " + color + " is " + rgb);
+                }
+                String [] rgbs = rgb.split("/");
+                if (rgbs.length != 3) {
+                    return;
+                }
+                int red = Integer.parseInt(rgbs[0], 16);
+                int green = Integer.parseInt(rgbs[1], 16);
+                int blue = Integer.parseInt(rgbs[2], 16);
+                if (rgbs[0].length() == 4) {
+                    red = red >> 8;
+                }
+                if (rgbs[1].length() == 4) {
+                    green = green >> 8;
+                }
+                if (rgbs[2].length() == 4) {
+                    blue = blue >> 8;
+                }
+                if (debugToStderr) {
+                    System.err.printf("    RGB %02x%02x%02x\n",
+                        red, green, blue);
+                }
+                switch (color) {
+                case 0:
+                    MYBLACK   = new java.awt.Color(red, green, blue);
+                    if (debugToStderr) {
+                        System.err.println("    Set BLACK");
+                    }
+                    break;
+                case 1:
+                    MYRED     = new java.awt.Color(red, green, blue);
+                    if (debugToStderr) {
+                        System.err.println("    Set RED");
+                    }
+                    break;
+                case 2:
+                    MYGREEN   = new java.awt.Color(red, green, blue);
+                    if (debugToStderr) {
+                        System.err.println("    Set GREEN");
+                    }
+                    break;
+                case 3:
+                    MYYELLOW  = new java.awt.Color(red, green, blue);
+                    if (debugToStderr) {
+                        System.err.println("    Set YELLOW");
+                    }
+                    break;
+                case 4:
+                    MYBLUE    = new java.awt.Color(red, green, blue);
+                    if (debugToStderr) {
+                        System.err.println("    Set BLUE");
+                    }
+                    break;
+                case 5:
+                    MYMAGENTA = new java.awt.Color(red, green, blue);
+                    if (debugToStderr) {
+                        System.err.println("    Set MAGENTA");
+                    }
+                    break;
+                case 6:
+                    MYCYAN    = new java.awt.Color(red, green, blue);
+                    if (debugToStderr) {
+                        System.err.println("    Set CYAN");
+                    }
+                    break;
+                case 7:
+                    MYWHITE   = new java.awt.Color(red, green, blue);
+                    if (debugToStderr) {
+                        System.err.println("    Set WHITE");
+                    }
+                    break;
+                case 8:
+                    MYBOLD_BLACK   = new java.awt.Color(red, green, blue);
+                    if (debugToStderr) {
+                        System.err.println("    Set BOLD BLACK");
+                    }
+                    break;
+                case 9:
+                    MYBOLD_RED     = new java.awt.Color(red, green, blue);
+                    if (debugToStderr) {
+                        System.err.println("    Set BOLD RED");
+                    }
+                    break;
+                case 10:
+                    MYBOLD_GREEN   = new java.awt.Color(red, green, blue);
+                    if (debugToStderr) {
+                        System.err.println("    Set BOLD GREEN");
+                    }
+                    break;
+                case 11:
+                    MYBOLD_YELLOW  = new java.awt.Color(red, green, blue);
+                    if (debugToStderr) {
+                        System.err.println("    Set BOLD YELLOW");
+                    }
+                    break;
+                case 12:
+                    MYBOLD_BLUE    = new java.awt.Color(red, green, blue);
+                    if (debugToStderr) {
+                        System.err.println("    Set BOLD BLUE");
+                    }
+                    break;
+                case 13:
+                    MYBOLD_MAGENTA = new java.awt.Color(red, green, blue);
+                    if (debugToStderr) {
+                        System.err.println("    Set BOLD MAGENTA");
+                    }
+                    break;
+                case 14:
+                    MYBOLD_CYAN    = new java.awt.Color(red, green, blue);
+                    if (debugToStderr) {
+                        System.err.println("    Set BOLD CYAN");
+                    }
+                    break;
+                case 15:
+                    MYBOLD_WHITE   = new java.awt.Color(red, green, blue);
+                    if (debugToStderr) {
+                        System.err.println("    Set BOLD WHITE");
+                    }
+                    break;
+                default:
+                    break;
+                }
+
+                // We have changed a system color.  Redraw the entire screen.
+                clearPhysical();
+                reallyCleared = true;
+            } catch (NumberFormatException e) {
+                return;
+            }
+        }
+
+    }
+
+    /**
      * Parses the next character of input to see if an InputEvent is
      * fully here.
      *
@@ -2296,7 +2671,7 @@ public class ECMA48Terminal extends LogicalScreen
         boolean alt = false;
         boolean shift = false;
 
-        if (debugToStderr && false) {
+        if (debugToStderr) {
             System.err.printf("state: %s ch %c\r\n", state, ch);
         }
 
@@ -2336,6 +2711,12 @@ public class ECMA48Terminal extends LogicalScreen
                 return;
             }
             xtversionQuery = false;
+
+            if (ch == ']') {
+                state = ParseState.OSC;
+                oscResponse.setLength(0);
+                return;
+            }
 
             if (ch <= 0x1F) {
                 // ALT-Control character
@@ -2838,6 +3219,28 @@ public class ECMA48Terminal extends LogicalScreen
             xtversionResponse.append(ch);
             return;
 
+        case OSC:
+            if ((ch == '\\') &&
+                (oscResponse.length() > 0) &&
+                (oscResponse.charAt(oscResponse.length() - 1)
+                    == 0x1B)
+            ) {
+                // This is ST, end of the line.
+                oscResponse(oscResponse.substring(0, oscResponse.length() - 1));
+                resetParser();
+                return;
+            }
+            if (ch == 0x07) {
+                // This is BEL, end of the line.
+                oscResponse(oscResponse.toString());
+                resetParser();
+                return;
+            }
+
+            // Continue collecting until we see ST.
+            oscResponse.append(ch);
+            return;
+
         default:
             break;
         }
@@ -3108,48 +3511,75 @@ public class ECMA48Terminal extends LogicalScreen
         }
 
         if (y == height - 1) {
-            // We are on the bottom row.  If scrolling mode is enabled
-            // (default), then VT320/xterm will scroll the entire screen if
-            // we draw any pixels here.  Do not draw the image, bail out
-            // instead.
-            sb.append(normal());
-            sb.append(gotoXY(x, y));
-            for (int j = 0; j < cells.size(); j++) {
-                sb.append(' ');
-            }
-            return sb.toString();
-        }
-
-        if (sixelCache == null) {
-            sixelCache = new ImageCache(height * 10);
-        }
-
-        // Save and get rows to/from the cache that do NOT have inverted
-        // cells.
-        boolean saveInCache = true;
-        for (Cell cell: cells) {
-            if (cell.isInvertedImage()) {
-                saveInCache = false;
-            }
-        }
-        if (saveInCache) {
-            String cachedResult = sixelCache.get(cells);
-            if (cachedResult != null) {
-                // System.err.println("CACHE HIT");
-                sb.append(startSixel(x, y));
-                sb.append(cachedResult);
-                sb.append(endSixel());
+            if (sixelEncoder instanceof HQSixelEncoder) {
+                // HQ can emit images with transparency.  We can use that
+                // along with DECSDM to get up to 1000 pixel width images on
+                // the bottom row.
+                emitSixelOnBottomRow(x, y, cells, sb);
+                return sb.toString();
+            } else {
+                // We are on the bottom row.  If scrolling mode is enabled
+                // (default), then VT320/xterm will scroll the entire screen if
+                // we draw any pixels here.  Do not draw the image, bail out
+                // instead.
+                sb.append(normal());
+                sb.append(gotoXY(x, y));
+                for (int j = 0; j < cells.size(); j++) {
+                    sb.append(' ');
+                }
                 return sb.toString();
             }
-            // System.err.println("CACHE MISS");
+        }
+
+        boolean saveInCache = true;
+        if (sixelFastAndDirty) {
+            saveInCache = false;
+        } else {
+            // Save and get rows to/from the cache that do NOT have inverted
+            // cells.
+            for (Cell cell: cells) {
+                if (cell.isInvertedImage()) {
+                    saveInCache = false;
+                    break;
+                }
+                // Compute the hashcode so that the cell image hash is
+                // available for looking up in the image cache.
+                cell.hashCode();
+            }
+
+            if (saveInCache) {
+                String cachedResult = sixelCache.get(cells);
+                if (cachedResult != null) {
+                    // System.err.println("CACHE HIT");
+                    sb.append(startSixel(x, y));
+                    sb.append(cachedResult);
+                    sb.append(endSixel());
+                    return sb.toString();
+                }
+                // System.err.println("CACHE MISS");
+            }
         }
 
         // If the final image would be larger than 1000 pixels wide, break it
-        // up into smaller images.
-        if (cells.size() * getTextWidth() > 1000) {
+        // up into smaller images, but at least 8 cells wide.  Or if we are
+        // using the HQ encoder and will have more than some multiple of the
+        // palette size in total pixels.
+        int maxChunkLength = 1000;
+        if ((sixelEncoder instanceof HQSixelEncoder)
+            && (sixelEncoder.getPaletteSize() > 64)
+        ) {
+            maxChunkLength = Math.max(8 * getTextWidth(),
+                Math.min(maxChunkLength,
+                    sixelEncoder.getPaletteSize() * 10 / getTextHeight()));
+            /*
+            System.err.printf("maxChunkLength: %d cache used size %d\n",
+                maxChunkLength, sixelCache.size());
+             */
+        }
+        if (cells.size() * getTextWidth() > maxChunkLength) {
             StringBuilder chunkSb = new StringBuilder();
             int chunkStart = 0;
-            int chunkSize = 1000 / getTextWidth();
+            int chunkSize = maxChunkLength / getTextWidth();
             int remaining = cells.size();
             int chunkX = x;
             ArrayList<Cell> chunk;
@@ -3173,6 +3603,51 @@ public class ECMA48Terminal extends LogicalScreen
         }
 
         return (startSixel(x, y) + sixel + endSixel());
+    }
+
+    /**
+     * Create a sixel string representing a row of several cells containing
+     * bitmap data on the bottom.  This technique may not work on all
+     * terminals, and is limited to 1000 pixels from the left edge.
+     *
+     * @param x column coordinate.  0 is the left-most column.
+     * @param y row coordinate.  0 is the top-most row.
+     * @param cells the cells containing the bitmap data
+     * @param sb the StringBuilder to write to
+     */
+    private void emitSixelOnBottomRow(final int x, final int y,
+        final ArrayList<Cell> cells, final StringBuilder sb) {
+
+        int cellWidth = getTextWidth();
+        int cellHeight = getTextHeight();
+        int pixelX = x * cellWidth;
+        int pixelY = y * cellHeight;
+        int maxPixelX = pixelX + (cells.size() * cellWidth);
+        int maxPixelY = pixelY + cellHeight;
+        if ((maxPixelX > 1000) || (maxPixelY > 1000)) {
+            // There is no point, xterm will not display this image.
+            sb.append(normal());
+            sb.append(gotoXY(x, y));
+            for (int i = 0; i < cells.size(); i++) {
+                sb.append(' ');
+            }
+            return;
+        }
+
+        // The final image will be 1000 x 1000 or less.
+        BufferedImage cellsImage = cellsToImage(cells);
+        BufferedImage fullImage = ImageUtils.createImage(cellsImage,
+            maxPixelX, maxPixelY);
+        Graphics gr = fullImage.getGraphics();
+        gr.drawImage(cellsImage, pixelX, pixelY, null);
+        gr.dispose();
+
+        // HQSixelEncoder.toSixel() can accept allowTransparent.
+        String sixel = ((HQSixelEncoder) sixelEncoder).toSixel(fullImage, true);
+        sb.append("\033[?80h\033P0;1;0q");
+        sb.append(sixel);
+        // System.err.println("SIXEL: " + sixel);
+        sb.append("\033\\\033[?80l");
     }
 
     /**
@@ -3205,8 +3680,8 @@ public class ECMA48Terminal extends LogicalScreen
             totalWidth += cells.get(i).getImage().getWidth();
         }
 
-        BufferedImage image = new BufferedImage(fullWidth,
-            fullHeight, BufferedImage.TYPE_INT_ARGB);
+        BufferedImage image = ImageUtils.createImage(cells.get(0).getImage(),
+            fullWidth, fullHeight);
 
         int [] rgbArray;
         for (int i = 0; i < cells.size() - 1; i++) {
@@ -3248,7 +3723,7 @@ public class ECMA48Terminal extends LogicalScreen
             image.setRGB(i * imageWidth, 0, tileWidth, tileHeight,
                 rgbArray, 0, tileWidth);
             if (tileHeight < fullHeight) {
-                int backgroundColor = cells.get(i).getBackground().getRGB();
+                int backgroundColor = 0;
                 for (int imageX = 0; imageX < image.getWidth(); imageX++) {
                     for (int imageY = imageHeight; imageY < fullHeight;
                          imageY++) {
@@ -3271,17 +3746,33 @@ public class ECMA48Terminal extends LogicalScreen
                 rgbArray = cells.get(cells.size() - 1).getImage().getRGB(0, 0,
                     totalWidth, imageHeight, null, 0, totalWidth);
             } catch (Exception e) {
+                // TODO: Both of these setRGB cases are failing sometimes in
+                // the multihead case.  Figure it out.
+                return image;
+                /*
                 throw new RuntimeException("image " + imageWidth + "x" +
                     imageHeight + " cells.get(cells.size() - 1).getImage() " +
                     cells.get(cells.size() - 1).getImage(), e);
+                 */
             }
         }
-        image.setRGB((cells.size() - 1) * imageWidth, 0, totalWidth,
-            imageHeight, rgbArray, 0, totalWidth);
+        try {
+            image.setRGB((cells.size() - 1) * imageWidth, 0, totalWidth,
+                imageHeight, rgbArray, 0, totalWidth);
+        } catch (Exception e) {
+            // TODO: Both of these setRGB cases are failing sometimes in the
+            // multihead case.  Figure it out.
+            return image;
+            /*
+            throw new RuntimeException("image " + imageWidth + "x" +
+                imageHeight + " cells.get(cells.size() - 1).getImage() " +
+                cells.get(cells.size() - 1).getImage(), e);
+             */
+        }
+
 
         if (totalWidth < imageWidth) {
-            int backgroundColor = cells.get(cells.size() - 1).getBackground().getRGB();
-
+            int backgroundColor = 0;
             for (int imageX = image.getWidth() - totalWidth;
                  imageX < image.getWidth(); imageX++) {
 
@@ -3296,8 +3787,8 @@ public class ECMA48Terminal extends LogicalScreen
         ) {
             // Rescale the image to fit the text cells it is going into.
             BufferedImage newImage;
-            newImage = new BufferedImage(cells.size() * getTextWidth(),
-                getTextHeight(), BufferedImage.TYPE_INT_ARGB);
+            newImage = ImageUtils.createImage(image,
+                cells.size() * getTextWidth(), getTextHeight());
 
             Graphics gr = newImage.getGraphics();
             if (gr instanceof Graphics2D) {
@@ -3362,17 +3853,17 @@ public class ECMA48Terminal extends LogicalScreen
             return sb.toString();
         }
 
-        if (iterm2Cache == null) {
-            iterm2Cache = new ImageCache(height * 10);
-        }
-
         // Save and get rows to/from the cache that do NOT have inverted
         // cells.
         boolean saveInCache = true;
         for (Cell cell: cells) {
             if (cell.isInvertedImage()) {
                 saveInCache = false;
+                break;
             }
+            // Compute the hashcode so that the cell image hash is available
+            // for looking up in the image cache.
+            cell.hashCode();
         }
         if (saveInCache) {
             String cachedResult = iterm2Cache.get(cells);
@@ -3540,17 +4031,17 @@ public class ECMA48Terminal extends LogicalScreen
             return sb.toString();
         }
 
-        if (jexerCache == null) {
-            jexerCache = new ImageCache(height * 10);
-        }
-
         // Save and get rows to/from the cache that do NOT have inverted
         // cells.
         boolean saveInCache = true;
         for (Cell cell: cells) {
             if (cell.isInvertedImage()) {
                 saveInCache = false;
+                break;
             }
+            // Compute the hashcode so that the cell image hash is available
+            // for looking up in the image cache.
+            cell.hashCode();
         }
         if (saveInCache) {
             String cachedResult = jexerCache.get(cells);
@@ -3685,8 +4176,6 @@ public class ECMA48Terminal extends LogicalScreen
      * Setup ECMA48 colors to match those provided in system properties.
      */
     private void setCustomSystemColors() {
-        setDOSColors();
-
         MYBLACK   = getCustomColor("jexer.ECMA48.color0", MYBLACK);
         MYRED     = getCustomColor("jexer.ECMA48.color1", MYRED);
         MYGREEN   = getCustomColor("jexer.ECMA48.color2", MYGREEN);
@@ -3735,6 +4224,100 @@ public class ECMA48Terminal extends LogicalScreen
             (rgbInt & 0x0000FF));
 
         return color;
+    }
+
+    /**
+     * Convert a CellAttributes foreground color to an AWT Color.
+     *
+     * @param attr the text attributes
+     * @return the AWT Color
+     */
+    public java.awt.Color attrToForegroundColor(final CellAttributes attr) {
+        int rgb = attr.getForeColorRGB();
+        if (rgb >= 0) {
+            int red     = (rgb >>> 16) & 0xFF;
+            int green   = (rgb >>>  8) & 0xFF;
+            int blue    =  rgb         & 0xFF;
+
+            return new java.awt.Color(red, green, blue);
+        }
+
+        if (attr.isBold()) {
+            if (attr.getForeColor().equals(Color.BLACK)) {
+                return MYBOLD_BLACK;
+            } else if (attr.getForeColor().equals(Color.RED)) {
+                return MYBOLD_RED;
+            } else if (attr.getForeColor().equals(Color.BLUE)) {
+                return MYBOLD_BLUE;
+            } else if (attr.getForeColor().equals(Color.GREEN)) {
+                return MYBOLD_GREEN;
+            } else if (attr.getForeColor().equals(Color.YELLOW)) {
+                return MYBOLD_YELLOW;
+            } else if (attr.getForeColor().equals(Color.CYAN)) {
+                return MYBOLD_CYAN;
+            } else if (attr.getForeColor().equals(Color.MAGENTA)) {
+                return MYBOLD_MAGENTA;
+            } else if (attr.getForeColor().equals(Color.WHITE)) {
+                return MYBOLD_WHITE;
+            }
+        } else {
+            if (attr.getForeColor().equals(Color.BLACK)) {
+                return MYBLACK;
+            } else if (attr.getForeColor().equals(Color.RED)) {
+                return MYRED;
+            } else if (attr.getForeColor().equals(Color.BLUE)) {
+                return MYBLUE;
+            } else if (attr.getForeColor().equals(Color.GREEN)) {
+                return MYGREEN;
+            } else if (attr.getForeColor().equals(Color.YELLOW)) {
+                return MYYELLOW;
+            } else if (attr.getForeColor().equals(Color.CYAN)) {
+                return MYCYAN;
+            } else if (attr.getForeColor().equals(Color.MAGENTA)) {
+                return MYMAGENTA;
+            } else if (attr.getForeColor().equals(Color.WHITE)) {
+                return MYWHITE;
+            }
+        }
+        throw new IllegalArgumentException("Invalid color: " +
+            attr.getForeColor().getValue());
+    }
+
+    /**
+     * Convert a CellAttributes background color to an AWT Color.
+     *
+     * @param attr the text attributes
+     * @return the AWT Color
+     */
+    public java.awt.Color attrToBackgroundColor(final CellAttributes attr) {
+        int rgb = attr.getBackColorRGB();
+        if (rgb >= 0) {
+            int red     = (rgb >>> 16) & 0xFF;
+            int green   = (rgb >>>  8) & 0xFF;
+            int blue    =  rgb         & 0xFF;
+
+            return new java.awt.Color(red, green, blue);
+        }
+
+        if (attr.getBackColor().equals(Color.BLACK)) {
+            return MYBLACK;
+        } else if (attr.getBackColor().equals(Color.RED)) {
+            return MYRED;
+        } else if (attr.getBackColor().equals(Color.BLUE)) {
+            return MYBLUE;
+        } else if (attr.getBackColor().equals(Color.GREEN)) {
+            return MYGREEN;
+        } else if (attr.getBackColor().equals(Color.YELLOW)) {
+            return MYYELLOW;
+        } else if (attr.getBackColor().equals(Color.CYAN)) {
+            return MYCYAN;
+        } else if (attr.getBackColor().equals(Color.MAGENTA)) {
+            return MYMAGENTA;
+        } else if (attr.getBackColor().equals(Color.WHITE)) {
+            return MYWHITE;
+        }
+        throw new IllegalArgumentException("Invalid color: " +
+            attr.getBackColor().getValue());
     }
 
     /**
@@ -4035,6 +4618,59 @@ public class ECMA48Terminal extends LogicalScreen
     }
 
     /**
+     * Create a SGR parameter sequence for several attributes.  This sequence
+     * first resets all attributes to default, then sets attributes as per
+     * the parameters.
+     *
+     * @param bold if true, set bold
+     * @param reverse if true, set reverse
+     * @param blink if true, set blink
+     * @param underline if true, set underline
+     * @return the string to emit to an ANSI / ECMA-style terminal,
+     * e.g. "\033[0;1;5m"
+     */
+    private String attributes(final boolean bold, final boolean reverse,
+        final boolean blink, final boolean underline) {
+
+        StringBuilder sb = new StringBuilder();
+        if        (  bold &&  reverse &&  blink && !underline ) {
+            sb.append("\033[0;1;7;5m");
+        } else if (  bold &&  reverse && !blink && !underline ) {
+            sb.append("\033[0;1;7m");
+        } else if ( !bold &&  reverse &&  blink && !underline ) {
+            sb.append("\033[0;7;5m");
+        } else if (  bold && !reverse &&  blink && !underline ) {
+            sb.append("\033[0;1;5m");
+        } else if (  bold && !reverse && !blink && !underline ) {
+            sb.append("\033[0;1m");
+        } else if ( !bold &&  reverse && !blink && !underline ) {
+            sb.append("\033[0;7m");
+        } else if ( !bold && !reverse &&  blink && !underline) {
+            sb.append("\033[0;5m");
+        } else if (  bold &&  reverse &&  blink &&  underline ) {
+            sb.append("\033[0;1;7;5;4m");
+        } else if (  bold &&  reverse && !blink &&  underline ) {
+            sb.append("\033[0;1;7;4m");
+        } else if ( !bold &&  reverse &&  blink &&  underline ) {
+            sb.append("\033[0;7;5;4m");
+        } else if (  bold && !reverse &&  blink &&  underline ) {
+            sb.append("\033[0;1;5;4m");
+        } else if (  bold && !reverse && !blink &&  underline ) {
+            sb.append("\033[0;1;4m");
+        } else if ( !bold &&  reverse && !blink &&  underline ) {
+            sb.append("\033[0;7;4m");
+        } else if ( !bold && !reverse &&  blink &&  underline) {
+            sb.append("\033[0;5;4m");
+        } else if ( !bold && !reverse && !blink &&  underline) {
+            sb.append("\033[0;4m");
+        } else {
+            assert (!bold && !reverse && !blink && !underline);
+            sb.append("\033[0m");
+        }
+        return sb.toString();
+    }
+
+    /**
      * Create a SGR parameter sequence for foreground, background, and
      * several attributes.  This sequence first resets all attributes to
      * default, then sets attributes as per the parameters.
@@ -4263,6 +4899,19 @@ public class ECMA48Terminal extends LogicalScreen
             return str;
         }
         return "";
+    }
+
+    /**
+     * Request (u)xterm report the RGB values of its ANSI colors.
+     *
+     * @return the string to emit to xterm
+     */
+    private String xtermQueryAnsiColors() {
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < 16; i++) {
+            sb.append(String.format("\033]4;%d;?\033\\", i));
+        }
+        return sb.toString();
     }
 
 }

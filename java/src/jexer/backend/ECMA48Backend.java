@@ -3,7 +3,7 @@
  *
  * The MIT License (MIT)
  *
- * Copyright (C) 2021 Autumn Lamonte
+ * Copyright (C) 2022 Autumn Lamonte
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -23,7 +23,7 @@
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
  * DEALINGS IN THE SOFTWARE.
  *
- * @author Autumn Lamonte [AutumnWalksTheLake@gmail.com] ⚧ Trans Liberation Now
+ * @author Autumn Lamonte ⚧ Trans Liberation Now
  * @version 1
  */
 package jexer.backend;
@@ -33,6 +33,8 @@ import java.io.OutputStream;
 import java.io.PrintWriter;
 import java.io.Reader;
 import java.io.UnsupportedEncodingException;
+
+import jexer.bits.CellAttributes;
 
 /**
  * This class uses an xterm/ANSI X3.64/ECMA-48 type terminal to provide a
@@ -83,6 +85,7 @@ public class ECMA48Backend extends GenericBackend {
         // Create a terminal and explicitly set stdin into raw mode
         terminal = new ECMA48Terminal(this, listener, input, output,
             windowWidth, windowHeight);
+        ((ECMA48Terminal) terminal).setBackend(this);
 
         // Keep the terminal's sessionInfo so that TApplication can see it
         sessionInfo = ((ECMA48Terminal) terminal).getSessionInfo();
@@ -136,6 +139,7 @@ public class ECMA48Backend extends GenericBackend {
 
         // Create a terminal and explicitly set stdin into raw mode
         terminal = new ECMA48Terminal(this, listener, input, output);
+        ((ECMA48Terminal) terminal).setBackend(this);
 
         // Keep the terminal's sessionInfo so that TApplication can see it
         sessionInfo = ((ECMA48Terminal) terminal).getSessionInfo();
@@ -165,6 +169,7 @@ public class ECMA48Backend extends GenericBackend {
         // Create a terminal and explicitly set stdin into raw mode
         terminal = new ECMA48Terminal(this, listener, input, reader, writer,
             setRawMode);
+        ((ECMA48Terminal) terminal).setBackend(this);
 
         // Keep the terminal's sessionInfo so that TApplication can see it
         sessionInfo = ((ECMA48Terminal) terminal).getSessionInfo();
@@ -233,6 +238,26 @@ public class ECMA48Backend extends GenericBackend {
     @Override
     public void setMouseStyle(final String mouseStyle) {
         ((ECMA48Terminal) terminal).setMouseStyle(mouseStyle);
+    }
+
+    /**
+     * Convert a CellAttributes foreground color to an AWT Color.
+     *
+     * @param attr the text attributes
+     * @return the AWT Color
+     */
+    public java.awt.Color attrToForegroundColor(final CellAttributes attr) {
+        return ((ECMA48Terminal) terminal).attrToForegroundColor(attr);
+    }
+
+    /**
+     * Convert a CellAttributes background color to an AWT Color.
+     *
+     * @param attr the text attributes
+     * @return the AWT Color
+     */
+    public java.awt.Color attrToBackgroundColor(final CellAttributes attr) {
+        return ((ECMA48Terminal) terminal).attrToBackgroundColor(attr);
     }
 
 }

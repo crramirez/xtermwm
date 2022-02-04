@@ -3,7 +3,7 @@
  *
  * The MIT License (MIT)
  *
- * Copyright (C) 2021 Autumn Lamonte
+ * Copyright (C) 2022 Autumn Lamonte
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -23,7 +23,7 @@
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
  * DEALINGS IN THE SOFTWARE.
  *
- * @author Autumn Lamonte [AutumnWalksTheLake@gmail.com] ⚧ Trans Liberation Now
+ * @author Autumn Lamonte ⚧ Trans Liberation Now
  * @version 1
  */
 package jexer.bits;
@@ -366,6 +366,14 @@ public class ColorTheme {
         color.setBackColor(Color.GREEN);
         color.setBold(true);
         colors.put("tbutton.mnemonic.highlighted", color);
+        color = new CellAttributes();
+        color.setForeColor(Color.BLACK);
+        color.setBold(true);
+        colors.put("tbutton.mnemonic.pulse", color);
+        color = new CellAttributes();
+        color.setForeColor(Color.BLACK);
+        color.setBold(true);
+        colors.put("tbutton.pulse", color);
 
         // TLabel text
         color = new CellAttributes();
@@ -397,6 +405,10 @@ public class ColorTheme {
         color.setBackColor(Color.CYAN);
         color.setBold(false);
         colors.put("tfield.active", color);
+        color = new CellAttributes();
+        // Just a small bit of amber.
+        color.setForeColorRGB(0x8A610D);
+        colors.put("tfield.pulse", color);
 
         // TCheckBox
         color = new CellAttributes();
@@ -419,6 +431,10 @@ public class ColorTheme {
         color.setBackColor(Color.BLACK);
         color.setBold(true);
         colors.put("tcheckbox.mnemonic.highlighted", color);
+        color = new CellAttributes();
+        // Just a small bit of amber.
+        color.setForeColorRGB(0x8A610D);
+        colors.put("tcheckbox.pulse", color);
 
         // TComboBox
         color = new CellAttributes();
@@ -492,6 +508,10 @@ public class ColorTheme {
         color.setBackColor(Color.BLACK);
         color.setBold(true);
         colors.put("tradiobutton.mnemonic.highlighted", color);
+        color = new CellAttributes();
+        // Just a small bit of amber.
+        color.setForeColorRGB(0x8A610D);
+        colors.put("tradiobutton.pulse", color);
 
         // TRadioGroup
         color = new CellAttributes();
@@ -735,6 +755,142 @@ public class ColorTheme {
         color.setBackColor(Color.CYAN);
         color.setBold(true);
         colors.put("thelpwindow.link.active", color);
+
+    }
+
+    /**
+     * Set the theme to femme.  I love pink.  You can too!  💗
+     */
+    public void setFemme() {
+        setDefaultTheme();
+        final int pink = 0xf7a8b8;
+        final int blue = 0x55cdfc;
+        final int pink2 = 0xd77888;
+
+        for (String key: colors.keySet()) {
+            CellAttributes color = colors.get(key);
+
+            Color fg = color.getForeColor();
+            Color bg = color.getBackColor();
+            boolean bold = color.isBold();
+            if (bg.equals(Color.WHITE) && fg.equals(Color.BLACK)) {
+                color.setForeColor(Color.MAGENTA);
+                color.setBackColorRGB(pink);
+            } else if (bg.equals(Color.WHITE) && fg.equals(Color.WHITE)) {
+                color.setForeColor(Color.MAGENTA);
+                color.setBackColorRGB(pink);
+                color.setBold(true);
+            } else if (bg.equals(Color.WHITE) && fg.equals(Color.WHITE)) {
+                color.setForeColorRGB(blue);
+                color.setBackColorRGB(pink);
+                color.setBold(true);
+            } else if (bg.equals(Color.WHITE) && fg.equals(Color.GREEN)) {
+                color.setForeColor(Color.BLUE);
+                color.setBackColor(Color.BLACK);
+                color.setBold(true);
+            } else if (bg.equals(Color.WHITE) && fg.equals(Color.RED)) {
+                color.setForeColorRGB(blue);
+                color.setBackColorRGB(pink);
+                color.setBold(true);
+            } else if (bg.equals(Color.BLUE) && fg.equals(Color.CYAN)) {
+                color.setForeColor(Color.RED);
+                color.setBackColor(Color.MAGENTA);
+                color.setBold(true);
+            } else if (fg.equals(Color.BLUE) && bg.equals(Color.CYAN)) {
+                color.setForeColor(Color.MAGENTA);
+                color.setBackColor(Color.RED);
+                color.setBold(true);
+            } else if (bg.equals(Color.BLUE)) {
+                color.setBackColor(Color.BLACK);
+            } else if (bg.equals(Color.GREEN)) {
+                color.setBackColor(Color.CYAN);
+            } else if (fg.equals(Color.WHITE) && bold) {
+                color.setForeColor(Color.RED);
+            }
+
+            colors.put(key, color);
+        }
+
+        CellAttributes color;
+        color = new CellAttributes();
+        color.setForeColor(Color.MAGENTA);
+        color.setBackColorRGB(pink2);
+        color.setBold(false);
+        colors.put("twindow.background", color);
+        colors.put("twindow.background.inactive", color);
+        colors.put("twindow.background.modal", color);
+        colors.put("twindow.background.modal.inactive", color);
+        colors.put("twindow.background.windowmove", color);
+
+        color = new CellAttributes();
+        color.setForeColor(Color.MAGENTA);
+        color.setBold(true);
+        colors.put("twindow.border", color);
+        colors.put("twindow.border.inactive", color);
+        colors.put("twindow.border.modal", color);
+        colors.put("twindow.border.modal.inactive", color);
+
+        color = new CellAttributes();
+        color.setForeColorRGB(blue);
+        colors.put("twindow.border.windowmove", color);
+        colors.put("twindow.border.modal.windowmove", color);
+
+        color = new CellAttributes();
+        color.setForeColor(Color.RED);
+        color.setBold(true);
+        color.setBackColorRGB(pink);
+        colors.put("tbutton.active", color);
+        color = new CellAttributes();
+        color.setForeColor(Color.BLACK);
+        color.setBackColorRGB(pink);
+        colors.put("tbutton.inactive", color);
+        color = new CellAttributes();
+        color.setForeColor(Color.BLACK);
+        color.setBold(true);
+        color = new CellAttributes();
+        color.setForeColorRGB(blue);
+        color.setBold(true);
+        color.setBackColorRGB(pink);
+        colors.put("tbutton.mnemonic.highlighted", color);
+        color = new CellAttributes();
+        color.setForeColorRGB(blue);
+        color.setBold(true);
+        color.setBackColorRGB(pink);
+        colors.put("tbutton.mnemonic", color);
+        color = new CellAttributes();
+        color.setForeColor(Color.RED);
+        colors.put("tbutton.pulse", color);
+        color = new CellAttributes();
+        color.setForeColorRGB(blue);
+        color.setBold(true);
+        colors.put("tbutton.mnemonic.pulse", color);
+
+        color = new CellAttributes();
+        color.setForeColor(Color.BLUE);
+        color.setBackColorRGB(pink2);
+        color.setBold(true);
+        colors.put("tprogressbar.complete", color);
+        color = new CellAttributes();
+        color.setForeColor(Color.WHITE);
+        color.setBackColorRGB(pink2);
+        color.setBold(false);
+        colors.put("tprogressbar.incomplete", color);
+
+        color = new CellAttributes();
+        color.setForeColor(Color.MAGENTA);
+        color.setBackColor(Color.BLACK);
+        color.setBold(true);
+        colors.put("tradiogroup.active", color);
+        color = new CellAttributes();
+        color.setForeColor(Color.MAGENTA);
+        color.setBackColor(Color.BLACK);
+        color.setBold(true);
+        colors.put("tradiobutton.active", color);
+        color = new CellAttributes();
+        color.setForeColor(Color.MAGENTA);
+        color.setBackColor(Color.BLACK);
+        color.setBold(true);
+        colors.put("tcheckbox.active", color);
 
     }
 

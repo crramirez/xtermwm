@@ -3,7 +3,7 @@
  *
  * The MIT License (MIT)
  *
- * Copyright (C) 2021 Autumn Lamonte
+ * Copyright (C) 2022 Autumn Lamonte
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -23,11 +23,12 @@
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
  * DEALINGS IN THE SOFTWARE.
  *
- * @author Autumn Lamonte [AutumnWalksTheLake@gmail.com] ⚧ Trans Liberation Now
+ * @author Autumn Lamonte ⚧ Trans Liberation Now
  * @version 1
  */
 package jexer.backend;
 
+import jexer.bits.BorderStyle;
 import jexer.bits.Cell;
 import jexer.bits.CellAttributes;
 import jexer.bits.Clipboard;
@@ -252,6 +253,17 @@ public interface Screen {
         final int ch, final CellAttributes attr);
 
     /**
+     * Draw a vertical line from (x, y) to (x, y + n).
+     *
+     * @param x column coordinate.  0 is the left-most column.
+     * @param y row coordinate.  0 is the top-most row.
+     * @param n number of characters to draw
+     * @param ch character to draw
+     */
+    public void vLineXY(final int x, final int y, final int n,
+        final Cell ch);
+
+    /**
      * Draw a horizontal line from (x, y) to (x + n, y).
      *
      * @param x column coordinate.  0 is the left-most column.
@@ -262,6 +274,17 @@ public interface Screen {
      */
     public void hLineXY(final int x, final int y, final int n,
         final int ch, final CellAttributes attr);
+
+    /**
+     * Draw a horizontal line from (x, y) to (x + n, y).
+     *
+     * @param x column coordinate.  0 is the left-most column.
+     * @param y row coordinate.  0 is the top-most row.
+     * @param n number of characters to draw
+     * @param ch character to draw
+     */
+    public void hLineXY(final int x, final int y, final int n,
+        final Cell ch);
 
     /**
      * Change the width.  Everything on-screen will be destroyed and must be
@@ -321,7 +344,7 @@ public interface Screen {
     /**
      * Draw a box with a border and empty background.
      *
-     * @param left left column of box.  0 is the left-most row.
+     * @param left left column of box.  0 is the left-most column.
      * @param top top row of the box.  0 is the top-most row.
      * @param right right column of box
      * @param bottom bottom row of the box
@@ -335,26 +358,24 @@ public interface Screen {
     /**
      * Draw a box with a border and empty background.
      *
-     * @param left left column of box.  0 is the left-most row.
+     * @param left left column of box.  0 is the left-most column.
      * @param top top row of the box.  0 is the top-most row.
      * @param right right column of box
      * @param bottom bottom row of the box
      * @param border attributes to use for the border
      * @param background attributes to use for the background
-     * @param borderType if 1, draw a single-line border; if 2, draw a
-     * double-line border; if 3, draw double-line top/bottom edges and
-     * single-line left/right edges (like Qmodem)
+     * @param borderStyle style of border
      * @param shadow if true, draw a "shadow" on the box
      */
     public void drawBox(final int left, final int top,
         final int right, final int bottom,
         final CellAttributes border, final CellAttributes background,
-        final int borderType, final boolean shadow);
+        final BorderStyle borderStyle, final boolean shadow);
 
     /**
      * Draw a box shadow.
      *
-     * @param left left column of box.  0 is the left-most row.
+     * @param left left column of box.  0 is the left-most column.
      * @param top top row of the box.  0 is the top-most row.
      * @param right right column of box
      * @param bottom bottom row of the box
@@ -489,5 +510,78 @@ public interface Screen {
      * @return a copy of the screen's data
      */
     public Screen snapshot();
+
+    /**
+     * Obtain a snapshot copy of a rectangular portion of the screen.
+     *
+     * @param x left column of rectangle.  0 is the left-most column.
+     * @param y top row of the rectangle.  0 is the top-most row.
+     * @param width number of columns to copy
+     * @param height number of rows to copy
+     * @return a copy of the screen's data from this rectangle.  Any cells
+     * outside the actual screen dimensions will be blank.
+     */
+    public Screen snapshot(final int x, final int y, final int width,
+        final int height);
+
+    /**
+     * Copy all of screen's data to this screen.
+     *
+     * @param other the other screen
+     */
+    public void copyScreen(final Screen other);
+
+    /**
+     * Copy a rectangular portion of another screen to this one.  Any cells
+     * outside this screen's dimensions will be ignored.
+     *
+     * @param other the other screen
+     * @param x left column of rectangle.  0 is the left-most column.
+     * @param y top row of the rectangle.  0 is the top-most row.
+     * @param width number of columns to copy
+     * @param height number of rows to copy
+     */
+    public void copyScreen(final Screen other, final int x, final int y,
+        final int width, final int height);
+
+    /**
+     * Alpha-blend a rectangular portion of another screen onto this one.
+     * Any cells outside this screen's dimensions will be ignored.
+     *
+     * @param otherScreen the other screen
+     * @param x left column of rectangle.  0 is the left-most column.
+     * @param y top row of the rectangle.  0 is the top-most row.
+     * @param width number of columns to copy
+     * @param height number of rows to copy
+     * @param alpha the alpha transparency level (0 - 255) to use for cells
+     * from the other screen
+     * @param filterHatch if true, prevent hatch-like characters from
+     * showing through
+     */
+    public void blendScreen(final Screen otherScreen, final int x, final int y,
+        final int width, final int height, final int alpha,
+        final boolean filterHatch);
+
+    /**
+     * Alpha-blend a rectangle with a specified color and alpha onto this
+     * screen.  Any cells outside this screen's dimensions will be ignored.
+     *
+     * @param x left column of rectangle.  0 is the left-most column.
+     * @param y top row of the rectangle.  0 is the top-most row.
+     * @param width number of columns to copy
+     * @param height number of rows to copy
+     * @param color the RGB color to blend
+     * @param alpha the alpha transparency level (0 - 255) to use for cells
+     * from the other screen
+     */
+    public void blendRectangle(final int x, final int y,
+        final int width, final int height, final int color, final int alpha);
+
+    /**
+     * Get the backend that instantiated this screen.
+     *
+     * @return the backend
+     */
+    public Backend getBackend();
 
 }

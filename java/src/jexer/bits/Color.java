@@ -3,7 +3,7 @@
  *
  * The MIT License (MIT)
  *
- * Copyright (C) 2021 Autumn Lamonte
+ * Copyright (C) 2022 Autumn Lamonte
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -23,7 +23,7 @@
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
  * DEALINGS IN THE SOFTWARE.
  *
- * @author Autumn Lamonte [AutumnWalksTheLake@gmail.com] ⚧ Trans Liberation Now
+ * @author Autumn Lamonte ⚧ Trans Liberation Now
  * @version 1
  */
 package jexer.bits;
@@ -311,6 +311,37 @@ public final class Color {
             return brightColors[value];
         }
         return normalColors[value];
+    }
+
+    /**
+     * Public constructor returns one of the static Color instances.
+     *
+     * @param sgrValue a value between 0 and 15, inclusive, representing an
+     * ANSI color
+     * @return Color.RED, Color.BLUE, etc.
+     */
+    public static Color getSgrColor(final int sgrValue) {
+        switch (sgrValue) {
+        case 0:
+            return Color.BLACK;
+        case 1:
+            return Color.RED;
+        case 2:
+            return Color.GREEN;
+        case 3:
+            return Color.YELLOW;
+        case 4:
+            return Color.BLUE;
+        case 5:
+            return Color.MAGENTA;
+        case 6:
+            return Color.CYAN;
+        case 7:
+            return Color.WHITE;
+        default:
+            throw new IllegalArgumentException("Invalid Color value: " +
+                sgrValue);
+        }
     }
 
 }

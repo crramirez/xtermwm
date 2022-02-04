@@ -4,7 +4,7 @@
   <name>XtermWM Help File</name>
   <author>Autumn Lamonte</author>
   <version>0.0.1</version>
-  <date>Jan 1, 2021</date>
+  <date>Jan 1, 2022</date>
   <topics>
     <topic title="Help">
       <text>
@@ -50,7 +50,7 @@
 
     <topic title="Copyright Infomation">
       <text>
-        Copyright (C) 2021 Autumn Lamonte
+        Copyright (C) 2022 Autumn Lamonte
 
         Available to all under the MIT License.
     </text>

@@ -3,7 +3,7 @@
  *
  * The MIT License (MIT)
  *
- * Copyright (C) 2021 Autumn Lamonte
+ * Copyright (C) 2022 Autumn Lamonte
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -23,12 +23,15 @@
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
  * DEALINGS IN THE SOFTWARE.
  *
- * @author Autumn Lamonte [AutumnWalksTheLake@gmail.com] ⚧ Trans Liberation Now
+ * @author Autumn Lamonte ⚧ Trans Liberation Now
  * @version 1
  */
 package jexer.tackboard;
 
 import java.awt.image.BufferedImage;
+
+import jexer.TApplication;
+import jexer.bits.Animation;
 
 /**
  * Bitmap is a raw bitmap image.
@@ -53,6 +56,11 @@ public class Bitmap extends TackboardItem {
      */
     private BufferedImage renderedImage;
 
+    /**
+     * Animation to display.
+     */
+    private Animation animation;
+
     // ------------------------------------------------------------------------
     // Constructors -----------------------------------------------------------
     // ------------------------------------------------------------------------
@@ -70,6 +78,25 @@ public class Bitmap extends TackboardItem {
 
         super(x, y, z);
         this.image = image;
+    }
+
+    /**
+     * Public constructor.  Due to the use of a timer, the Bitmap needs to
+     * see TApplication to start the Animation.
+     *
+     * @param x X pixel coordinate
+     * @param y Y pixel coordinate
+     * @param z Z coordinate
+     * @param animation the animation to display
+     * @param application the application to set the animation timer on
+     */
+    public Bitmap(final int x, final int y, final int z,
+        final Animation animation, final TApplication application) {
+
+        super(x, y, z);
+        this.animation = animation;
+        image = animation.getFrame();
+        animation.start(application);
     }
 
     // ------------------------------------------------------------------------
@@ -137,6 +164,19 @@ public class Bitmap extends TackboardItem {
         return renderedImage;
     }
 
+    /**
+     * Remove this item from its board.  Subclasses can use this for cleanup
+     * also.
+     */
+    @Override
+    public void remove() {
+        super.remove();
+
+        if (animation != null) {
+            animation.stop();
+        }
+    }
+
     // ------------------------------------------------------------------------
     // Bitmap -----------------------------------------------------------------
     // ------------------------------------------------------------------------
@@ -149,6 +189,13 @@ public class Bitmap extends TackboardItem {
      * @param textHeight the height of a text cell
      */
     private void render(final int textWidth, final int textHeight) {
+        if (animation != null) {
+            BufferedImage newFrame = animation.getFrame();
+            if (newFrame != image) {
+                image = newFrame;
+                renderedImage = null;
+            }
+        }
         if (image == null) {
             renderedImage = null;
             return;
@@ -184,6 +231,10 @@ public class Bitmap extends TackboardItem {
      * @param image the new image
      */
     public void setImage(final BufferedImage image) {
+        if (animation != null) {
+            animation.stop();
+            animation = null;
+        }
         this.image = image;
         setDirty();
     }

@@ -3,7 +3,7 @@
  *
  * The MIT License (MIT)
  *
- * Copyright (C) 2021 Autumn Lamonte
+ * Copyright (C) 2022 Autumn Lamonte
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -23,7 +23,7 @@
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
  * DEALINGS IN THE SOFTWARE.
  *
- * @author Autumn Lamonte [AutumnWalksTheLake@gmail.com] ⚧ Trans Liberation Now
+ * @author Autumn Lamonte ⚧ Trans Liberation Now
  * @version 1
  */
 package jexer.tackboard;
@@ -176,6 +176,9 @@ public class Tackboard {
             lastTextHeight = cellHeight;
         }
 
+        int imageId = System.identityHashCode(this);
+        imageId ^= (int) System.currentTimeMillis();
+
         for (TackboardItem item: items) {
             if (redraw) {
                 item.setDirty();
@@ -224,8 +227,11 @@ public class Tackboard {
             int dx = x % cellWidth;
             int dy = y % cellHeight;
 
-            int left = (x < 0 ? -1 : 0) * 0;
-            int top = (y < 0 ? -1 : 0) * 0;
+            // I had thought that with the offsets there might be a
+            // discontinuity around +/- 0, but there isn't.  Still, leaving
+            // these here in case I'm wrong later on.
+            final int left = 0;
+            final int top = 0;
 
             for (int sy = 0; sy < rows; sy++) {
                 if ((sy + textY + top < 0)
@@ -267,11 +273,12 @@ public class Tackboard {
                         // Blit this image over that one.
                         BufferedImage oldImage = oldCell.getImage(true);
                         java.awt.Graphics gr = oldImage.getGraphics();
-                        gr.setColor(jexer.backend.SwingTerminal.
+                        gr.setColor(screen.getBackend().
                             attrToBackgroundColor(oldCell));
                         gr.drawImage(newImage, 0, 0, null, null);
                         gr.dispose();
-                        oldCell.setImage(oldImage);
+                        imageId++;
+                        oldCell.setImage(oldImage, imageId & 0x7FFFFFFF);
                     } else {
                         // Old cell is text only, just add the image.
                         if (!transparent) {
@@ -279,15 +286,19 @@ public class Tackboard {
                             backImage = new BufferedImage(cellWidth,
                                 cellHeight, BufferedImage.TYPE_INT_ARGB);
                             java.awt.Graphics gr = backImage.getGraphics();
-                            gr.setColor(jexer.backend.SwingTerminal.
-                                attrToBackgroundColor(oldCell));
+
+                            java.awt.Color oldColor = screen.getBackend().
+                                    attrToBackgroundColor(oldCell);
+                            gr.setColor(oldColor);
                             gr.fillRect(0, 0, backImage.getWidth(),
                                 backImage.getHeight());
                             gr.drawImage(newImage, 0, 0, null, null);
                             gr.dispose();
-                            oldCell.setImage(backImage);
+                            imageId++;
+                            oldCell.setImage(backImage, imageId & 0x7FFFFFFF);
                         } else {
-                            oldCell.setImage(newImage);
+                            imageId++;
+                            oldCell.setImage(newImage, imageId & 0x7FFFFFFF);
                         }
                     }
                     screen.putCharXY(sx + textX + left, sy + textY + top,

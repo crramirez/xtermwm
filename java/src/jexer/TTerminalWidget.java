@@ -3,7 +3,7 @@
  *
  * The MIT License (MIT)
  *
- * Copyright (C) 2021 Autumn Lamonte
+ * Copyright (C) 2022 Autumn Lamonte
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -23,7 +23,7 @@
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
  * DEALINGS IN THE SOFTWARE.
  *
- * @author Autumn Lamonte [AutumnWalksTheLake@gmail.com] ⚧ Trans Liberation Now
+ * @author Autumn Lamonte ⚧ Trans Liberation Now
  * @version 1
  */
 package jexer;
@@ -135,12 +135,7 @@ public class TTerminalWidget extends TScrollableWidget
     /**
      * If true, the display has changed and needs updating.
      */
-    private List<String> dirtyQueue = new ArrayList<String>();
-
-    /**
-     * Time that the display was last updated.
-     */
-    private long lastUpdateTime = 0;
+    private List<List<DisplayLine>> dirtyQueue = new ArrayList<List<DisplayLine>>();
 
     /**
      * If true, hide the mouse after typing a keystroke.
@@ -642,50 +637,21 @@ public class TTerminalWidget extends TScrollableWidget
 
         int width = getDisplayWidth();
 
-        boolean syncEmulator = false;
+        // Get the very first display.
+        if (display == null) {
+            width = readEmulatorDisplay();
+        }
 
         // If the emulator notified of an update, sync.
         synchronized (dirtyQueue) {
             if (dirtyQueue.size() > 0) {
-                dirtyQueue.remove(dirtyQueue.size() - 1);
-                syncEmulator = true;
+                // We will be dropping frames to keep up.
+                display = dirtyQueue.remove(dirtyQueue.size() - 1);
+                dirtyQueue.clear();
             }
         }
 
-        // If it has been longer than 250 milliseconds, sync.
-        long now = System.currentTimeMillis();
-        if ((now - lastUpdateTime) > 250) {
-            syncEmulator = true;
-        }
-        lastUpdateTime = now;
-
-        if ((syncEmulator == true)
-            || (display == null)
-        ) {
-            // We want to minimize the amount of time we have the emulator
-            // locked.  Grab a copy of its display.
-            synchronized (emulator) {
-                // Update the scroll bars
-                reflowData();
-
-                if (!isDrawable()) {
-                    // We lost the connection, onShellExit() called an action
-                    // that ultimately removed this widget from the UI
-                    // hierarchy, so no one cares if we update the display.
-                    // Bail out.
-                    return;
-                }
-
-                if ((display == null) || emulator.isReading()) {
-                    display = emulator.getVisibleDisplay(getHeight(),
-                        -getVerticalValue());
-                    assert (display.size() == getHeight());
-                }
-                width = emulator.getWidth();
-            }
-        }
-
-        // Now draw the emulator screen
+        // Draw the emulator screen.
         int row = 0;
         for (DisplayLine line: display) {
             int widthMax = width;
@@ -709,13 +675,11 @@ public class TTerminalWidget extends TScrollableWidget
                 if (reverse) {
                     if (ch.getForeColorRGB() < 0) {
                         newCell.setBackColor(ch.getForeColor());
-                        newCell.setBackColorRGB(-1);
                     } else {
                         newCell.setBackColorRGB(ch.getForeColorRGB());
                     }
                     if (ch.getBackColorRGB() < 0) {
                         newCell.setForeColor(ch.getBackColor());
-                        newCell.setForeColorRGB(-1);
                     } else {
                         newCell.setForeColorRGB(ch.getBackColorRGB());
                     }
@@ -842,14 +806,10 @@ public class TTerminalWidget extends TScrollableWidget
     // ------------------------------------------------------------------------
 
     /**
-     * Set the dirty flag.
+     * Update the display to account for a change in scrollback.
      */
-    public void setDirty() {
-        synchronized (dirtyQueue) {
-            if (dirtyQueue.size() == 0) {
-                dirtyQueue.add("dirty");
-            }
-        }
+    private void setDirty() {
+        readEmulatorDisplay();
     }
 
     /**
@@ -916,6 +876,9 @@ public class TTerminalWidget extends TScrollableWidget
      */
     public boolean hasHiddenMouse() {
         if (emulator != null) {
+            if (!emulator.isReading()) {
+                typingHidMouse = false;
+            }
             boolean hiddenMouse = (emulator.hasHiddenMousePointer()
                 || typingHidMouse);
             if (hiddenMouse) {
@@ -1003,10 +966,7 @@ public class TTerminalWidget extends TScrollableWidget
             pb.redirectErrorStream(true);
             shell = pb.start();
             emulator = new ECMA48(deviceType, shell.getInputStream(),
-                shell.getOutputStream(), this);
-            if (getApplication() != null) {
-                emulator.setBackend(getApplication().getBackend());
-            }
+                shell.getOutputStream(), this, getApplication().getBackend());
         } catch (IOException e) {
             messageBox(i18n.getString("errorLaunchingShellTitle"),
                 MessageFormat.format(i18n.getString("errorLaunchingShellText"),
@@ -1302,6 +1262,7 @@ public class TTerminalWidget extends TScrollableWidget
         } else if (getScreen() instanceof ECMA48Terminal) {
             ECMA48Terminal terminal = (ECMA48Terminal) getScreen();
 
+            /* Always render double-width/height with images.
             if (!terminal.hasSixel()
                 && !terminal.hasJexerImages()
                 && !terminal.hasIterm2Images()
@@ -1312,13 +1273,17 @@ public class TTerminalWidget extends TScrollableWidget
                 putCharXY(x + 1, y, ' ', cell);
                 return;
             }
+             */
             cursorBlinkVisible = blinkState;
+
+        /* Always render double-width/height with images.
         } else {
             // We don't know how to dray glyphs to this screen, draw them as
             // text and bail out.
             putCharXY(x, y, cell);
             putCharXY(x + 1, y, ' ', cell);
             return;
+        */
         }
 
         if ((textWidth != lastTextWidth) || (textHeight != lastTextHeight)) {
@@ -1335,10 +1300,10 @@ public class TTerminalWidget extends TScrollableWidget
             Cell newCell = new Cell(cell);
             newCell.setUnderline(false);
             image = doubleFont.getImage(newCell, textWidth * 2, textHeight * 2,
-                cursorBlinkVisible);
+                getApplication().getBackend(), cursorBlinkVisible);
         } else {
             image = doubleFont.getImage(cell,  textWidth * 2, textHeight * 2,
-                cursorBlinkVisible);
+                getApplication().getBackend(), cursorBlinkVisible);
         }
 
         // Now that we have the double-wide glyph drawn, copy the right
@@ -1429,30 +1394,42 @@ public class TTerminalWidget extends TScrollableWidget
     }
 
     /**
-     * Get the scrollback buffer from the emulator.
+     * Get the visible display buffer from the emulator.
      *
-     * @return the scrollback buffer, all the lines that have scrolled off
-     * screen
+     * @return the width of the display, or -1 if the display was not read
      */
-    public final List<DisplayLine> getScrollbackBuffer() {
-        ArrayList<DisplayLine> buffer = new ArrayList<DisplayLine>();
-        for (DisplayLine line: emulator.getScrollbackBuffer()) {
-            buffer.add(new DisplayLine(line));
-        }
-        return buffer;
-    }
+    private int readEmulatorDisplay() {
 
-    /**
-     * Get the display buffer from the emulator.
-     *
-     * @return the display buffer, the lines that are on the visible screen
-     */
-    public final List<DisplayLine> getDisplayBuffer() {
-        ArrayList<DisplayLine> buffer = new ArrayList<DisplayLine>();
-        for (DisplayLine line: emulator.getDisplayBuffer()) {
-            buffer.add(new DisplayLine(line));
+        List<DisplayLine> currentDisplay = null;
+        int width = 80;
+
+        // Synchronize against the emulator so we don't stomp on its reader
+        // thread.
+        synchronized (emulator) {
+            // Update the scroll bars
+            reflowData();
+
+            if (!isDrawable()) {
+                // We lost the connection, onShellExit() called an action
+                // that ultimately removed this widget from the UI hierarchy,
+                // so no one cares if we update the display.  Bail out.
+                return -1;
+            }
+
+            if (emulator.isReading()) {
+                currentDisplay = emulator.getVisibleDisplay(getHeight(),
+                    -getVerticalValue());
+                assert (currentDisplay.size() == getHeight());
+            }
+            width = emulator.getWidth();
         }
-        return buffer;
+        if (currentDisplay != null) {
+            synchronized (dirtyQueue) {
+                dirtyQueue.add(currentDisplay);
+            }
+        }
+
+        return width;
     }
 
     /**
@@ -1507,18 +1484,57 @@ public class TTerminalWidget extends TScrollableWidget
     // ------------------------------------------------------------------------
 
     /**
-     * Called by emulator when fresh data has come in.
+     * Called by emulator when fresh data has come in (push).
+     *
+     * @param display the updated display
      */
-    public void displayChanged() {
+    public void updateDisplay(final List<DisplayLine> display) {
         synchronized (dirtyQueue) {
-            if (dirtyQueue.size() == 0) {
-                dirtyQueue.add("dirty");
-                TApplication app = getApplication();
-                if (app != null) {
-                    app.postEvent(new TMenuEvent(null, TMenu.MID_REPAINT));
-                }
+            dirtyQueue.add(display);
+        }
+        TApplication app = getApplication();
+        if (app != null) {
+            app.doRepaint();
+        }
+    }
+
+    /**
+     * Called by emulator when fresh data has come in.
+     *
+     * @param cursorOnly if true, the screen has not changed but the cursor
+     * may be on a different location.
+     */
+    public void displayChanged(final boolean cursorOnly) {
+        TApplication app = getApplication();
+        if (cursorOnly) {
+            if (app != null) {
+                app.doRepaint();
+            }
+            return;
+        }
+
+        boolean readDisplay = false;
+        synchronized (dirtyQueue) {
+            if (dirtyQueue.size() > 0) {
+                display = dirtyQueue.remove(0);
             }
         }
+        if (readDisplay) {
+            readEmulatorDisplay();
+        }
+        if (app != null) {
+            app.doRepaint();
+        }
+    }
+
+    /**
+     * Function to call to obtain the number of rows from the bottom to
+     * scroll back when sending updates via updateDisplay().
+     *
+     * @return the number of rows from the bottom to scroll back
+     */
+    public int getScrollBottom() {
+        return -getVerticalValue();
     }
 
     /**

@@ -3,7 +3,7 @@
  *
  * The MIT License (MIT)
  *
- * Copyright (C) 2021 Autumn Lamonte
+ * Copyright (C) 2022 Autumn Lamonte
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -23,7 +23,7 @@
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
  * DEALINGS IN THE SOFTWARE.
  *
- * @author Autumn Lamonte [AutumnWalksTheLake@gmail.com] ⚧ Trans Liberation Now
+ * @author Autumn Lamonte ⚧ Trans Liberation Now
  * @version 1
  */
 package jexer.demos;
@@ -38,8 +38,14 @@ import java.io.UnsupportedEncodingException;
 import java.util.ResourceBundle;
 
 import jexer.TApplication;
+import jexer.TButton;
+import jexer.TDesktop;
 import jexer.TEditColorThemeWindow;
 import jexer.TEditorWindow;
+import jexer.TWidget;
+import jexer.TWindow;
+import jexer.bits.BorderStyle;
+import jexer.backend.ECMA48Terminal;
 import jexer.event.TMenuEvent;
 import jexer.menu.TMenu;
 import jexer.menu.TMenuItem;
@@ -141,6 +147,9 @@ public class DemoApplication extends TApplication {
             (backendType == BackendType.SWING ? 28 : -1), 20);
         addAllWidgets();
         getBackend().setTitle(i18n.getString("applicationTitle"));
+
+        // Use cute theme by default.
+        onMenu(new TMenuEvent(getBackend(), 10001));
     }
 
     // ------------------------------------------------------------------------
@@ -192,7 +201,129 @@ public class DemoApplication extends TApplication {
             }
             return true;
         }
+
+        if (menu.getId() == 10000) {
+            new DemoMainWindow(this);
+            return true;
+        }
+
+        if (menu.getId() == 10001) {
+            // Look cute: switch the color theme, window borders, and button
+            // styles.
+            System.setProperty("jexer.TWindow.borderStyleForeground", "round");
+            System.setProperty("jexer.TWindow.borderStyleModal", "round");
+            System.setProperty("jexer.TWindow.borderStyleMoving", "round");
+            System.setProperty("jexer.TWindow.borderStyleInactive", "round");
+            System.setProperty("jexer.TEditColorTheme.borderStyle", "round");
+            System.setProperty("jexer.TEditColorTheme.options.borderStyle", "round");
+            System.setProperty("jexer.TRadioGroup.borderStyle", "round");
+            System.setProperty("jexer.TScreenOptions.borderStyle", "round");
+            System.setProperty("jexer.TScreenOptions.grid.borderStyle", "round");
+            System.setProperty("jexer.TScreenOptions.options.borderStyle", "round");
+            System.setProperty("jexer.TWindow.opacity", "80");
+            System.setProperty("jexer.TImage.opacity", "80");
+            System.setProperty("jexer.TTerminal.opacity", "80");
+            System.setProperty("jexer.TButton.style", "round");
+
+            getTheme().setFemme();
+            for (TWindow window: getAllWindows()) {
+                window.setBorderStyleForeground("round");
+                window.setBorderStyleModal("round");
+                window.setBorderStyleMoving("round");
+                window.setBorderStyleInactive("round");
+                window.setAlpha(80 * 255 / 100);
+
+                for (TWidget widget: window.getChildren()) {
+                    if (widget instanceof TButton) {
+                        ((TButton) widget).setStyle(TButton.Style.ROUND);
+                    }
+                }
+            }
+            for (TMenu m: getAllMenus()) {
+                m.setBorderStyleForeground("round");
+                m.setBorderStyleModal("round");
+                m.setBorderStyleMoving("round");
+                m.setBorderStyleInactive("round");
+                m.setAlpha(90 * 255 / 100);
+            }
+            setDesktop(null);
+            setHideStatusBar(true);
+            return true;
+        }
+
+        if (menu.getId() == 10002) {
+            // Look bland: switch the color theme, window borders, and button
+            // styles.
+            System.clearProperty("jexer.TWindow.borderStyleForeground");
+            System.clearProperty("jexer.TWindow.borderStyleModal");
+            System.clearProperty("jexer.TWindow.borderStyleMoving");
+            System.clearProperty("jexer.TWindow.borderStyleInactive");
+            System.clearProperty("jexer.TEditColorTheme.borderStyle");
+            System.clearProperty("jexer.TEditColorTheme.options.borderStyle");
+            System.clearProperty("jexer.TRadioGroup.borderStyle");
+            System.clearProperty("jexer.TScreenOptions.borderStyle");
+            System.clearProperty("jexer.TScreenOptions.grid.borderStyle");
+            System.clearProperty("jexer.TScreenOptions.options.borderStyle");
+            System.clearProperty("jexer.TWindow.opacity");
+            System.clearProperty("jexer.TImage.opacity");
+            System.clearProperty("jexer.TTerminal.opacity");
+            System.clearProperty("jexer.TButton.style");
+
+            getTheme().setDefaultTheme();
+            for (TWindow window: getAllWindows()) {
+                window.setBorderStyleForeground(null);
+                window.setBorderStyleModal(null);
+                window.setBorderStyleMoving(null);
+                window.setBorderStyleInactive(null);
+                window.setAlpha(90 * 255 / 100);
+
+                for (TWidget widget: window.getChildren()) {
+                    if (widget instanceof TButton) {
+                        ((TButton) widget).setStyle(TButton.Style.SQUARE);
+                    }
+                }
+            }
+            for (TMenu m: getAllMenus()) {
+                m.setBorderStyleForeground(null);
+                m.setBorderStyleModal(null);
+                m.setBorderStyleMoving(null);
+                m.setBorderStyleInactive(null);
+                m.setAlpha(90 * 255 / 100);
+            }
+            setDesktop(new TDesktop(this));
+            setHideStatusBar(false);
+            return true;
+        }
+
         return super.onMenu(menu);
+    }
+
+    /**
+     * Show FPS.
+     */
+    @Override
+    protected void onPreDraw() {
+        if (getScreen() instanceof ECMA48Terminal) {
+            ECMA48Terminal terminal = (ECMA48Terminal) getScreen();
+            int bytes = terminal.getBytesPerSecond();
+            String bps = "";
+            if (bytes > 1024 * 1024 * 1024) {
+                bps = String.format("%4.2f GB/s",
+                    ((double) bytes / (1024 * 1024 * 1024)));
+            } else if (bytes > 1024 * 1024) {
+                bps = String.format("%4.2f MB/s",
+                    ((double) bytes / (1024 * 1024)));
+            } else if (bytes > 1024) {
+                bps = String.format("%4.2f KB/s",
+                    ((double) bytes / 1024));
+            } else {
+                bps = String.format("%d bytes/s", bytes);
+            }
+            menuTrayText = String.format("%s FPS %d", bps,
+                getFramesPerSecond());
+        } else {
+            menuTrayText = String.format("FPS %d", getFramesPerSecond());
+        }
     }
 
     // ------------------------------------------------------------------------
@@ -211,6 +342,11 @@ public class DemoApplication extends TApplication {
         addEditMenu();
 
         TMenu demoMenu = addMenu(i18n.getString("demo"));
+        demoMenu.addItem(10000, i18n.getString("mainWindow"));
+        demoMenu.addSeparator();
+        demoMenu.addItem(10001, i18n.getString("lookCute"));
+        demoMenu.addItem(10002, i18n.getString("lookBland"));
+        demoMenu.addSeparator();
         TMenuItem item = demoMenu.addItem(2000, i18n.getString("checkable"));
         item.setCheckable(true);
         item = demoMenu.addItem(2001, i18n.getString("disabled"));

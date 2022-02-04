@@ -3,7 +3,7 @@
  *
  * The MIT License (MIT)
  *
- * Copyright (C) 2021 Autumn Lamonte
+ * Copyright (C) 2022 Autumn Lamonte
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -23,11 +23,12 @@
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
  * DEALINGS IN THE SOFTWARE.
  *
- * @author Autumn Lamonte [AutumnWalksTheLake@gmail.com] ⚧ Trans Liberation Now
+ * @author Autumn Lamonte ⚧ Trans Liberation Now
  * @version 1
  */
 package jexer;
 
+import jexer.bits.BorderStyle;
 import jexer.bits.CellAttributes;
 import jexer.bits.StringUtils;
 
@@ -133,11 +134,19 @@ public class TRadioGroup extends TWidget {
             radioGroupColor = getTheme().getColor("tradiogroup.inactive");
         }
 
+        BorderStyle borderStyle;
+        borderStyle = BorderStyle.getStyle(System.getProperty(
+            "jexer.TRadioGroup.borderStyle", "singleVdoubleH"));
+
         drawBox(0, 0, getWidth(), getHeight(), radioGroupColor, radioGroupColor,
-            3, false);
+            borderStyle, false);
 
         hLineXY(1, 0, StringUtils.width(label) + 2, ' ', radioGroupColor);
-        putStringXY(2, 0, label, radioGroupColor);
+        if (borderStyle.equals(BorderStyle.NONE)) {
+            putStringXY(1, 0, label, radioGroupColor);
+        } else {
+            putStringXY(2, 0, label, radioGroupColor);
+        }
     }
 
     // ------------------------------------------------------------------------

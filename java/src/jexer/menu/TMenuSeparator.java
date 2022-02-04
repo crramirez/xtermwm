@@ -3,7 +3,7 @@
  *
  * The MIT License (MIT)
  *
- * Copyright (C) 2021 Autumn Lamonte
+ * Copyright (C) 2022 Autumn Lamonte
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -23,11 +23,12 @@
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
  * DEALINGS IN THE SOFTWARE.
  *
- * @author Autumn Lamonte [AutumnWalksTheLake@gmail.com] ⚧ Trans Liberation Now
+ * @author Autumn Lamonte ⚧ Trans Liberation Now
  * @version 1
  */
 package jexer.menu;
 
+import jexer.bits.BorderStyle;
 import jexer.bits.CellAttributes;
 import jexer.bits.GraphicsChars;
 
@@ -65,9 +66,22 @@ public class TMenuSeparator extends TMenuItem {
     public void draw() {
         CellAttributes background = getTheme().getColor("tmenu");
 
-        putCharXY(0, 0, GraphicsChars.CP437[0xC3], background);
-        putCharXY(getWidth() - 1, 0, GraphicsChars.CP437[0xB4], background);
-        hLineXY(1, 0, getWidth() - 2, GraphicsChars.SINGLE_BAR, background);
+        BorderStyle borderStyle = ((TMenu) getParent()).getBorderStyle();
+        int cHSide = GraphicsChars.SINGLE_BAR;
+        int left = GraphicsChars.CP437[0xC3];
+        int right = GraphicsChars.CP437[0xB4];
+        if (borderStyle.getVertical() == GraphicsChars.WINDOW_SIDE_DOUBLE) {
+            left = 0x255F;
+            right = 0x2562;
+        }
+        if (borderStyle.equals(BorderStyle.NONE)) {
+            left = ' ';
+            right = ' ';
+        }
+
+        putCharXY(0, 0, left, background);
+        putCharXY(getWidth() - 1, 0, right, background);
+        hLineXY(1, 0, getWidth() - 2, cHSide, background);
     }
 
 }

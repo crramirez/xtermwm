@@ -3,7 +3,7 @@
  *
  * The MIT License (MIT)
  *
- * Copyright (C) 2021 Autumn Lamonte
+ * Copyright (C) 2022 Autumn Lamonte
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -23,7 +23,7 @@
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
  * DEALINGS IN THE SOFTWARE.
  *
- * @author Autumn Lamonte [AutumnWalksTheLake@gmail.com] ⚧ Trans Liberation Now
+ * @author Autumn Lamonte ⚧ Trans Liberation Now
  * @version 1
  */
 package jexer.demos;
@@ -47,6 +47,8 @@ import jexer.TLabel;
 import jexer.TTimer;
 import jexer.TWidget;
 import jexer.TWindow;
+import jexer.bits.Animation;
+import jexer.bits.ImageUtils;
 import jexer.event.TCommandEvent;
 import jexer.layout.StretchLayoutManager;
 import jexer.tackboard.Bitmap;
@@ -102,7 +104,7 @@ public class DemoPixelsWindow extends TWindow {
     public DemoPixelsWindow(final TApplication parent) {
         // Construct a demo window.  X and Y don't matter because it will be
         // centered on screen.
-        super(parent, i18n.getString("windowTitle"), 0, 0, 64, 11,
+        super(parent, i18n.getString("windowTitle"), 0, 0, 64, 17,
             CENTERED | RESIZABLE);
 
         setLayoutManager(new StretchLayoutManager(getWidth() - 2,
@@ -197,7 +199,10 @@ public class DemoPixelsWindow extends TWindow {
             loader = Thread.currentThread().getContextClassLoader();
             BufferedImage image;
             image = ImageIO.read(loader.getResource("demo/trans_icon.png"));
-            addUnderlay(new Bitmap(17, 33, 0, image));
+            Animation animation;
+            animation = ImageUtils.getAnimation(loader.getResource(
+                "demo/butterfly.gif"));
+            addUnderlay(new Bitmap(17, 33, 0, animation, getApplication()));
             addOverlay(new Bitmap(11, 97, 0, image));
 
             timer3 = getApplication().addTimer(100, true,
@@ -272,6 +277,7 @@ public class DemoPixelsWindow extends TWindow {
      */
     @Override
     public void onClose() {
+        super.onClose();
         getApplication().removeTimer(timer3);
     }
 

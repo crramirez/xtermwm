@@ -3,7 +3,7 @@
  *
  * The MIT License (MIT)
  *
- * Copyright (C) 2021 Autumn Lamonte
+ * Copyright (C) 2022 Autumn Lamonte
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -23,13 +23,16 @@
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
  * DEALINGS IN THE SOFTWARE.
  *
- * @author Autumn Lamonte [AutumnWalksTheLake@gmail.com] ⚧ Trans Liberation Now
+ * @author Autumn Lamonte ⚧ Trans Liberation Now
  * @version 1
  */
 package jexer.bits;
 
 import java.awt.image.BufferedImage;
+import java.awt.image.IndexColorModel;
+import jexer.backend.Backend;
 import jexer.backend.GlyphMaker;
+import jexer.backend.SwingTerminal;
 
 /**
  * This class represents a single text cell or bit of image on the screen.
@@ -91,22 +94,10 @@ public class Cell extends CellAttributes {
     private BufferedImage invertedImage = null;
 
     /**
-     * The background color used for the area the image portion might not
-     * cover.
-     */
-    private java.awt.Color background = java.awt.Color.BLACK;
-
-    /**
-     * hashCode() needs to call image.hashCode(), which can get quite
+     * hashCode() needs to call makeImageHashCode(), which can get quite
      * expensive.
      */
     private int imageHashCode = 0;
-
-    /**
-     * hashCode() needs to call background.hashCode(), which can get quite
-     * expensive.
-     */
-    private int backgroundHashCode = 0;
 
     /**
      * If this cell has image data, whether or not it also has transparent
@@ -116,6 +107,15 @@ public class Cell extends CellAttributes {
      * pixels are present, but not all of the image.
      */
     private int hasTransparentPixels = -1;
+
+    /**
+     * The image ID, a positive integer.  This is NOT like a the hashcode.
+     * Instead is an ID assigned by the logical layer that created the image,
+     * so that as this image cell is passed down to the user-facing screen it
+     * can be quickly be determined if it is different from another image
+     * cell.
+     */
+    private int imageId = 0;
 
     // ------------------------------------------------------------------------
     // Constructors -----------------------------------------------------------
@@ -182,9 +182,22 @@ public class Cell extends CellAttributes {
      */
     public void setImage(final BufferedImage image) {
         this.image = image;
+        imageHashCode = 0;
         hasTransparentPixels = 0;
-        imageHashCode = image.hashCode();
         width = Width.SINGLE;
+        this.imageId = 0;
+    }
+
+    /**
+     * Set the image data for this cell.
+     *
+     * @param image the image for this cell
+     * @param imageId the ID for this image
+     */
+    public void setImage(final BufferedImage image, final int imageId) {
+        setImage(image);
+        assert (imageId > 0);
+        this.imageId = imageId;
     }
 
     /**
@@ -215,8 +228,8 @@ public class Cell extends CellAttributes {
 
         int textWidth = image.getWidth();
         int textHeight = image.getHeight();
-        BufferedImage newImage = new BufferedImage(textWidth,
-            textHeight, BufferedImage.TYPE_INT_ARGB);
+        BufferedImage newImage = ImageUtils.createImage(image, textWidth,
+            textHeight);
         java.awt.Graphics gr = newImage.getGraphics();
         if (invertedImage != null) {
             assert (image != null);
@@ -229,12 +242,66 @@ public class Cell extends CellAttributes {
     }
 
     /**
+     * Set the image ID.
+     *
+     * @param imageId the ID, a positive integer
+     */
+    public void setImageId(final int imageId) {
+        if (imageId > 0) {
+            this.imageId = imageId;
+        }
+    }
+
+    /**
+     * Get the image ID.
+     *
+     * @return the ID, or 0 if not set
+     */
+    public int getImageId() {
+        return imageId;
+    }
+
+    /**
+     * "Mix" the imageId of another Cell into this cell.  When two cells both
+     * have imageId's set, the mixture of them should be a deterministic
+     * combination such that one can compare a sequence of "mixed" cells and
+     * know (within a high degree of likelihood) that they produced the same
+     * final image.
+     *
+     * @param other the other cell
+     */
+    public void mixImageId(final Cell other) {
+        if (other.imageId <= 0) {
+            this.imageId = 0;
+            return;
+        }
+        assert (other.isImage());
+        this.imageId = ((this.imageId << 4) ^ other.imageId) & 0x7FFFFFFF;
+    }
+
+    /**
+     * "Mix" the imageId of another operation into this cell.  When a cell
+     * has its imageId set, the mixture of it and other operations should be
+     * a deterministic combination such that one can compare a sequence of
+     * cell + operations and know (within a high degree of likelihood) that
+     * they produced the same final image.
+     *
+     * @param operation the operation to mix in, typically a color
+     * translucent RGB that was blitted over or under this image
+     */
+    public void mixImageId(final int operation) {
+        imageId = ((imageId << 4) ^ operation) & 0x7FFFFFFF;
+    }
+
+    /**
      * Flatten the image on this cell by rendering it either onto the
      * background color, or generating the glyph and rendering over that.
      *
      * @param overGlyph if true, render over the glyph
+     * @param backend the backend that can obtain the correct background
+     * color
      */
-    public void flattenImage(final boolean overGlyph) {
+    public void flattenImage(final boolean overGlyph, final Backend backend) {
         if (!isImage()) {
             return;
         }
@@ -249,18 +316,25 @@ public class Cell extends CellAttributes {
 
         int textWidth = image.getWidth();
         int textHeight = image.getHeight();
+        /*
         BufferedImage newImage = new BufferedImage(textWidth,
             textHeight, BufferedImage.TYPE_INT_ARGB);
+         */
+        BufferedImage newImage = ImageUtils.createImage(image,
+            textWidth, textHeight);
         java.awt.Graphics gr = newImage.getGraphics();
-        gr.setColor(jexer.backend.SwingTerminal.
-            attrToBackgroundColor(this));
+        if (backend != null) {
+            gr.setColor(backend.attrToBackgroundColor(this));
+        } else {
+            gr.setColor(SwingTerminal.attrToBackgroundColor(this));
+        }
 
         if (overGlyph) {
             // Render this cell to a flat image.  The bad news is that we
             // won't get to use the actual terminal's font.
             GlyphMaker glyphMaker = GlyphMaker.getInstance(textHeight);
-            gr.drawImage(glyphMaker.getImage(this, textWidth, textHeight),
-                0, 0, null, null);
+            gr.drawImage(glyphMaker.getImage(this, textWidth, textHeight,
+                    backend), 0, 0, null, null);
         } else {
             // Put the background color behind the pixels.
             gr.fillRect(0, 0, newImage.getWidth(),
@@ -272,48 +346,39 @@ public class Cell extends CellAttributes {
     }
 
     /**
-     * Blit another cell's image on top of the image data for this cell.
+     * Flatten the image on this cell by rendering it either onto a
+     * background color.
      *
-     * @param cell the other cell
+     * @param background the background color to draw on
      */
-    public void blitImage(final Cell cell) {
-        if (!cell.isImage() || cell.isFullyTransparentImage()) {
-            // The other cell has no image data.
-            return;
-        }
-        if (!isImage() || !cell.isTransparentImage()) {
-            // Just replace this cell's image.
-            setImage(cell.getImage());
-            return;
-        }
-        assert (isImage() && cell.isTransparentImage());
-        assert (image.getWidth() > 0);
-        assert (image.getHeight() > 0);
-        assert (cell.getImage().getWidth() > 0);
-        assert (cell.getImage().getHeight() > 0);
+    private void flattenImage(final java.awt.Color background) {
+        assert (isImage());
 
-        // Blit the new cell image over this cell's image.
-        int textWidth = Math.min(image.getWidth(), cell.getImage().getWidth());
-        int textHeight = Math.min(image.getHeight(),
-            cell.getImage().getHeight());
+        if (hasTransparentPixels == 2) {
+            // The image already covers the entire cell.
+            return;
+        }
+
+        int textWidth = image.getWidth();
+        int textHeight = image.getHeight();
+        /*
         BufferedImage newImage = new BufferedImage(textWidth,
             textHeight, BufferedImage.TYPE_INT_ARGB);
-
+         */
+        BufferedImage newImage = ImageUtils.createImage(image,
+            textWidth, textHeight);
         java.awt.Graphics gr = newImage.getGraphics();
-        gr.setColor(java.awt.Color.BLACK);
-        gr.drawImage(image, 0, 0, null, null);
-        gr.drawImage(cell.getImage(), 0, 0, null, null);
-        gr.dispose();
-        setImage(newImage);
-    }
+        gr.setColor(background);
 
-    /**
-     * Get the bitmap image background color for this cell.
-     *
-     * @return the bitmap image background color
-     */
-    public java.awt.Color getBackground() {
-        return background;
+        // Put the background color behind the pixels.
+        gr.fillRect(0, 0, newImage.getWidth(), newImage.getHeight());
+        gr.drawImage(image, 0, 0, null, null);
+        gr.dispose();
+
+        setImage(newImage);
+
+        // We know we are opaque now.
+        hasTransparentPixels = 2;
     }
 
     /**
@@ -521,8 +586,7 @@ public class Cell extends CellAttributes {
         image = null;
         imageHashCode = 0;
         invertedImage = null;
-        background = java.awt.Color.BLACK;
-        backgroundHashCode = 0;
+        imageId = 0;
         hasTransparentPixels = -1;
     }
 
@@ -537,8 +601,7 @@ public class Cell extends CellAttributes {
         image = null;
         imageHashCode = 0;
         invertedImage = null;
-        background = java.awt.Color.BLACK;
-        backgroundHashCode = 0;
+        imageId = 0;
         hasTransparentPixels = -1;
     }
 
@@ -583,6 +646,8 @@ public class Cell extends CellAttributes {
          *   - Are text only and have 24-bit RGB color.
          *
          *   - Are image over a glyph.
+         *
+         *   - Are animated text cells.
          */
         if ((image == null)
             && (getForeColorRGB() != -1)
@@ -591,6 +656,9 @@ public class Cell extends CellAttributes {
             return false;
         }
         if ((image != null) && (ch != ' ')) {
+            return false;
+        }
+        if ((image == null) && (isPulse())) {
             return false;
         }
         return true;
@@ -631,16 +699,23 @@ public class Cell extends CellAttributes {
             if ((invertedImage != null) && (that.invertedImage == null)) {
                 return false;
             }
-            // Either both objects have their image inverted, or neither do.
-            if ((imageHashCode == that.imageHashCode)
-                && (background.equals(that.background))
-            ) {
-                // Fall through to the attributes check below.
-                // ...
-            } else {
-                // The cells are not the same visually.
+            if (image.getType() != that.image.getType()) {
                 return false;
             }
+            if ((image.getColorModel() instanceof IndexColorModel)
+                && (that.image.getColorModel() instanceof IndexColorModel)
+                && image.getColorModel() != that.image.getColorModel()
+            ) {
+                return false;
+            }
+            // Either both objects have their image inverted, or neither do.
+            if ((imageId != 0) && (that.imageId != 0)) {
+                return (imageId == that.imageId);
+            }
+            if ((imageHashCode != 0) && (that.imageHashCode != 0)) {
+                return (imageHashCode == that.imageHashCode);
+            }
+            return compareCellImages(this, that);
         }
 
         // Normal case: character and attributes must match.
@@ -648,6 +723,73 @@ public class Cell extends CellAttributes {
             return super.equals(rhs);
         }
         return false;
+    }
+
+    /**
+     * Make a hashcode based on the data in image.  This is needed because
+     * two visibly identical BufferedImage's can return different hash codes,
+     * which breaks caching.  And we really really need caching here.
+     */
+    private int makeImageHashCode() {
+        if (image == null) {
+            return 0;
+        }
+        return java.util.Arrays.hashCode(image.getRGB(0, 0,
+                image.getWidth(), image.getHeight(), null, 0,
+                image.getWidth()));
+    }
+
+    /**
+     * Compare two Cell's images for equality.  If the images are equal, then
+     * the imageHashCode on both is set.
+     *
+     * @param first the first Cell
+     * @param second the second Cell
+     */
+    private boolean compareCellImages(final Cell first,
+        final Cell second) {
+
+        assert (first.image != null);
+        assert (second.image != null);
+
+        int width = first.image.getWidth();
+        int height = first.image.getHeight();
+        if (width != second.image.getWidth()) {
+            return false;
+        }
+        if (height != second.image.getHeight()) {
+            return false;
+        }
+
+        assert (first != null);
+        assert (first.image != null);
+        assert (first.image.getWidth() == second.image.getWidth());
+        assert (first.image.getHeight() == second.image.getHeight());
+        int [] firstRgbArray = first.image.getRGB(0, 0, width, height,
+            null, 0, width);
+        assert (second != null);
+        assert (second.image != null);
+        int [] secondRgbArray = second.image.getRGB(0, 0, width, height,
+            null, 0, width);
+
+        // This should be impossible, but check anyway.
+        if (firstRgbArray.length != secondRgbArray.length) {
+            return false;
+        }
+
+        int hashCode = 1;
+        for (int i = 0; i < firstRgbArray.length; i++) {
+            if (firstRgbArray[i] != secondRgbArray[i]) {
+                return false;
+            }
+
+            // Integer.hashCode() was introduced in Java 1.8.  It breaks the
+            // original Jexer 1.0 dev goal for Java 1.6 compatibility.
+            hashCode = 31 * hashCode + Integer.hashCode(firstRgbArray[i]);
+        }
+        first.imageHashCode = hashCode;
+        second.imageHashCode = hashCode;
+        return true;
     }
 
     /**
@@ -664,12 +806,12 @@ public class Cell extends CellAttributes {
         hash = (B * hash) + ch;
         hash = (B * hash) + width.hashCode();
         if (image != null) {
-            /*
-            hash = (B * hash) + image.hashCode();
-            hash = (B * hash) + background.hashCode();
-             */
+            if (imageHashCode == 0) {
+                // Lazy-load hash code.
+                imageHashCode = makeImageHashCode();
+            }
             hash = (B * hash) + imageHashCode;
-            hash = (B * hash) + backgroundHashCode;
+            hash = (B * hash) + imageId;
         }
         if (invertedImage != null) {
             hash = (B * hash) + invertedImage.hashCode();
@@ -690,14 +832,13 @@ public class Cell extends CellAttributes {
             this.width = that.width;
             this.image = that.image;
             this.invertedImage = that.invertedImage;
-            this.background = that.background;
             this.imageHashCode = that.imageHashCode;
-            this.backgroundHashCode = that.backgroundHashCode;
+            this.imageId = that.imageId;
             this.hasTransparentPixels = that.hasTransparentPixels;
         } else {
             this.image = null;
             this.imageHashCode = 0;
-            this.backgroundHashCode = 0;
+            this.imageId = 0;
             this.hasTransparentPixels = -1;
             this.width = Width.SINGLE;
         }
@@ -713,6 +854,8 @@ public class Cell extends CellAttributes {
      */
     public void setAttr(final CellAttributes that) {
         image = null;
+        imageHashCode = 0;
+        imageId = 0;
         hasTransparentPixels = -1;
         super.setTo(that);
     }
@@ -726,6 +869,8 @@ public class Cell extends CellAttributes {
     public void setAttr(final CellAttributes that, final boolean keepImage) {
         if (!keepImage) {
             image = null;
+            imageHashCode = 0;
+            imageId = 0;
             hasTransparentPixels = -1;
         }
         super.setTo(that);
@@ -738,9 +883,11 @@ public class Cell extends CellAttributes {
      */
     @Override
     public String toString() {
-        return String.format("%s fore: %s back: %s bold: %s blink: %s ch %c",
+        return String.format("%s fore: %s RGB %06x back: %s RGB %06x bold: %s blink: %s ch %c",
             (isImage() ? "IMAGE" : ""),
-            getForeColor(), getBackColor(), isBold(), isBlink(), ch);
+            getForeColor(), getForeColorRGB(),
+            getBackColor(), getBackColorRGB(),
+            isBold(), isBlink(), ch);
     }
 
     /**

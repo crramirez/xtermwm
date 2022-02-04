@@ -3,7 +3,7 @@
  *
  * The MIT License (MIT)
  *
- * Copyright (C) 2021 Autumn Lamonte
+ * Copyright (C) 2022 Autumn Lamonte
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -23,7 +23,7 @@
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
  * DEALINGS IN THE SOFTWARE.
  *
- * @author Autumn Lamonte [AutumnWalksTheLake@gmail.com] ⚧ Trans Liberation Now
+ * @author Autumn Lamonte ⚧ Trans Liberation Now
  * @version 1
  */
 package jexer.backend;
@@ -64,6 +64,7 @@ import javax.swing.SwingUtilities;
 import jexer.TKeypress;
 import jexer.bits.Cell;
 import jexer.bits.CellAttributes;
+import jexer.bits.StringUtils;
 import jexer.event.TCommandEvent;
 import jexer.event.TInputEvent;
 import jexer.event.TKeypressEvent;
@@ -118,7 +119,7 @@ public class SwingTerminal extends LogicalScreen
      * A value of 25 or more feels sluggish for input, but is sustainable for
      * the garbage collector.
      */
-    private static final long SYNC_MIN_MILLIS_SUSTAIN = 20;
+    private static final long SYNC_MIN_MILLIS_SUSTAIN = 10;
 
     /**
      * The number of frames that can be emitted quickly (at
@@ -498,6 +499,10 @@ public class SwingTerminal extends LogicalScreen
         eventQueue       = new ArrayList<TInputEvent>();
 
         // Add listeners to Swing.
+        if (swing == null) {
+            // Swing isn't running.  Quite a few things might break...
+            return;
+        }
         swing.addKeyListener(this);
         swing.addWindowListener(this);
         swing.addComponentListener(this);
@@ -616,6 +621,10 @@ public class SwingTerminal extends LogicalScreen
         eventQueue       = new ArrayList<TInputEvent>();
 
         // Add listeners to Swing.
+        if (swing == null) {
+            // Swing isn't running.  Quite a few things might break...
+            return;
+        }
         swing.addKeyListener(this);
         swing.addWindowListener(this);
         swing.addComponentListener(this);
@@ -1173,10 +1182,10 @@ public class SwingTerminal extends LogicalScreen
     }
 
     /**
-     * Convert a CellAttributes foreground color to an Swing Color.
+     * Convert a CellAttributes foreground color to an AWT Color.
      *
      * @param attr the text attributes
-     * @return the Swing Color
+     * @return the AWT Color
      */
     public static Color attrToForegroundColor(final CellAttributes attr) {
         int rgb = attr.getForeColorRGB();
@@ -1230,10 +1239,10 @@ public class SwingTerminal extends LogicalScreen
     }
 
     /**
-     * Convert a CellAttributes background color to an Swing Color.
+     * Convert a CellAttributes background color to an AWT Color.
      *
      * @param attr the text attributes
-     * @return the Swing Color
+     * @return the AWT Color
      */
     public static Color attrToBackgroundColor(final CellAttributes attr) {
         int rgb = attr.getBackColorRGB();
@@ -1401,7 +1410,9 @@ public class SwingTerminal extends LogicalScreen
         if (resizeComponent) {
             swing.setDimensions(textWidth * width, textHeight * height);
         }
-        clearPhysical();
+        synchronized (this) {
+            clearPhysical();
+        }
     }
 
     /**
@@ -1477,6 +1488,38 @@ public class SwingTerminal extends LogicalScreen
             return;
         }
 
+        GlyphMaker glyphMaker = GlyphMaker.getInstance(textHeight);
+        int ch = cell.getChar();
+            // If a fallback font is available that can support Symbols for
+            // Legacy Computing, always use it.  This is for consistency --
+            // we assume the fallback font has better coverage than Terminus.
+        if (((StringUtils.isLegacyComputingSymbol(ch)
+                    || StringUtils.isBraille(ch))
+                && glyphMaker.canDisplay(ch))
+            || !swing.getFont().canDisplay(ch)
+        ) {
+            // The main font cannot display this glyph.  Try a fallback font.
+            BufferedImage newImage = glyphMaker.getImage(cell, textWidth,
+                textHeight, getBackend(), cursorBlinkVisible);
+
+            if (swing.getFrame() != null) {
+                gr.drawImage(newImage, xPixel, yPixel, swing.getFrame());
+            } else {
+                gr.drawImage(newImage, xPixel, yPixel, swing.getComponent());
+            }
+
+            if (cell.isCacheable()) {
+                Cell key = new Cell(cell);
+                if (cell.isBlink() && !cursorBlinkVisible) {
+                    glyphCacheBlink.put(key, newImage);
+                } else {
+                    glyphCache.put(key, newImage);
+                }
+            }
+
+            return;
+        }
+
         // Generate glyph and draw it.
         Graphics2D gr2 = null;
         int gr2x = xPixel;
@@ -1493,15 +1536,23 @@ public class SwingTerminal extends LogicalScreen
         }
 
         Cell cellColor = new Cell(cell);
+        if (cell.isPulse()) {
+            cellColor.setPulse(false, false, 0);
+            cellColor.setForeColorRGB(cell.getForeColorPulseRGB(backend,
+                    System.currentTimeMillis()));
+        }
 
         // Check for reverse
         if (cell.isReverse()) {
-            if (cell.isRGB()) {
-                cellColor.setForeColorRGB(cell.getBackColorRGB());
-                cellColor.setBackColorRGB(cell.getForeColorRGB());
-            } else {
+            if (cell.getBackColorRGB() < 0) {
                 cellColor.setForeColor(cell.getBackColor());
+            } else {
+                cellColor.setForeColorRGB(cell.getBackColorRGB());
+            }
+            if (cell.getForeColorRGB() < 0) {
                 cellColor.setBackColor(cell.getForeColor());
+            } else {
+                cellColor.setBackColorRGB(cell.getForeColorRGB());
             }
         }
 
@@ -1578,7 +1629,7 @@ public class SwingTerminal extends LogicalScreen
                 xPixel -= textWidth;
                 break;
             }
-            gr.setColor(attrToForegroundColor(lCell));
+            gr.setColor((Color.WHITE).darker());
             switch (cursorStyle) {
             default:
                 // Fall through...
@@ -1686,6 +1737,7 @@ public class SwingTerminal extends LogicalScreen
 
                     if (!lCell.equals(pCell)
                         || lCell.isBlink()
+                        || lCell.isPulse()
                         || reallyCleared
                         || (swing.getFrame() == null)) {
 
@@ -1766,7 +1818,8 @@ public class SwingTerminal extends LogicalScreen
                             || ((x == cursorX)
                                 && (y == cursorY)
                                 && cursorVisible)
-                            || (lCell.isBlink())
+                            || lCell.isBlink()
+                            || lCell.isPulse()
                         ) {
                             if (lCell.isImage()) {
                                 if (imagesOverText) {
@@ -1814,6 +1867,7 @@ public class SwingTerminal extends LogicalScreen
                             && (y == cursorY)
                             && cursorVisible)
                         || lCell.isBlink()
+                        || lCell.isPulse()
                     ) {
                         if (xPixel < xMin) {
                             xMin = xPixel;

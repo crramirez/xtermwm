@@ -3,7 +3,7 @@
  *
  * The MIT License (MIT)
  *
- * Copyright (C) 2021 Autumn Lamonte
+ * Copyright (C) 2022 Autumn Lamonte
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -23,7 +23,7 @@
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
  * DEALINGS IN THE SOFTWARE.
  *
- * @author Autumn Lamonte [AutumnWalksTheLake@gmail.com] ⚧ Trans Liberation Now
+ * @author Autumn Lamonte ⚧ Trans Liberation Now
  * @version 1
  */
 package jexer.tterminal;
@@ -53,7 +53,6 @@ import javax.imageio.ImageIO;
 import jexer.TKeypress;
 import jexer.backend.Backend;
 import jexer.backend.GlyphMaker;
-import jexer.backend.SwingTerminal;
 import jexer.bits.Color;
 import jexer.bits.Cell;
 import jexer.bits.CellAttributes;
@@ -246,7 +245,7 @@ public class ECMA48 implements Runnable {
     /**
      * The version of the terminal to report in XTVERSION.
      */
-    private final String VERSION = "1.5.0";
+    private final String VERSION = "1.6.1";
 
     // ------------------------------------------------------------------------
     // Variables --------------------------------------------------------------
@@ -261,6 +260,17 @@ public class ECMA48 implements Runnable {
      * The enclosing listening object.
      */
     private DisplayListener displayListener;
+
+    /**
+     * When true, an operation modified the visible display.
+     */
+    private boolean screenIsDirty = true;
+
+    /**
+     * When true, synchronized update has already pushed a screen to the
+     * display, so run() should not do it again.
+     */
+    private boolean doNotUpdateDisplay = false;
 
     /**
      * When true, the reader thread is expected to exit.
@@ -516,6 +526,11 @@ public class ECMA48 implements Runnable {
     private HashMap<Integer, java.awt.Color> sixelPalette;
 
     /**
+     * Sixel scrolling option.
+     */
+    private boolean sixelScrolling = true;
+
+    /**
      * XTGETTCAP collection buffer.
      */
     private StringBuilder xtgettcapBuffer = new StringBuilder();
@@ -682,15 +697,18 @@ public class ECMA48 implements Runnable {
      * encoding.
      * @param displayListener a callback to the outer display, or null for
      * default VT100 behavior
+     * @param backend the backend that can obtain the correct background
+     * color
      * @throws UnsupportedEncodingException if an exception is thrown when
      * creating the InputStreamReader
      */
     public ECMA48(final DeviceType type, final InputStream inputStream,
-        final OutputStream outputStream, final DisplayListener displayListener)
-        throws UnsupportedEncodingException {
+        final OutputStream outputStream, final DisplayListener displayListener,
+        final Backend backend) throws UnsupportedEncodingException {
 
         assert (inputStream != null);
         assert (outputStream != null);
+        assert (backend != null);
 
         csiParams         = new ArrayList<Integer>();
         tabStops          = new ArrayList<Integer>();
@@ -715,6 +733,7 @@ public class ECMA48 implements Runnable {
             this.outputStream = new BufferedOutputStream(outputStream);
         }
         this.displayListener  = displayListener;
+        this.backend = backend;
 
         reset();
         for (int i = 0; i < height; i++) {
@@ -847,9 +866,17 @@ public class ECMA48 implements Runnable {
                         }
                     }
                     // Permit my enclosing UI to know that I updated.
-                    if (displayListener != null) {
-                        displayListener.displayChanged();
+                    if ((displayListener != null) && !doNotUpdateDisplay) {
+                        if (screenIsDirty) {
+                            displayListener.updateDisplay(getVisibleDisplay(
+                                height, displayListener.getScrollBottom()));
+                            screenIsDirty = false;
+                        } else {
+                            displayListener.displayChanged(true);
+                            screenIsDirty = false;
+                        }
                     }
+                    doNotUpdateDisplay = false;
                 }
                 // System.err.println("end while loop"); System.err.flush();
             } catch (IOException e) {
@@ -900,7 +927,7 @@ public class ECMA48 implements Runnable {
 
         // Permit my enclosing UI to know that I updated.
         if (displayListener != null) {
-            displayListener.displayChanged();
+            displayListener.displayChanged(false);
         }
 
         // System.err.println("*** run() exiting..."); System.err.flush();
@@ -909,15 +936,6 @@ public class ECMA48 implements Runnable {
     // ------------------------------------------------------------------------
     // ECMA48 -----------------------------------------------------------------
     // ------------------------------------------------------------------------
-
-    /**
-     * Set the backend to enable querying uncommon rendering features.
-     *
-     * @param backend the backend
-     */
-    public void setBackend(final Backend backend) {
-        this.backend = backend;
-    }
 
     /**
      * Wait for a period of time to get output from the launched process.
@@ -1281,6 +1299,11 @@ public class ECMA48 implements Runnable {
      * @param width the new width
      */
     public final synchronized void setWidth(final int width) {
+        if (width == this.width) {
+            return;
+        }
+
+        screenIsDirty = true;
         this.width = width;
         rightMargin = width - 1;
         if (currentState.cursorX >= width) {
@@ -1306,6 +1329,11 @@ public class ECMA48 implements Runnable {
      * @param height the new height
      */
     public final synchronized void setHeight(final int height) {
+        if (height == this.height) {
+            return;
+        }
+
+        screenIsDirty = true;
         int delta = height - this.height;
         this.height = height;
         scrollRegionBottom += delta;
@@ -1418,24 +1446,39 @@ public class ECMA48 implements Runnable {
             colors88.add(0);
         }
 
-        // Set default system colors.  These match DOS colors.
-        colors88.set(0, 0x00000000);
-        colors88.set(1, 0x00a80000);
-        colors88.set(2, 0x0000a800);
-        colors88.set(3, 0x00a85400);
-        colors88.set(4, 0x000000a8);
-        colors88.set(5, 0x00a800a8);
-        colors88.set(6, 0x0000a8a8);
-        colors88.set(7, 0x00a8a8a8);
+        if (backend != null) {
+            // Set default system colors to match the backend.
+            CellAttributes attr = new CellAttributes();
+            for (int i = 0; i < 8; i++) {
+                attr.setForeColor(Color.getSgrColor(i));
+                colors88.set(i, backend.attrToForegroundColor(attr).getRGB());
+            }
+            attr.setBold(true);
+            for (int i = 0; i < 8; i++) {
+                attr.setForeColor(Color.getSgrColor(i));
+                colors88.set(i + 8,
+                    backend.attrToForegroundColor(attr).getRGB());
+            }
+        } else {
+            // Set default system colors.  These match DOS colors.
+            colors88.set(0, 0x00000000);
+            colors88.set(1, 0x00a80000);
+            colors88.set(2, 0x0000a800);
+            colors88.set(3, 0x00a85400);
+            colors88.set(4, 0x000000a8);
+            colors88.set(5, 0x00a800a8);
+            colors88.set(6, 0x0000a8a8);
+            colors88.set(7, 0x00a8a8a8);
 
-        colors88.set(8, 0x00545454);
-        colors88.set(9, 0x00fc5454);
-        colors88.set(10, 0x0054fc54);
-        colors88.set(11, 0x00fcfc54);
-        colors88.set(12, 0x005454fc);
-        colors88.set(13, 0x00fc54fc);
-        colors88.set(14, 0x0054fcfc);
-        colors88.set(15, 0x00fcfcfc);
+            colors88.set(8, 0x00545454);
+            colors88.set(9, 0x00fc5454);
+            colors88.set(10, 0x0054fc54);
+            colors88.set(11, 0x00fcfc54);
+            colors88.set(12, 0x005454fc);
+            colors88.set(13, 0x00fc54fc);
+            colors88.set(14, 0x0054fcfc);
+            colors88.set(15, 0x00fcfcfc);
+        }
 
         // These match xterm's default colors from 256colres.h.
         colors88.set(16, 0x000000);
@@ -1749,6 +1792,7 @@ public class ECMA48 implements Runnable {
      * Reset the emulation state.
      */
     private void reset() {
+        screenIsDirty           = true;
 
         currentState            = new SaveableState();
         savedState              = new SaveableState();
@@ -1824,6 +1868,7 @@ public class ECMA48 implements Runnable {
         DisplayLine line = new DisplayLine(currentState.attr);
         line.setReverseColor(reverseVideo);
         display.add(line);
+        screenIsDirty = true;
     }
 
     /**
@@ -1854,6 +1899,7 @@ public class ECMA48 implements Runnable {
         for (DisplayLine line: display) {
             line.setReverseColor(!line.isReverseColor());
         }
+        screenIsDirty = true;
     }
 
     /**
@@ -1900,6 +1946,8 @@ public class ECMA48 implements Runnable {
      * @param ch character to display
      */
     private void printCharacter(final int ch) {
+        screenIsDirty = true;
+
         int rightMargin = this.rightMargin;
 
         if (StringUtils.width(ch) == 2) {
@@ -2248,7 +2296,9 @@ public class ECMA48 implements Runnable {
                 printCharacter(keypress.getChar());
             }
             if (displayListener != null) {
-                displayListener.displayChanged();
+                displayListener.updateDisplay(getVisibleDisplay(
+                    height, displayListener.getScrollBottom()));
+                screenIsDirty = false;
             }
         }
 
@@ -3049,6 +3099,8 @@ public class ECMA48 implements Runnable {
             return;
         }
 
+        screenIsDirty = true;
+
         // Sanity check: see if there will be any characters left after the
         // scroll
         if (regionBottom + 1 - regionTop <= n) {
@@ -3089,6 +3141,8 @@ public class ECMA48 implements Runnable {
         if (regionTop >= regionBottom) {
             return;
         }
+
+        screenIsDirty = true;
 
         // Sanity check: see if there will be any characters left after the
         // scroll
@@ -3589,11 +3643,25 @@ public class ECMA48 implements Runnable {
                 if (type == DeviceType.XTERM) {
                     if (decPrivateModeFlag == true) {
                         if (value == true) {
-                            // Enable sixel scrolling (default).
-                            // Not supported
+                            // Set DECSDM: Disable sixel scrolling.
+
+                            /*
+                             * This was actually recorded incorrectly in the
+                             * DEC VT330/340 programmer's guide
+                             * (https://vt100.net/docs/vt3xx-gp/chapter14.html).
+                             *
+                             * On real hardware, setting 80 DISABLES
+                             * scrolling.  Much thanks to James Holderness
+                             * for finding this and sharing it with several
+                             * terminals:
+                             *
+                             * https://github.com/hackerb9/lsix/issues/41
+                             */
+                            sixelScrolling = false;
+                            // System.err.println("DECSDM activated");
                         } else {
-                            // Disable sixel scrolling.
-                            // Not supported
+                            // Reset DECSDM: Enable sixel scrolling (default).
+                            sixelScrolling = true;
                         }
                     }
                 }
@@ -3692,9 +3760,7 @@ public class ECMA48 implements Runnable {
                         // screen.  We won't switch to a different buffer,
                         // instead we will just clear the screen.
                         currentState.attr.setForeColor(Color.WHITE);
-                        currentState.attr.setForeColorRGB(-1);
                         currentState.attr.setBackColor(Color.BLACK);
-                        currentState.attr.setBackColorRGB(-1);
                         eraseScreen(0, 0, height - 1, width - 1, false);
                         scrollRegionTop = 0;
                         scrollRegionBottom = height - 1;
@@ -3739,6 +3805,7 @@ public class ECMA48 implements Runnable {
                     // back into sync then this screen will be returned.
                     lastVisibleDisplay = getVisibleDisplay(height, 0);
                     lastVisibleUpdateTime = System.currentTimeMillis();
+                    screenIsDirty = false;
                     if (value == true) {
                         withinSynchronizedUpdate = true;
                     } else {
@@ -3746,7 +3813,8 @@ public class ECMA48 implements Runnable {
                             withinSynchronizedUpdate = false;
                             // Permit my enclosing UI to know that I updated.
                             if (displayListener != null) {
-                                displayListener.displayChanged();
+                                displayListener.updateDisplay(lastVisibleDisplay);
+                                doNotUpdateDisplay = true;
                             }
                         }
                     }
@@ -3772,6 +3840,7 @@ public class ECMA48 implements Runnable {
      */
     private void decrc() {
         currentState.setTo(savedState);
+        screenIsDirty = true;
     }
 
     /**
@@ -4035,6 +4104,7 @@ public class ECMA48 implements Runnable {
      * DECSWL - Single-width line.
      */
     private void decswl() {
+        screenIsDirty = true;
         display.get(currentState.cursorY).setDoubleWidth(false);
         display.get(currentState.cursorY).setDoubleHeight(0);
     }
@@ -4043,6 +4113,7 @@ public class ECMA48 implements Runnable {
      * DECDWL - Double-width line.
      */
     private void decdwl() {
+        screenIsDirty = true;
         display.get(currentState.cursorY).setDoubleWidth(true);
         display.get(currentState.cursorY).setDoubleHeight(0);
     }
@@ -4054,6 +4125,7 @@ public class ECMA48 implements Runnable {
      * double-height row
      */
     private void dechdl(final boolean topHalf) {
+        screenIsDirty = true;
         display.get(currentState.cursorY).setDoubleWidth(true);
         if (topHalf == true) {
             display.get(currentState.cursorY).setDoubleHeight(1);
@@ -4066,6 +4138,7 @@ public class ECMA48 implements Runnable {
      * DECALN - Screen alignment display.
      */
     private void decaln() {
+        screenIsDirty = true;
         Cell newCell = new Cell('E');
         for (DisplayLine line: display) {
             for (int i = 0; i < line.length(); i++) {
@@ -4270,6 +4343,7 @@ public class ECMA48 implements Runnable {
      * DCH - Delete char.
      */
     private void dch() {
+        screenIsDirty = true;
         int n = getCsiParam(0, 1);
         DisplayLine line = display.get(currentState.cursorY);
         Cell blank = new Cell();
@@ -4282,6 +4356,7 @@ public class ECMA48 implements Runnable {
      * ICH - Insert blank char at cursor.
      */
     private void ich() {
+        screenIsDirty = true;
         int n = getCsiParam(0, 1);
         DisplayLine line = display.get(currentState.cursorY);
         Cell blank = new Cell();
@@ -4377,9 +4452,7 @@ public class ECMA48 implements Runnable {
      */
     private void sgr() {
         for (int i = 0; i < collectBuffer.length(); i++) {
-            if ((collectBuffer.charAt(i) == '>')
-                || (collectBuffer.charAt(i) == '>')
-            ) {
+            if (collectBuffer.charAt(i) == '>') {
                 // Private-mode sequence, disregard.
                 return;
             }
@@ -4621,42 +4694,34 @@ public class ECMA48 implements Runnable {
             case 30:
                 // Set black foreground
                 currentState.attr.setForeColor(Color.BLACK);
-                currentState.attr.setForeColorRGB(-1);
                 break;
             case 31:
                 // Set red foreground
                 currentState.attr.setForeColor(Color.RED);
-                currentState.attr.setForeColorRGB(-1);
                 break;
             case 32:
                 // Set green foreground
                 currentState.attr.setForeColor(Color.GREEN);
-                currentState.attr.setForeColorRGB(-1);
                 break;
             case 33:
                 // Set yellow foreground
                 currentState.attr.setForeColor(Color.YELLOW);
-                currentState.attr.setForeColorRGB(-1);
                 break;
             case 34:
                 // Set blue foreground
                 currentState.attr.setForeColor(Color.BLUE);
-                currentState.attr.setForeColorRGB(-1);
                 break;
             case 35:
                 // Set magenta foreground
                 currentState.attr.setForeColor(Color.MAGENTA);
-                currentState.attr.setForeColorRGB(-1);
                 break;
             case 36:
                 // Set cyan foreground
                 currentState.attr.setForeColor(Color.CYAN);
-                currentState.attr.setForeColorRGB(-1);
                 break;
             case 37:
                 // Set white foreground
                 currentState.attr.setForeColor(Color.WHITE);
-                currentState.attr.setForeColorRGB(-1);
                 break;
             case 38:
                 if (type == DeviceType.XTERM) {
@@ -4707,47 +4772,38 @@ public class ECMA48 implements Runnable {
                 // Underscore off, default foreground color
                 currentState.attr.setUnderline(false);
                 currentState.attr.setForeColor(Color.WHITE);
-                currentState.attr.setForeColorRGB(-1);
                 break;
             case 40:
                 // Set black background
                 currentState.attr.setBackColor(Color.BLACK);
-                currentState.attr.setBackColorRGB(-1);
                 break;
             case 41:
                 // Set red background
                 currentState.attr.setBackColor(Color.RED);
-                currentState.attr.setBackColorRGB(-1);
                 break;
             case 42:
                 // Set green background
                 currentState.attr.setBackColor(Color.GREEN);
-                currentState.attr.setBackColorRGB(-1);
                 break;
             case 43:
                 // Set yellow background
                 currentState.attr.setBackColor(Color.YELLOW);
-                currentState.attr.setBackColorRGB(-1);
                 break;
             case 44:
                 // Set blue background
                 currentState.attr.setBackColor(Color.BLUE);
-                currentState.attr.setBackColorRGB(-1);
                 break;
             case 45:
                 // Set magenta background
                 currentState.attr.setBackColor(Color.MAGENTA);
-                currentState.attr.setBackColorRGB(-1);
                 break;
             case 46:
                 // Set cyan background
                 currentState.attr.setBackColor(Color.CYAN);
-                currentState.attr.setBackColorRGB(-1);
                 break;
             case 47:
                 // Set white background
                 currentState.attr.setBackColor(Color.WHITE);
-                currentState.attr.setBackColorRGB(-1);
                 break;
             case 48:
                 if (type == DeviceType.XTERM) {
@@ -4793,7 +4849,6 @@ public class ECMA48 implements Runnable {
             case 49:
                 // Default background
                 currentState.attr.setBackColor(Color.BLACK);
-                currentState.attr.setBackColorRGB(-1);
                 break;
 
             default:
@@ -5138,6 +5193,9 @@ public class ECMA48 implements Runnable {
         if (start > end) {
             return;
         }
+
+        screenIsDirty = true;
+
         if (end > width - 1) {
             end = width - 1;
         }
@@ -5200,6 +5258,8 @@ public class ECMA48 implements Runnable {
         ) {
             return;
         }
+
+        screenIsDirty = true;
 
         oldCursorY = currentState.cursorY;
         for (int i = startRow; i <= endRow; i++) {
@@ -5315,12 +5375,30 @@ public class ECMA48 implements Runnable {
                 }
 
                 if (p[0].equals("4")) {
-                    for (int i = 1; i + 1 < p.length; i += 2) {
-                        // Set a color index value
+                    if ((p.length >= 3) && (p[2].equals("?"))) {
+                        // Query a color index value
                         try {
-                            set88Color(Integer.parseInt(p[i]), p[i + 1]);
+                            int color = Integer.parseInt(p[1]);
+                            if ((color >= 0) && (color <= 15)) {
+                                int rgb = colors88.get(color);
+                                int red   = (rgb >>> 16) & 0xFF;
+                                int green = (rgb >>>  8) & 0xFF;
+                                int blue  =  rgb         & 0xFF;
+                                String response = String.format("\033]4;%d;rgb:%02x%02x/%02x%02x/%02x%02x\033\\",
+                                    color, red, red, green, green, blue, blue);
+                                writeRemote(response);
+                            }
                         } catch (NumberFormatException e) {
                             // SQUASH
+                        }
+                    } else {
+                        for (int i = 1; i + 1 < p.length; i += 2) {
+                            // Set a color index value
+                            try {
+                                set88Color(Integer.parseInt(p[i]), p[i + 1]);
+                            } catch (NumberFormatException e) {
+                                // SQUASH
+                            }
                         }
                     }
                 }
@@ -5328,8 +5406,7 @@ public class ECMA48 implements Runnable {
                 if (p[0].equals("10")) {
                     if (p[1].equals("?")) {
                         // Respond with foreground color.
-                        java.awt.Color color = SwingTerminal.attrToForegroundColor(currentState.attr);
-
+                        java.awt.Color color = backend.attrToForegroundColor(currentState.attr);
                         writeRemote(String.format(
                             "\033]10;rgb:%04x/%04x/%04x\033\\",
                                 color.getRed() << 8,
@@ -5341,8 +5418,7 @@ public class ECMA48 implements Runnable {
                 if (p[0].equals("11")) {
                     if (p[1].equals("?")) {
                         // Respond with background color.
-                        java.awt.Color color = SwingTerminal.attrToBackgroundColor(currentState.attr);
-
+                        java.awt.Color color = backend.attrToBackgroundColor(currentState.attr);
                         writeRemote(String.format(
                             "\033]11;rgb:%04x/%04x/%04x\033\\",
                                 color.getRed() << 8,
@@ -5362,6 +5438,10 @@ public class ECMA48 implements Runnable {
                         // Jexer image - JPG
                         parseJexerImageFile(2, p[2], p[3]);
                     }
+                }
+
+                if (p[0].equals("1337")) {
+                    parseIterm2Image(p);
                 }
             }
 
@@ -7672,6 +7752,8 @@ public class ECMA48 implements Runnable {
 
         // System.err.println("drawHalves(): " + Integer.toHexString(ch));
 
+        screenIsDirty = true;
+
         if (lastTextHeight != textHeight) {
             glyphMaker = GlyphMaker.getInstance(textHeight);
             lastTextHeight = textHeight;
@@ -7679,7 +7761,7 @@ public class ECMA48 implements Runnable {
 
         Cell cell = new Cell(ch, currentState.attr);
         BufferedImage image = glyphMaker.getImage(cell, textWidth * 2,
-            textHeight);
+            textHeight, backend);
         BufferedImage leftImage = image.getSubimage(0, 0, textWidth,
             textHeight);
         BufferedImage rightImage = image.getSubimage(textWidth, 0, textWidth,
@@ -7797,8 +7879,7 @@ public class ECMA48 implements Runnable {
             maybeTransparent = true;
         }
         SixelDecoder sixel = new SixelDecoder(sixelParseBuffer.toString(),
-            sixelPalette,
-            SwingTerminal.attrToBackgroundColor(currentState.attr),
+            sixelPalette, backend.attrToBackgroundColor(currentState.attr),
             maybeTransparent);
         BufferedImage image = sixel.getImage();
 
@@ -7819,7 +7900,19 @@ public class ECMA48 implements Runnable {
         if (maybeTransparent) {
             maybeTransparent = sixel.isTransparent();
         }
-        imageToCells(image, true, maybeTransparent);
+
+        if (!sixelScrolling) {
+            int oldCursorX = currentState.cursorX;
+            int oldCursorY = currentState.cursorY;
+            currentState.cursorX = 0;
+            currentState.cursorY = 0;
+            imageToCells(image, false, maybeTransparent);
+            currentState.cursorX = oldCursorX;
+            currentState.cursorY = oldCursorY;
+        } else {
+            imageToCells(image, true, maybeTransparent);
+        }
+
     }
 
     /**
@@ -7972,6 +8065,239 @@ public class ECMA48 implements Runnable {
     }
 
     /**
+     * Parse a iTerm2 image string into a bitmap image, and overlay that
+     * image onto the text cells.  See reference at:
+     * https://iterm2.com/documentation-images.html
+     *
+     * @param args the arguments of the OSC 1337 sequence.  args[0] will be
+     * "1337".
+     */
+    private void parseIterm2Image(final String [] args) {
+        // If the file data is opaque, pass that to imageToCells().
+        boolean maybeTransparent = true;
+
+        // See: https://github.com/wez/wezterm/issues/1424
+        boolean doNotMoveCursor = false;
+
+        // We MUST see "inline=1".  This terminal does NOT EVER write to the
+        // filesystem.  Ever.
+        boolean sawInline = false;
+
+        boolean preserveAspectRatio = false;
+
+        // Image dimension options.
+        String iTerm2Width = "auto";
+        String iTerm2Height = "auto";
+
+        // File size.  This is optional to most terminals.  If it is
+        // specified, then we will limit to 4MB.
+        boolean gotSize = false;
+        int size = -1;
+
+        if ((args.length < 2) || !args[0].equals("1337")
+            || !args[1].startsWith("File=")
+        ) {
+            return;
+        }
+
+        // Separate the arguments into key/values, and the base64-encoded
+        // data payload.
+
+        // Remove the "File=" from the first argument.
+        args[1] = args[1].substring(5);
+        // System.err.println("args[1]: '" + args[1] + "'");
+
+        // Separate the last argument from the ":{base64}" part.
+        String lastArg = args[args.length - 1];
+        if (!lastArg.contains(":")) {
+            return;
+        }
+        String data = lastArg.substring(lastArg.indexOf(':') + 1);
+        if (data.length() == 0) {
+            return;
+        }
+
+        lastArg = lastArg.substring(0, lastArg.length() - data.length() - 1);
+        // System.err.println("lastArg: '" + lastArg + "'");
+        HashMap<String, String> pairs = new HashMap<String, String>();
+        for (int i = 1; i < args.length - 1; i++) {
+            String [] pair = args[i].split("=");
+            if (pair.length != 2) {
+                return;
+            }
+            pairs.put(pair[0], pair[1]);
+        }
+        String [] pair = lastArg.split("=");
+        if (pair.length != 2) {
+            return;
+        }
+        pairs.put(pair[0], pair[1]);
+
+        // Now check the arguments
+        for (String name: pairs.keySet()) {
+            String value = pairs.get(name);
+
+            // System.err.println("name='" + name + "' value='" + value + "'");
+
+            if (name.equals("size")) {
+                try {
+                    size = Integer.parseInt(value);
+                    gotSize = true;
+                } catch (NumberFormatException e) {
+                    // SQUASH
+                }
+            }
+            if (name.equals("inline") && value.equals("1")) {
+                sawInline = true;
+            }
+            if (name.equals("width")) {
+                iTerm2Width = value;
+            }
+            if (name.equals("height")) {
+                iTerm2Height = value;
+            }
+            if (name.equals("preserveAspectRatio") && value.equals("1")) {
+                preserveAspectRatio = true;
+            }
+            if (name.equals("doNotMoveCursor") && value.equals("1")) {
+                doNotMoveCursor = true;
+            }
+        }
+        if (!sawInline) {
+            return;
+        }
+        if (gotSize) {
+            if ((size < 1) || (size > 16777216)) {
+                return;
+            }
+        }
+
+        // We have the options and image data, and it will be displayed.  Now
+        // try to decode it into a bitmap.  We go blindly into the night as
+        // far as image format is concerned.
+        BufferedImage image = null;
+        byte [] bytes = StringUtils.fromBase64(data.getBytes());
+        if (bytes == null) {
+            return;
+        }
+        try {
+            image = ImageIO.read(new ByteArrayInputStream(bytes));
+        } catch (IOException e) {
+            // SQUASH
+            return;
+        }
+        assert (image != null);
+        int fileImageWidth = image.getWidth();
+        int fileImageHeight = image.getHeight();
+        if ((fileImageWidth < 1)
+            || (fileImageWidth > 10000)
+            || (fileImageHeight < 1)
+            || (fileImageHeight > 10000)
+        ) {
+            return;
+        }
+        if (maybeTransparent) {
+            if (image.getTransparency() == java.awt.Transparency.OPAQUE) {
+                maybeTransparent = false;
+            }
+        }
+
+        // Scale the image according to the width/height arguments.
+        int displayWidth = fileImageWidth;
+        int displayHeight = fileImageHeight;
+        try {
+            if (iTerm2Width.equals("auto")) {
+                // NOP
+            } else if (iTerm2Width.endsWith("%")) {
+                // Percent of screen
+                iTerm2Width = iTerm2Width.substring(0, iTerm2Width.length() - 1);
+                int n = Integer.parseInt(iTerm2Width);
+                if ((n < 0) || (n > 100)) {
+                    return;
+                }
+                displayWidth = (n * textWidth * width) / 100;
+            } else if (iTerm2Width.endsWith("px")) {
+                // Pixels
+                iTerm2Width = iTerm2Width.substring(0, iTerm2Width.length() - 2);
+                int n = Integer.parseInt(iTerm2Width);
+                if (n < 0) {
+                    return;
+                }
+                displayWidth = n;
+            } else {
+                // Number of text cells
+                int n = Integer.parseInt(iTerm2Width);
+                if (n < 0) {
+                    return;
+                }
+                displayWidth = n * textWidth;
+            }
+            // Truncate images to fit the screen.
+            displayWidth = Math.min(width * textWidth, displayWidth);
+
+            if (iTerm2Height.equals("auto")) {
+                // NOP
+            } else if (iTerm2Height.endsWith("%")) {
+                // Percent of screen
+                iTerm2Height = iTerm2Height.substring(0, iTerm2Height.length() - 1);
+                int n = Integer.parseInt(iTerm2Height);
+                if ((n < 0) || (n > 100)) {
+                    return;
+                }
+                displayHeight = (n * textHeight * height) / 100;
+            } else if (iTerm2Height.endsWith("px")) {
+                // Pixels
+                iTerm2Height = iTerm2Height.substring(0, iTerm2Height.length() - 2);
+                int n = Integer.parseInt(iTerm2Height);
+                if (n < 0) {
+                    return;
+                }
+                displayHeight = n;
+            } else {
+                // Number of text cells
+                int n = Integer.parseInt(iTerm2Height);
+                if (n < 0) {
+                    return;
+                }
+                displayHeight = n * textHeight;
+            }
+        } catch (NumberFormatException e) {
+            // Invalid number, done.
+            return;
+        }
+
+        /*
+        System.err.println("File dims " + fileImageWidth + "x" +
+            fileImageHeight +
+            "Disp dims " + displayWidth + "x" + displayHeight);
+        */
+
+        if (doNotMoveCursor) {
+            // Truncate image height to fit the screen.
+            displayHeight = Math.min(height * textHeight, displayHeight);
+        }
+
+        if (preserveAspectRatio
+            && ((displayWidth != fileImageWidth)
+                || (displayHeight != fileImageHeight))
+        ) {
+            // Scale the image to fit the requested dimensions.
+            image = ImageUtils.scaleImage(image, displayWidth, displayHeight,
+                ImageUtils.Scale.SCALE,
+                backend.attrToBackgroundColor(currentState.attr));
+        } else if ((displayWidth != fileImageWidth)
+            || (displayHeight != fileImageHeight)
+        ) {
+            // Scale the image to fit the requested dimensions.
+            image = ImageUtils.scaleImage(image, displayWidth, displayHeight,
+                ImageUtils.Scale.STRETCH,
+                backend.attrToBackgroundColor(currentState.attr));
+        }
+
+        imageToCells(image, !doNotMoveCursor, maybeTransparent);
+    }
+
+    /**
      * Break up an image into the cells at the current cursor.
      *
      * @param image the image to display
@@ -7983,6 +8309,8 @@ public class ECMA48 implements Runnable {
         final boolean maybeTransparent) {
 
         assert (image != null);
+
+        screenIsDirty = true;
 
         /*
          * Procedure:
@@ -8042,6 +8370,8 @@ public class ECMA48 implements Runnable {
         }
 
         // Break the image up into an array of cells.
+        int imageId = System.identityHashCode(this);
+        imageId ^= (int) System.currentTimeMillis();
         Cell [][] cells = new Cell[cellColumns][cellRows];
         for (int x = 0; x < cellColumns; x++) {
             for (int y = 0; y < cellRows; y++) {
@@ -8081,7 +8411,8 @@ public class ECMA48 implements Runnable {
                     gr.drawImage(imageSlice, 0, 0, null, null);
                     gr.dispose();
 
-                    cell.setImage(newImage);
+                    imageId++;
+                    cell.setImage(newImage, imageId & 0x7FFFFFFF);
 
                     if (maybeTransparent) {
                         // Check now if this cell has transparent pixels.
@@ -8148,7 +8479,7 @@ public class ECMA48 implements Runnable {
                             textHeight, BufferedImage.TYPE_INT_ARGB);
 
                         BufferedImage textImage = glyphMaker.getImage(oldCell,
-                            textWidth, textHeight);
+                            textWidth, textHeight, backend);
 
                         java.awt.Graphics gr = newImage.getGraphics();
                         gr.setColor(java.awt.Color.BLACK);
@@ -8170,7 +8501,7 @@ public class ECMA48 implements Runnable {
                 // Room for more image on the visible screen.
                 currentState.cursorX++;
             }
-            if (currentState.cursorY < scrollRegionBottom - 1) {
+            if (currentState.cursorY <= scrollRegionBottom - 1) {
                 // Not at the bottom, down a line.
                 linefeed();
             } else if (scroll == true) {

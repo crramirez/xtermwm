@@ -3,7 +3,7 @@
  *
  * The MIT License (MIT)
  *
- * Copyright (c) 2021 Autumn Lamonte
+ * Copyright (C) 2022 Autumn Lamonte
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -23,7 +23,7 @@
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
  * DEALINGS IN THE SOFTWARE.
  *
- * @author Autumn Lamonte [AutumnWalksTheLake@gmail.com] ⚧ Trans Liberation Now
+ * @author Autumn Lamonte ⚧ Trans Liberation Now
  * @version 1
  */
 package xtwm;
@@ -300,7 +300,7 @@ public class Main {
                         version = XTWMApplication.VERSION;
                     }
                     System.out.println("Xterm Window Manager " + version);
-                    System.out.println("Copyright (c) 2021 Autumn Lamonte");
+                    System.out.println("Copyright (C) 2022 Autumn Lamonte");
                     System.out.println();
                     System.out.println("Available to all under the MIT License.");
                     System.exit(1);

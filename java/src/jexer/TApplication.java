@@ -3,7 +3,7 @@
  *
  * The MIT License (MIT)
  *
- * Copyright (C) 2021 Autumn Lamonte
+ * Copyright (C) 2022 Autumn Lamonte
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -23,7 +23,7 @@
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
  * DEALINGS IN THE SOFTWARE.
  *
- * @author Autumn Lamonte [AutumnWalksTheLake@gmail.com] ⚧ Trans Liberation Now
+ * @author Autumn Lamonte ⚧ Trans Liberation Now
  * @version 1
  */
 package jexer;
@@ -403,10 +403,9 @@ public class TApplication implements Runnable {
     protected MousePointer customWidgetMousePointer;
 
     /**
-     * If true, the backend was in pixelMouse mode when the
-     * customWidgetMousePointer was last set.
+     * If true. enable translucency.
      */
-    protected boolean oldPixelMouse = false;
+    protected boolean translucence = true;
 
     /**
      * WidgetEventHandler is the main event consumer loop.  There are at most
@@ -591,6 +590,21 @@ public class TApplication implements Runnable {
         private ArrayList<String> dirtyQueue = new ArrayList<String>();
 
         /**
+         * The number of updates pushed out in this second.
+         */
+        private int framesPerSecond = 0;
+
+        /**
+         * The last time a frame was rendered.
+         */
+        private long lastFlushTime = 0;
+
+        /**
+         * How long it took to render the last time in millis.
+         */
+        private long lastFrameTime = 0;
+
+        /**
          * Public constructor.
          *
          * @param application the main application
@@ -618,6 +632,7 @@ public class TApplication implements Runnable {
          * The update loop.
          */
         private void runImpl() {
+            int frameCount = 0;
 
             // Loop forever
             while (!application.quit) {
@@ -626,7 +641,11 @@ public class TApplication implements Runnable {
                 while (!application.quit) {
                     synchronized (dirtyQueue) {
                         if (dirtyQueue.size() > 0) {
-                            dirtyQueue.remove(dirtyQueue.size() - 1);
+                            // Collapse all the dirty requests into one
+                            // refresh.
+                            while (dirtyQueue.size() > 0) {
+                                dirtyQueue.remove(dirtyQueue.size() - 1);
+                            }
                             break;
                         }
                     }
@@ -647,7 +666,17 @@ public class TApplication implements Runnable {
                         System.currentTimeMillis(), Thread.currentThread());
                 }
                 synchronized (getScreen()) {
+                    long before = System.currentTimeMillis();
                     backend.flushScreen();
+                    long now = System.currentTimeMillis();
+                    lastFrameTime = now - before;
+                    if ((int) (now / 1000) == (int) (lastFlushTime / 1000)) {
+                        frameCount++;
+                    } else {
+                        framesPerSecond = frameCount;
+                        frameCount = 0;
+                    }
+                    lastFlushTime = now;
                 }
             } // while (true) (main runnable loop)
 
@@ -847,6 +876,11 @@ public class TApplication implements Runnable {
             hideMenuBar = true;
         }
 
+        // Translucent windows (!) option
+        if (System.getProperty("jexer.translucence", "true").equals("false")) {
+            translucence = false;
+        }
+
         theme           = new ColorTheme();
         desktopTop      = (hideMenuBar ? 0 : 1);
         desktopBottom   = getScreen().getHeight() - 1 + (hideStatusBar ? 1 : 0);
@@ -860,30 +894,45 @@ public class TApplication implements Runnable {
         menuItems       = new LinkedList<TMenuItem>();
         desktop         = new TDesktop(this);
 
-        // Special case: the Swing backend needs to have a timer to drive its
-        // blink state.
-        if (backend instanceof SwingBackend) {
-            long millis = ((SwingBackend) backend).getBlinkMillis();
-            addTimer(millis, true,
-                new TAction() {
-                    public void DO() {
-                        TApplication.this.doRepaint();
-                    }
-                }
-            );
-        }
+        final boolean animationsEnabled = true;
+        if (!animationsEnabled) {
+            // If animations are disabled, we need additional timers.
 
-        // Special case: the MultiBackend needs to have a timer to drive
-        // blink state and idle checks.
-        if (backend instanceof MultiBackend) {
-            // Default to 500 millis.
-            long millis = 500;
-            addTimer(millis, true,
+            // Special case: the Swing backend needs to have a timer to drive
+            // its blink state.
+            if (backend instanceof SwingBackend) {
+                long millis = ((SwingBackend) backend).getBlinkMillis();
+                addTimer(millis, true,
+                    new TAction() {
+                        public void DO() {
+                            TApplication.this.doRepaint();
+                        }
+                    }
+                );
+            }
+
+            // Special case: the MultiBackend needs to have a timer to drive
+            // blink state and idle checks.
+            if (backend instanceof MultiBackend) {
+                // Default to 500 millis.
+                long millis = 500;
+                addTimer(millis, true,
+                    new TAction() {
+                        public void DO() {
+                            TApplication.this.doRepaint();
+                            // Update idle checks.
+                            TApplication.this.getBackend().hasEvents();
+                        }
+                    }
+                );
+            }
+        } else {
+            // Animations always check every 1/32 of a second.
+            final int ANIMATION_FPS = 32;
+            TTimer animationTimer = addTimer(1000 / ANIMATION_FPS, true,
                 new TAction() {
                     public void DO() {
-                        TApplication.this.doRepaint();
-                        // Update idle checks.
-                        TApplication.this.getBackend().hasEvents();
+                        doRepaint();
                     }
                 }
             );
@@ -970,17 +1019,18 @@ public class TApplication implements Runnable {
             synchronized (fillEventQueue) {
                 // Pull any pending I/O events
                 backend.getEvents(fillEventQueue);
+            }
 
-                // Dispatch each event to the appropriate handler, one at a
-                // time.
-                for (;;) {
-                    TInputEvent event = null;
+            // Dispatch each event to the appropriate handler, one at a time.
+            for (;;) {
+                TInputEvent event = null;
+                synchronized (fillEventQueue) {
                     if (fillEventQueue.size() == 0) {
                         break;
                     }
                     event = fillEventQueue.remove(0);
-                    metaHandleEvent(event);
                 }
+                metaHandleEvent(event);
             }
 
             // Wake a consumer thread if we have any pending events.
@@ -1362,28 +1412,27 @@ public class TApplication implements Runnable {
             }
         }
 
-        synchronized (drainEventQueue) {
-            // Screen resize
-            if (event instanceof TResizeEvent) {
-                TResizeEvent resize = (TResizeEvent) event;
-                assert (resize.getType() == TResizeEvent.Type.SCREEN);
+        // Screen resize
+        if (event instanceof TResizeEvent) {
+            TResizeEvent resize = (TResizeEvent) event;
+            assert (resize.getType() == TResizeEvent.Type.SCREEN);
 
-                synchronized (getScreen()) {
-                    if ((System.currentTimeMillis() - screenResizeTime >= 15)
-                        || (resize.getWidth() < getScreen().getWidth())
-                        || (resize.getHeight() < getScreen().getHeight())
-                    ) {
-                        getScreen().setDimensions(resize.getWidth(),
-                            resize.getHeight());
-                        screenResizeTime = System.currentTimeMillis();
-                    }
-                    desktopBottom = getScreen().getHeight() - 1;
-                    if (hideStatusBar) {
-                        desktopBottom++;
-                    }
-                    mouseX = 0;
-                    mouseY = 0;
+            synchronized (getScreen()) {
+                if ((System.currentTimeMillis() - screenResizeTime >= 15)
+                    || (resize.getWidth() < getScreen().getWidth())
+                    || (resize.getHeight() < getScreen().getHeight())
+                ) {
+                    getScreen().setDimensions(resize.getWidth(),
+                        resize.getHeight());
+                    screenResizeTime = System.currentTimeMillis();
                 }
+                desktopBottom = getScreen().getHeight() - 1;
+                if (hideStatusBar) {
+                    desktopBottom++;
+                }
+                mouseX = 0;
+                mouseY = 0;
+
                 if (desktop != null) {
                     desktop.setDimensions(0, desktopTop, resize.getWidth(),
                         (desktopBottom - desktopTop));
@@ -1395,17 +1444,19 @@ public class TApplication implements Runnable {
 
                 // Change menu edges if needed.
                 recomputeMenuX();
-
-                // We are dirty, redraw the screen.
-                doRepaint();
-
-                /*
-                System.err.println("New screen: " + resize.getWidth() +
-                    " x " + resize.getHeight());
-                */
-                return;
             }
 
+            // We are dirty, redraw the screen.
+            doRepaint();
+
+            /*
+             System.err.println("New screen: " + resize.getWidth() +
+                 " x " + resize.getHeight());
+             */
+            return;
+        }
+
+        synchronized (drainEventQueue) {
             // Put into the main queue
             drainEventQueue.add(event);
         }
@@ -1420,6 +1471,7 @@ public class TApplication implements Runnable {
      * @see #secondaryHandleEvent(TInputEvent event)
      */
     private void primaryHandleEvent(final TInputEvent event) {
+        assert (event != null);
 
         if (debugEvents) {
             System.err.printf("%s primaryHandleEvent: %s\n",
@@ -1628,9 +1680,14 @@ public class TApplication implements Runnable {
             if (debugEvents) {
                 System.err.printf("TApplication dispatch event: %s\n",
                     event);
+                System.err.printf("   Routed to: %s\n", window);
+                System.err.flush();
             }
             window.handleEvent(event);
             if (doubleClick != null) {
+                if (debugEvents) {
+                    System.err.printf("  -- DOUBLE CLICK --\n");
+                }
                 window.handleEvent(doubleClick);
             }
             if (mouse != null) {
@@ -1662,6 +1719,8 @@ public class TApplication implements Runnable {
      * @see #primaryHandleEvent(TInputEvent event)
      */
     private void secondaryHandleEvent(final TInputEvent event) {
+        assert (event != null);
+
         TMouseEvent doubleClick = null;
 
         if (debugEvents) {
@@ -1912,12 +1971,66 @@ public class TApplication implements Runnable {
     }
 
     /**
-     * Get the color theme.
+     * Get the global color theme.
      *
      * @return the theme
      */
     public final ColorTheme getTheme() {
         return theme;
+    }
+
+    /**
+     * Get the translucence option.
+     *
+     * @return true if translucency is enabled
+     */
+    public boolean hasTranslucence() {
+        return translucence;
+    }
+
+    /**
+     * Set the translucence option.
+     *
+     * @param enabled if true, windows will be translucent
+     */
+    public void setTranslucence(final boolean enabled) {
+        translucence = enabled;
+    }
+
+    /**
+     * Set the opacity of all windows.  If opacity is 100, translucence is
+     * also disabled for performance.
+     *
+     * @param opacity a number between 10 (nearly transparent) and 100 (fully
+     * opaque)
+     */
+    public void setWindowOpacity(final int opacity) {
+        if ((opacity < 10) || (opacity > 100)) {
+            return;
+        }
+        if (opacity == 100) {
+            translucence = false;
+        } else {
+            translucence = true;
+        }
+
+        int alpha = opacity * 255 / 100;
+        for (TWindow window: windows) {
+            window.setAlpha(alpha);
+        }
+    }
+
+    /**
+     * Get the number of frames that were emitted to output on the last
+     * second.
+     *
+     * @return the frames per second
+     */
+    public int getFramesPerSecond() {
+        if (screenHandler != null) {
+            return screenHandler.framesPerSecond;
+        }
+        return 0;
     }
 
     /**
@@ -1934,6 +2047,39 @@ public class TApplication implements Runnable {
      */
     public void doRepaint() {
         repaint = true;
+        boolean wakeAndReturn = false;
+        synchronized (drainEventQueue) {
+            if (fillEventQueue.size() > 0) {
+                // User input is waiting, that will update the screen.  Wake
+                // the backend reader.
+                if (debugEvents) {
+                    System.err.printf("Drop: input waiting in backend\n");
+                }
+                wakeAndReturn = true;
+            }
+        }
+        if (wakeAndReturn) {
+            synchronized (this) {
+                this.notify();
+            }
+            return;
+        }
+        if (screenHandler != null) {
+            long now = System.currentTimeMillis();
+            if (now - screenHandler.lastFlushTime < screenHandler.lastFrameTime) {
+                // We cannot update the screen this quickly.  Drop this
+                // request.
+                if (debugEvents) {
+                    System.err.printf("Drop: %d millis to render, %d since\n",
+                        screenHandler.lastFrameTime,
+                        now - screenHandler.lastFlushTime);
+                }
+                return;
+            }
+        }
+
+        // It's been enough time since the last frame, and no user input is
+        // around, so allow a screen repaint.
         wakeEventHandler();
     }
 
@@ -1982,10 +2128,11 @@ public class TApplication implements Runnable {
         }
         this.desktop = desktop;
 
+        desktopTop = (hideMenuBar ? 0 : 1);
+        desktopBottom = getScreen().getHeight() - 1 + (hideStatusBar ?
+            1 : 0);
+
         if (desktop != null) {
-            desktopTop = (hideMenuBar ? 0 : 1);
-            desktopBottom = getScreen().getHeight() - 1 + (hideStatusBar ?
-                1 : 0);
             desktop.setDimensions(0, desktopTop, getScreen().getWidth(),
                 (desktopBottom - desktopTop));
             TResizeEvent resize = new TResizeEvent(null,
@@ -2058,8 +2205,8 @@ public class TApplication implements Runnable {
      */
     public void setHideMenuBar(final boolean hideMenuBar) {
         this.hideMenuBar = hideMenuBar;
+        desktopTop = (hideMenuBar ? 0 : 1);
         if (desktop != null) {
-            desktopTop = (hideMenuBar ? 0 : 1);
             desktop.setDimensions(0, desktopTop, getScreen().getWidth(),
                 (desktopBottom - desktopTop));
             TResizeEvent resize = new TResizeEvent(null,
@@ -2085,9 +2232,9 @@ public class TApplication implements Runnable {
      */
     public void setHideStatusBar(final boolean hideStatusBar) {
         this.hideStatusBar = hideStatusBar;
+        desktopBottom = getScreen().getHeight() - 1 + (hideStatusBar ?
+            1 : 0);
         if (desktop != null) {
-            desktopBottom = getScreen().getHeight() - 1 + (hideStatusBar ?
-                1 : 0);
             desktop.setDimensions(0, desktopTop, getScreen().getWidth(),
                 (desktopBottom - desktopTop));
             TResizeEvent resize = new TResizeEvent(null,
@@ -2104,7 +2251,7 @@ public class TApplication implements Runnable {
         String version = getClass().getPackage().getImplementationVersion();
         if (version == null) {
             // This is Java 9+, use a hardcoded string here.
-            version = "1.5.0";
+            version = "1.6.1";
         }
         messageBox(i18n.getString("aboutDialogTitle"),
             MessageFormat.format(i18n.getString("aboutDialogText"), version),
@@ -2422,6 +2569,42 @@ public class TApplication implements Runnable {
     }
 
     /**
+     * Draw a translucent window with a shadow on the screen.
+     *
+     * @param screen the screen
+     * @param window the window
+     */
+    private void drawTranslucentWindow(final Screen screen,
+        final TWindow window) {
+
+        // Alpha blending: have the window draw to a snapshot of the screen
+        // without alpha, and then merge it on the screen with alpha.
+        int windowX = window.getX();
+        int windowY = window.getY();
+        int windowWidth = window.getWidth();
+        int windowHeight = window.getHeight();
+        Screen oldSnapshot = screen.snapshot(windowX, windowY,
+            windowWidth + 2, windowHeight + 1);
+        window.drawChildren();
+        Screen newSnapshot = screen.snapshot(windowX, windowY,
+            windowWidth, windowHeight);
+        screen.copyScreen(oldSnapshot, windowX, windowY,
+            windowWidth, windowHeight);
+        screen.blendScreen(newSnapshot, windowX, windowY,
+            windowWidth, windowHeight, window.getAlpha(), true);
+        screen.resetClipping();
+
+        // Recreate the shadow effect by blending a black rectangle over just
+        // the shadow region.
+        final int shadowOpacity = 30;
+        final int shadowAlpha = shadowOpacity * 255 / 100;
+        screen.blendRectangle(windowX + windowWidth, windowY + 1,
+            2, windowHeight - 1, 0x000000, shadowAlpha);
+        screen.blendRectangle(windowX + 2, windowY + windowHeight,
+            windowWidth, 1, 0x000000, shadowAlpha);
+    }
+
+    /**
      * Draw everything.
      */
     private void drawAll() {
@@ -2533,7 +2716,11 @@ public class TApplication implements Runnable {
         Collections.reverse(sorted);
         for (TWindow window: sorted) {
             if (window.isShown()) {
-                window.drawChildren();
+                if (translucence) {
+                    drawTranslucentWindow(getScreen(), window);
+                } else {
+                    window.drawChildren();
+                }
             }
         }
 
@@ -2577,7 +2764,13 @@ public class TApplication implements Runnable {
             }
 
             if (menu.isActive()) {
-                ((TWindow) menu).drawChildren();
+                if (translucence) {
+                    drawTranslucentWindow(getScreen(), menu);
+                } else {
+                    ((TWindow) menu).drawChildren();
+                }
+
+
                 // Reset the screen clipping so we can draw the next title.
                 getScreen().resetClipping();
             }
@@ -2587,7 +2780,12 @@ public class TApplication implements Runnable {
         for (TMenu menu: subMenus) {
             // Reset the screen clipping so we can draw the next sub-menu.
             getScreen().resetClipping();
-            ((TWindow) menu).drawChildren();
+            if (translucence) {
+                drawTranslucentWindow(getScreen(), menu);
+            } else {
+                ((TWindow) menu).drawChildren();
+            }
+
         }
 
         if (hideMenuBar == false) {
@@ -2609,7 +2807,9 @@ public class TApplication implements Runnable {
                     statusBar = topLevel.getStatusBar();
                 }
             } else {
-                statusBar = desktop.getStatusBar();
+                if (desktop != null) {
+                    statusBar = desktop.getStatusBar();
+                }
             }
 
             if (statusBar != null) {

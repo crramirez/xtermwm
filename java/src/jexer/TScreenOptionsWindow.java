@@ -3,7 +3,7 @@
  *
  * The MIT License (MIT)
  *
- * Copyright (C) 2021 Autumn Lamonte
+ * Copyright (C) 2022 Autumn Lamonte
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -23,7 +23,7 @@
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
  * DEALINGS IN THE SOFTWARE.
  *
- * @author Autumn Lamonte [AutumnWalksTheLake@gmail.com] ⚧ Trans Liberation Now
+ * @author Autumn Lamonte ⚧ Trans Liberation Now
  * @version 1
  */
 package jexer;
@@ -37,6 +37,7 @@ import java.util.ResourceBundle;
 
 import jexer.backend.ECMA48Terminal;
 import jexer.backend.SwingTerminal;
+import jexer.bits.BorderStyle;
 import jexer.bits.CellAttributes;
 import jexer.bits.GraphicsChars;
 import jexer.event.TKeypressEvent;
@@ -138,6 +139,11 @@ public class TScreenOptionsWindow extends TWindow {
     private TCheckBox rgbColor;
 
     /**
+     * The window opacity.
+     */
+    private TField windowOpacity;
+
+    /**
      * The original font size.
      */
     private int oldFontSize = 20;
@@ -207,6 +213,11 @@ public class TScreenOptionsWindow extends TWindow {
      */
     private boolean oldRgbColor = false;
 
+    /**
+     * The original window opacity.
+     */
+    private int oldWindowOpacity;
+
     // ------------------------------------------------------------------------
     // Constructors -----------------------------------------------------------
     // ------------------------------------------------------------------------
@@ -230,6 +241,15 @@ public class TScreenOptionsWindow extends TWindow {
         if (getScreen() instanceof ECMA48Terminal) {
             ecmaTerminal = (ECMA48Terminal) getScreen();
         }
+
+        addLabel(i18n.getString("windowOpacity"), 1, 0, "ttext", false,
+            new TAction() {
+                public void DO() {
+                    if (windowOpacity != null) {
+                        windowOpacity.activate();
+                    }
+                }
+            });
 
         addLabel(i18n.getString("fontName"), 3, 2, "ttext", false,
             new TAction() {
@@ -296,18 +316,76 @@ public class TScreenOptionsWindow extends TWindow {
                 }
             });
 
+        // Window opacity
+        windowOpacity = addField(31, 0, 4, true,
+            Integer.toString(getAlpha() * 100 / 255),
+            new TAction() {
+                public void DO() {
+                    int currentOpacity = getAlpha() * 100 / 255;
+                    int newOpacity = currentOpacity;
+                    newOpacity = Math.max(newOpacity, 10);
+                    newOpacity = Math.min(newOpacity, 100);
+                    try {
+                        newOpacity = Integer.parseInt(windowOpacity.getText());
+                    } catch (NumberFormatException e) {
+                        windowOpacity.setText(Integer.toString(currentOpacity));
+                    }
+                    if (newOpacity != currentOpacity) {
+                        getApplication().setWindowOpacity(newOpacity);
+                        System.setProperty("jexer.TWindow.opacity",
+                            Integer.toString(newOpacity));
+                    }
+                }
+            },
+            null);
+
+        addSpinner(35, 0,
+            new TAction() {
+                public void DO() {
+                    int currentOpacity = getAlpha() * 100 / 255;
+                    int newOpacity = currentOpacity;
+                    try {
+                        newOpacity = Integer.parseInt(windowOpacity.getText());
+                        newOpacity++;
+                        newOpacity = Math.min(newOpacity, 100);
+                    } catch (NumberFormatException e) {
+                        windowOpacity.setText(Integer.toString(currentOpacity));
+                    }
+                    windowOpacity.setText(Integer.toString(newOpacity));
+                    if (newOpacity != currentOpacity) {
+                        getApplication().setWindowOpacity(newOpacity);
+                        System.setProperty("jexer.TWindow.opacity",
+                            Integer.toString(newOpacity));
+                    }
+                }
+            },
+            new TAction() {
+                public void DO() {
+                    int currentOpacity = getAlpha() * 100 / 255;
+                    int newOpacity = currentOpacity;
+                    try {
+                        newOpacity = Integer.parseInt(windowOpacity.getText());
+                        newOpacity--;
+                        newOpacity = Math.max(newOpacity, 10);
+                    } catch (NumberFormatException e) {
+                        windowOpacity.setText(Integer.toString(currentOpacity));
+                    }
+                    windowOpacity.setText(Integer.toString(newOpacity));
+                    if (newOpacity != currentOpacity) {
+                        getApplication().setWindowOpacity(newOpacity);
+                        System.setProperty("jexer.TWindow.opacity",
+                            Integer.toString(newOpacity));
+                    }
+                }
+            }
+        );
+
         sixel = addCheckBox(3, 15, i18n.getString("sixel"),
             (ecmaTerminal != null ? ecmaTerminal.hasSixel() :
                 System.getProperty("jexer.ECMA48.sixel",
                     "true").equals("true")));
         oldSixel = sixel.isChecked();
-        sixelSharedPalette = addCheckBox(3, 16,
-            i18n.getString("sixelSharedPalette"),
-            (ecmaTerminal != null ? ecmaTerminal.hasSixelSharedPalette() :
-                System.getProperty("jexer.ECMA48.sixelSharedPalette",
-                    "true").equals("true")));
-        oldSixelSharedPalette = sixelSharedPalette.isChecked();
-        addLabel(i18n.getString("sixelPaletteSize"), 3, 17, "ttext", false,
+        addLabel(i18n.getString("sixelPaletteSize"), 3, 16, "ttext", false,
             new TAction() {
                 public void DO() {
                     if (sixelPaletteSize != null) {
@@ -315,6 +393,12 @@ public class TScreenOptionsWindow extends TWindow {
                     }
                 }
             });
+        sixelSharedPalette = addCheckBox(3, 17,
+            i18n.getString("sixelSharedPalette"),
+            (ecmaTerminal != null ? ecmaTerminal.hasSixelSharedPalette() :
+                System.getProperty("jexer.ECMA48.sixelSharedPalette",
+                    "true").equals("true")));
+        oldSixelSharedPalette = sixelSharedPalette.isChecked();
         wideCharImages = addCheckBox(3, 18, i18n.getString("wideCharImages"),
             (ecmaTerminal != null ? ecmaTerminal.isWideCharImages() :
                 System.getProperty("jexer.ECMA48.wideCharImages",
@@ -338,31 +422,43 @@ public class TScreenOptionsWindow extends TWindow {
         }
         if (ecmaTerminal == null) {
             // Swing case: turn off stuff we can't change
-            addLabel(i18n.getString("unavailable"), col, 17);
+            addLabel(i18n.getString("unavailable"), col, 16);
             sixel.setEnabled(false);
             sixelSharedPalette.setEnabled(false);
             wideCharImages.setEnabled(false);
             rgbColor.setEnabled(false);
         }
+
         if (ecmaTerminal != null) {
             oldSixelPaletteSize = ecmaTerminal.getSixelPaletteSize();
 
-            String [] sixelSizes = { "2", "256", "512", "1024", "2048" };
+            String [] sixelSizes;
+            if (System.getProperty("jexer.ECMA48.sixelEncoder",
+                    "hq").equals("hq")
+            ) {
+                String [] sizes = { "     2 ", "    16 ", "    64 ", "   128 ", "   256 ", "   512 ", "  1024 ", "  2048 " };
+                sixelSizes = sizes;
+                sixelSharedPalette.setEnabled(false);
+            } else {
+                String [] sizes = { "     2 ", "   256 ", "   512 ", "  1024 ", "  2048 " };
+                sixelSizes = sizes;
+            }
             List<String> sizes = new ArrayList<String>();
             sizes.addAll(Arrays.asList(sixelSizes));
-            sixelPaletteSize = addComboBox(col, 17, 10, sizes, 0, 4,
+            sixelPaletteSize = addComboBox(col, 16, 10, sizes, 0, 4,
                 new TAction() {
                     public void DO() {
                         try {
                             ecmaTerminal.setSixelPaletteSize(Integer.parseInt(
-                                sixelPaletteSize.getText()));
+                                sixelPaletteSize.getText().trim()));
                         } catch (NumberFormatException e) {
                             // SQUASH
                         }
                     }
                 }
             );
-            sixelPaletteSize.setText(Integer.toString(oldSixelPaletteSize));
+            sixelPaletteSize.setText(String.format("%6d ",
+                    oldSixelPaletteSize));
         }
 
         if (terminal != null) {
@@ -758,10 +854,8 @@ public class TScreenOptionsWindow extends TWindow {
                         ecmaTerminal.setRgbColor(rgbColor.isChecked());
                     }
                     if (terminal != null) {
-                        synchronized (terminal) {
-                            terminal.setTripleBuffer(tripleBuffer.isChecked());
-                            terminal.setFont(terminal.getFont());
-                        }
+                        terminal.setTripleBuffer(tripleBuffer.isChecked());
+                        terminal.setFont(terminal.getFont());
                     }
 
                     // Close window.
@@ -775,17 +869,15 @@ public class TScreenOptionsWindow extends TWindow {
                 public void DO() {
                     // Restore old values, then close the window.
                     if (terminal != null) {
-                        synchronized (terminal) {
-                            terminal.setFont(oldFont);
-                            terminal.setFontSize(oldFontSize);
-                            terminal.setTextAdjustX(oldTextAdjustX);
-                            terminal.setTextAdjustY(oldTextAdjustY);
-                            terminal.setTextAdjustHeight(oldTextAdjustHeight);
-                            terminal.setTextAdjustWidth(oldTextAdjustWidth);
-                            terminal.setTripleBuffer(oldTripleBuffer);
-                            terminal.setCursorStyle(oldCursorStyle);
-                            terminal.setMouseStyle(oldMouseStyle);
-                        }
+                        terminal.setFont(oldFont);
+                        terminal.setFontSize(oldFontSize);
+                        terminal.setTextAdjustX(oldTextAdjustX);
+                        terminal.setTextAdjustY(oldTextAdjustY);
+                        terminal.setTextAdjustHeight(oldTextAdjustHeight);
+                        terminal.setTextAdjustWidth(oldTextAdjustWidth);
+                        terminal.setTripleBuffer(oldTripleBuffer);
+                        terminal.setCursorStyle(oldCursorStyle);
+                        terminal.setMouseStyle(oldMouseStyle);
                     }
                     if (ecmaTerminal != null) {
                         ecmaTerminal.setHasSixel(oldSixel);
@@ -818,17 +910,15 @@ public class TScreenOptionsWindow extends TWindow {
         if (keypress.equals(kbEsc)) {
             // Restore old values, then close the window.
             if (terminal != null) {
-                synchronized (terminal) {
-                    terminal.setFont(oldFont);
-                    terminal.setFontSize(oldFontSize);
-                    terminal.setTextAdjustX(oldTextAdjustX);
-                    terminal.setTextAdjustY(oldTextAdjustY);
-                    terminal.setTextAdjustHeight(oldTextAdjustHeight);
-                    terminal.setTextAdjustWidth(oldTextAdjustWidth);
-                    terminal.setTripleBuffer(oldTripleBuffer);
-                    terminal.setCursorStyle(oldCursorStyle);
-                    terminal.setMouseStyle(oldMouseStyle);
-                }
+                terminal.setFont(oldFont);
+                terminal.setFontSize(oldFontSize);
+                terminal.setTextAdjustX(oldTextAdjustX);
+                terminal.setTextAdjustY(oldTextAdjustY);
+                terminal.setTextAdjustHeight(oldTextAdjustHeight);
+                terminal.setTextAdjustWidth(oldTextAdjustWidth);
+                terminal.setTripleBuffer(oldTripleBuffer);
+                terminal.setCursorStyle(oldCursorStyle);
+                terminal.setMouseStyle(oldMouseStyle);
             }
             if (ecmaTerminal != null) {
                 ecmaTerminal.setHasSixel(oldSixel);
@@ -837,6 +927,9 @@ public class TScreenOptionsWindow extends TWindow {
                 ecmaTerminal.setWideCharImages(oldWideCharImages);
                 ecmaTerminal.setRgbColor(oldRgbColor);
             }
+            getApplication().setWindowOpacity(oldWindowOpacity);
+            System.setProperty("jexer.TWindow.opacity",
+                Integer.toString(oldWindowOpacity));
             getApplication().closeWindow(this);
             return;
         }
@@ -858,15 +951,35 @@ public class TScreenOptionsWindow extends TWindow {
 
         int left = 34;
 
+        BorderStyle borderStyle;
+        borderStyle = BorderStyle.getStyle(System.getProperty(
+            "jexer.TScreenOptions.options.borderStyle", "single"));
+
         CellAttributes color = getTheme().getColor("ttext");
-        drawBox(2, 2, left + 24, 14, color, color);
-        putStringXY(4, 2, i18n.getString("swingOptions"), color);
+        drawBox(2, 2, left + 24, 14, color, color, borderStyle, false);
+        if (borderStyle.equals(BorderStyle.NONE)) {
+            putStringXY(3, 2, i18n.getString("swingOptions"), color);
+        } else {
+            putStringXY(4, 2, i18n.getString("swingOptions"), color);
+        }
 
-        drawBox(2, 15, left + 12, 22, color, color);
-        putStringXY(4, 15, i18n.getString("xtermOptions"), color);
 
-        drawBox(left + 2, 5, left + 22, 10, color, color, 3, false);
-        putStringXY(left + 4, 5, i18n.getString("sample"), color);
+        drawBox(2, 15, left + 12, 22, color, color, borderStyle, false);
+        if (borderStyle.equals(BorderStyle.NONE)) {
+            putStringXY(3, 15, i18n.getString("xtermOptions"), color);
+        } else {
+            putStringXY(4, 15, i18n.getString("xtermOptions"), color);
+        }
+
+        borderStyle = BorderStyle.getStyle(System.getProperty(
+            "jexer.TScreenOptions.grid.borderStyle", "singleVdoubleH"));
+
+        drawBox(left + 2, 5, left + 22, 10, color, color, borderStyle, false);
+        if (borderStyle.equals(BorderStyle.NONE)) {
+            putStringXY(left + 2, 5, i18n.getString("sample"), color);
+        } else {
+            putStringXY(left + 4, 5, i18n.getString("sample"), color);
+        }
         for (int i = 6; i < 9; i++) {
             hLineXY(left + 3, i, 18, GraphicsChars.HATCH, color);
         }
@@ -876,5 +989,78 @@ public class TScreenOptionsWindow extends TWindow {
     // ------------------------------------------------------------------------
     // TScreenOptionsWindow ---------------------------------------------------
     // ------------------------------------------------------------------------
+
+    /**
+     * Set the border style for the window when it is the foreground window.
+     *
+     * @param borderStyle the border style string, one of: "default", "none",
+     * "single", "double", "singleVdoubleH", "singleHdoubleV", or "round"; or
+     * null to use the value from jexer.TScreenOptions.borderStyle.
+     */
+    @Override
+    public void setBorderStyleForeground(final String borderStyle) {
+        if (borderStyle == null) {
+            String style = System.getProperty("jexer.TScreenOptions.borderStyle",
+                "double");
+            super.setBorderStyleForeground(style);
+        } else {
+            super.setBorderStyleForeground(borderStyle);
+        }
+    }
+
+    /**
+     * Set the border style for the window when it is the modal window.
+     *
+     * @param borderStyle the border style string, one of: "default", "none",
+     * "single", "double", "singleVdoubleH", "singleHdoubleV", or "round"; or
+     * null to use the value from jexer.TScreenOptions.borderStyle.
+     */
+    @Override
+    public void setBorderStyleModal(final String borderStyle) {
+        if (borderStyle == null) {
+            String style = System.getProperty("jexer.TScreenOptions.borderStyle",
+                "double");
+            super.setBorderStyleModal(style);
+        } else {
+            super.setBorderStyleModal(borderStyle);
+        }
+    }
+
+    /**
+     * Set the border style for the window when it is an inactive/background
+     * window.
+     *
+     * @param borderStyle the border style string, one of: "default", "none",
+     * "single", "double", "singleVdoubleH", "singleHdoubleV", or "round"; or
+     * null to use the value from jexer.TScreenOptions.borderStyle.
+     */
+    @Override
+    public void setBorderStyleInactive(final String borderStyle) {
+        if (borderStyle == null) {
+            String style = System.getProperty("jexer.TScreenOptions.borderStyle",
+                "double");
+            super.setBorderStyleInactive(style);
+        } else {
+            super.setBorderStyleInactive(borderStyle);
+        }
+    }
+
+    /**
+     * Set the border style for the window when it is being dragged/resize.
+     *
+     * @param borderStyle the border style string, one of: "default", "none",
+     * "single", "double", "singleVdoubleH", "singleHdoubleV", or "round"; or
+     * null to use the value from jexer.TScreenOptions.borderStyle.
+     */
+    @Override
+    public void setBorderStyleMoving(final String borderStyle) {
+        if (borderStyle == null) {
+            String style = System.getProperty("jexer.TScreenOptions.borderStyle",
+                "double");
+            super.setBorderStyleMoving(style);
+        } else {
+            super.setBorderStyleMoving(borderStyle);
+        }
+    }
 
 }

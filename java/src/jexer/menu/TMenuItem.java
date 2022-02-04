@@ -3,7 +3,7 @@
  *
  * The MIT License (MIT)
  *
- * Copyright (C) 2021 Autumn Lamonte
+ * Copyright (C) 2022 Autumn Lamonte
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -23,7 +23,7 @@
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
  * DEALINGS IN THE SOFTWARE.
  *
- * @author Autumn Lamonte [AutumnWalksTheLake@gmail.com] ⚧ Trans Liberation Now
+ * @author Autumn Lamonte ⚧ Trans Liberation Now
  * @version 1
  */
 package jexer.menu;
@@ -31,6 +31,7 @@ package jexer.menu;
 import jexer.TKeypress;
 import jexer.TWidget;
 import jexer.backend.Backend;
+import jexer.bits.BorderStyle;
 import jexer.bits.CellAttributes;
 import jexer.bits.GraphicsChars;
 import jexer.bits.MnemonicString;
@@ -249,7 +250,8 @@ public class TMenuItem extends TWidget {
 
         boolean useIcons = ((TMenu) getParent()).useIcons;
 
-        char cVSide = GraphicsChars.WINDOW_SIDE;
+        BorderStyle borderStyle = ((TMenu) getParent()).getBorderStyle();
+        int cVSide = borderStyle.getVertical();
         vLineXY(0, 0, 1, cVSide, background);
         vLineXY(getWidth() - 1, 0, 1, cVSide, background);
 

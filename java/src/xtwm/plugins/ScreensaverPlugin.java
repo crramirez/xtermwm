@@ -3,7 +3,7 @@
  *
  * The MIT License (MIT)
  *
- * Copyright (c) 2021 Autumn Lamonte
+ * Copyright (C) 2022 Autumn Lamonte
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -23,7 +23,7 @@
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
  * DEALINGS IN THE SOFTWARE.
  *
- * @author Autumn Lamonte [AutumnWalksTheLake@gmail.com] ⚧ Trans Liberation Now
+ * @author Autumn Lamonte ⚧ Trans Liberation Now
  * @version 1
  */
 package xtwm.plugins;
@@ -36,6 +36,7 @@ import jexer.TPanel;
 import jexer.TWidget;
 import jexer.TWindow;
 import jexer.backend.Screen;
+import jexer.bits.BorderStyle;
 import jexer.bits.CellAttributes;
 import jexer.bits.StringUtils;
 import jexer.event.TKeypressEvent;
@@ -252,9 +253,8 @@ public abstract class ScreensaverPlugin extends PluginWidget {
             public void draw() {
                 CellAttributes border = getTheme().getColor("twindow.border");
                 CellAttributes background = getTheme().getColor("twindow.background");
-                int borderType = 2;
                 drawBox(0, 0, getWidth(), getHeight(), border, background,
-                    borderType, true);
+                    BorderStyle.DOUBLE, true);
 
                 String title = i18n.getString("lockScreenInputBoxTitle");
                 int titleLength = StringUtils.width(title);
