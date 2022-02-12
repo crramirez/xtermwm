@@ -26,8 +26,8 @@ manager for the console.  Major features include:
 
   * Tiled and windowed terminal shells with good Xterm/VT100 support,
     including mouse.  Terminal shells will also resize correctly due
-    to the included [ptypipe](https://gitlab.com/klamonte/ptypipde)
-    utility.
+    to the included
+    [ptypipe](https://gitlab.com/AutumnMeowMeow/ptypipe) utility.
 
   * Detachable sessions and share-able sessions with read-only client
     support.
